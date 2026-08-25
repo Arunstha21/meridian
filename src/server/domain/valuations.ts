@@ -50,8 +50,10 @@ export async function recordValuation(
         entryableType: "valuation"
       })
       .returning({ id: entries.id });
-    await tx.insert(valuations).values({ entryId: entry!.id, kind: input.kind ?? "current" });
-    return entry!.id;
+    const entryId = entry?.id;
+    if (!entryId) throw errors.conflict("Failed to create valuation entry.");
+    await tx.insert(valuations).values({ entryId, kind: input.kind ?? "current" });
+    return entryId;
   });
 
   await recordAudit(exec, {
