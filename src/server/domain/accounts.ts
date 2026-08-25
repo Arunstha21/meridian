@@ -46,11 +46,6 @@ export async function createAccount(
   if (!name || name.length > 120) throw errors.validation("Account name must be 1–120 characters.");
   if (!isValidCurrency(input.currency)) throw errors.validation("Unknown currency code.");
   if (!isIsoDate(input.openedOn)) throw errors.validation("Opened-on date must be YYYY-MM-DD.");
-  try {
-    await exec.execute(sql`SELECT 1`);
-  } catch {
-    throw errors.validation("Database unavailable.");
-  }
 
   const opening = input.openingBalanceDisplayMinor;
   const accountId = await exec.transaction(async (tx) => {
