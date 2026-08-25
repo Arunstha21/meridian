@@ -4,7 +4,12 @@ const FIELD_MIN = [0, 0, 1, 1, 0];
 export function isValidCron(expr: string): boolean {
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) return false;
-  return parts.every((part, i) => parseField(part, FIELD_MIN[i]!, FIELD_MAX[i]!) !== null);
+  return parts.every((part, i) => {
+    const min = FIELD_MIN[i];
+    const max = FIELD_MAX[i];
+    if (min === undefined || max === undefined) return false;
+    return parseField(part, min, max) !== null;
+  });
 }
 
 type Field = { values: Set<number>; wildcard: boolean };
@@ -44,9 +49,15 @@ function parseField(spec: string, min: number, max: number): Field | null {
 export function nextCronRun(expr: string, after: Date): Date {
   if (!isValidCron(expr)) throw new Error(`Invalid cron expression: ${expr}`);
   const specs = expr.trim().split(/\s+/);
-  const [minuteF, hourF, domF, monthF, dowF] = specs.map((p, i) =>
-    parseField(p, FIELD_MIN[i]!, FIELD_MAX[i]!)
-  ) as [Field, Field, Field, Field, Field];
+  const fields = specs.map((p, i) => {
+    const min = FIELD_MIN[i];
+    const max = FIELD_MAX[i];
+    if (min === undefined || max === undefined) {
+      throw new Error(`Invalid field index: ${i}`);
+    }
+    return parseField(p, min, max);
+  });
+  const [minuteF, hourF, domF, monthF, dowF] = fields as [Field, Field, Field, Field, Field];
 
   const d = new Date(after.getTime());
   d.setUTCSeconds(0, 0);
