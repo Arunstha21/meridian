@@ -17,7 +17,9 @@ export async function createTag(
       .insert(tags)
       .values({ familyId: actor.familyId, name, color: input.color ?? null })
       .returning({ id: tags.id });
-    return { tagId: row!.id };
+    const tagId = row?.id;
+    if (!tagId) throw errors.conflict("Failed to create tag.");
+    return { tagId };
   } catch (e) {
     if ((e as { code?: string }).code === "23505") throw errors.conflict(`Tag "${name}" already exists.`);
     throw e;
