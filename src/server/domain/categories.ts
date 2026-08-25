@@ -33,7 +33,9 @@ export async function createCategory(
       .insert(categories)
       .values({ familyId: actor.familyId, name, color: input.color ?? null, parentId })
       .returning({ id: categories.id });
-    return { categoryId: row!.id };
+    const categoryId = row?.id;
+    if (!categoryId) throw errors.conflict("Failed to create category.");
+    return { categoryId };
   } catch (e) {
     if (isUniqueViolation(e)) throw errors.conflict(`Category "${name}" already exists.`);
     throw e;
