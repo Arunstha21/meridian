@@ -27,7 +27,7 @@ export async function recordValuation(
   }
   await assertAccountOpen(exec, actor, input.accountId, "manage");
   if (!isIsoDate(input.date)) throw errors.validation("Date must be in YYYY-MM-DD format.");
-  if (input.kind && !(VALUATION_KINDS as readonly string[]).includes(input.kind)) {
+  if (input.kind && !VALUATION_KINDS.includes(input.kind)) {
     throw errors.validation("Unknown valuation kind.");
   }
 

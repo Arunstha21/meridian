@@ -39,7 +39,7 @@ export async function createAccount(
   actor: Actor,
   input: CreateAccountInput
 ): Promise<{ accountId: string }> {
-  if (!(ACCOUNT_TYPES as readonly string[]).includes(input.type)) {
+  if (!ACCOUNT_TYPES.includes(input.type as AccountType)) {
     throw errors.validation("Unsupported account type.");
   }
   const name = input.name.trim();
