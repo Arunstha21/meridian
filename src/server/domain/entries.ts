@@ -91,7 +91,8 @@ export async function createTransactionEntry(
         entryableType: "transaction"
       })
       .returning({ id: entries.id });
-    const eid = entry!.id;
+    const eid = entry?.id;
+    if (!eid) throw errors.conflict("Failed to create entry.");
     await tx.insert(transactions).values({
       entryId: eid,
       categoryId,
@@ -103,7 +104,8 @@ export async function createTransactionEntry(
         .from(transactions)
         .where(eq(transactions.entryId, eid))
         .limit(1);
-      await tx.insert(transactionTags).values(tagIds.map((tagId) => ({ transactionId: txn!.id, tagId })));
+      if (!txn) throw errors.conflict("Failed to create transaction for tags.");
+      await tx.insert(transactionTags).values(tagIds.map((tagId) => ({ transactionId: txn.id, tagId })));
     }
     return eid;
   });
