@@ -4,6 +4,7 @@ import { accountShares, accounts, entries, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import {
   ACCOUNT_TYPES,
+  AccountType,
   canManageAccountSettings,
   getAccountAccess,
   isValuationDriven,
