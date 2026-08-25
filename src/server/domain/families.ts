@@ -9,7 +9,7 @@ import { recordAudit } from "../observability/audit";
 export async function createFamilyWithOwner(
   exec: Executor,
   input: { name: string; currency?: string },
-  ownerUserId: string
+  _ownerUserId: string
 ): Promise<string> {
   const name = input.name.trim();
   if (!name || name.length > 120) throw errors.validation("Family name must be 1–120 characters.");
@@ -20,7 +20,6 @@ export async function createFamilyWithOwner(
     .insert(families)
     .values({ name, currency })
     .returning({ id: families.id });
-  void ownerUserId;
   if (!family) throw errors.conflict("Family could not be created.");
   return family.id;
 }

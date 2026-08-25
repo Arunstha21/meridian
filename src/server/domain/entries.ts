@@ -68,7 +68,7 @@ export async function createTransactionEntry(
 ): Promise<{ entryId: string; duplicated: boolean }> {
   const { account } = await assertAccountOpen(exec, actor, input.accountId, "manage");
   validateEntryBasics(input);
-  if (!account || account.status !== "active") throw errors.conflict("Account is closed.");
+  if (account.status !== "active") throw errors.conflict("Account is closed.");
 
   const existing = await findByExternalId(exec, input);
   if (existing) return { entryId: existing, duplicated: true };
