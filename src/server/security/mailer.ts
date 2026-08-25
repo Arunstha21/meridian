@@ -14,8 +14,7 @@ export interface Mailer {
 
 class ConsoleMailer implements Mailer {
   async send(input: MailInput): Promise<void> {
-    log.info({ to: input.to, subject: input.subject }, "mail.console_delivery");
-    console.log(`--- email to ${input.to} ---\n${input.text}\n---`);
+    log.info({ to: input.to, subject: input.subject, text: input.text }, "mail.console_delivery");
   }
 }
 
