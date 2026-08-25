@@ -1,0 +1,53 @@
+{
+  "name": "meridian",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Meridian — self-hosted personal finance ledger. Know exactly where you stand.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx src/worker/main.ts",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "tsx bin/migrate.ts up",
+    "db:migrate:down": "tsx bin/migrate.ts down",
+    "db:seed": "tsx bin/seed.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.44.2",
+    "next": "^15.5.0",
+    "nodemailer": "^6.10.1",
+    "pg": "^8.23.0",
+    "pino": "^9.7.0",
+    "postgres": "^3.4.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zod": "^4.0.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/node": "^24.0.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.31.0",
+    "eslint-config-next": "^15.5.0",
+    "prettier": "^3.6.2",
+    "tailwindcss": "^4.1.11",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.38.0",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

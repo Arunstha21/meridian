@@ -1,0 +1,14 @@
+import { Card } from "@/components/ds/card";
+import { ForgotPasswordForm } from "./forgot-form";
+
+export const metadata = { title: "Forgot password" };
+
+export default function ForgotPasswordPage() {
+  return (
+    <Card>
+      <h1 className="mb-1 text-lg font-semibold">Reset your password</h1>
+      <p className="mb-4 text-sm text-muted">We will email you a one-time reset link.</p>
+      <ForgotPasswordForm />
+    </Card>
+  );
+}
