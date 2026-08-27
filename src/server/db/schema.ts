@@ -488,6 +488,32 @@ export const chatMessages = pgTable(
   (t) => [index("chat_messages_family_user_created_idx").on(t.familyId, t.userId, t.createdAt)]
 );
 
+export const chatProposals = pgTable(
+  "chat_proposals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("create_transaction"),
+    payload: jsonb("payload").notNull(),
+    status: text("status").notNull().default("pending"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    index("chat_proposals_user_pending_idx").on(t.userId, t.status, t.expiresAt),
+    check(
+      "chat_proposals_status_check",
+      sql`${t.status} IN ('pending', 'confirmed', 'dismissed', 'expired')`
+    )
+  ]
+);
+
 export const meroShareConnections = pgTable(
   "mero_share_connections",
   {

@@ -16,6 +16,7 @@ const TABLES = [
   "mero_share_accounts",
   "mero_share_connections",
   "chat_messages",
+  "chat_proposals",
   "saved_filters",
   "budgets",
   "transaction_tags",

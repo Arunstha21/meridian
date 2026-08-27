@@ -4,16 +4,30 @@ import type { Actor, Family } from "../auth/context";
 import { currentFamily } from "../auth/context";
 import { listAccountsForActor } from "../domain/accounts";
 import { listCategories } from "../domain/categories";
-import { createTransactionEntry } from "../domain/entries";
+import { createProposal, type TransactionProposalPayload } from "../domain/chat-proposals";
 import { dashboardSummary, spendingByCategory, incomeExpenseSeries } from "../domain/reports";
 import { parseAmountToMinor } from "@/lib/money";
 import { isIsoDate, monthKeyIn } from "@/lib/datetime";
 import type { ToolDefinition } from "./provider";
 
+/** What the API route hands the client so it can render a confirm/cancel card. */
+export type PendingChatProposal = {
+  id: string;
+  accountId: string;
+  accountName: string;
+  name: string;
+  amountLedgerMinor: number;
+  currency: string;
+  date: string;
+  merchant: string | null;
+  categoryId: string | null;
+};
+
 export type ToolContext = {
   exec: Executor;
   actor: Actor;
   family: Family;
+  proposals: PendingChatProposal[];
 };
 
 export type ToolHandler = (args: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>;
@@ -121,7 +135,7 @@ const TOOLS: Tool[] = [
   ),
   tool(
     "create_transaction",
-    "Record a new transaction. Use a NEGATIVE amount for income/received money and a POSITIVE amount for spending, consistent with the ledger's convention (positive = outflow). Dates are YYYY-MM-DD.",
+    "Propose recording a new transaction. Nothing is written until the user confirms the proposal in the UI. Use a NEGATIVE amount for income/received money and a POSITIVE amount for spending, consistent with the ledger's convention (positive = outflow). Dates are YYYY-MM-DD.",
     z.object({
       accountId: z.string().describe("Account id from list_accounts"),
       name: z.string().min(1).max(240),
@@ -141,15 +155,24 @@ const TOOLS: Tool[] = [
       if (!account) return { error: "Unknown account. Call list_accounts first." };
 
       const amountLedgerMinor = parseAmountToMinor(amount, account.currency);
-      const { entryId, duplicated } = await createTransactionEntry(ctx.exec, ctx.actor, {
+      const payload: TransactionProposalPayload = {
         accountId,
-        date,
-        amountLedgerMinor,
+        accountName: account.name,
         name,
+        amountLedgerMinor,
+        currency: account.currency,
+        date,
         merchant: args.merchant ? String(args.merchant) : null,
         categoryId: args.categoryId ? String(args.categoryId) : null
-      });
-      return { entryId, duplicated, date, amountLedgerMinor, currency: account.currency };
+      };
+      const proposal = await createProposal(ctx.exec, ctx.actor, payload);
+      ctx.proposals.push({ id: proposal.id, ...payload });
+      return {
+        proposed: true,
+        proposalId: proposal.id,
+        expiresInSeconds: 600,
+        note: "Proposal created but NOT recorded. The user sees a confirm/cancel card. Summarize what will be recorded in one short line, make clear nothing is saved until they confirm, and do not call this tool again for the same request."
+      };
     }
   )
 ];
@@ -196,5 +219,5 @@ export async function executeTool(name: string, argsJson: string, ctx: ToolConte
 }
 
 export async function buildToolContext(exec: Executor, actor: Actor): Promise<ToolContext> {
-  return { exec, actor, family: await currentFamily(actor) };
+  return { exec, actor, family: await currentFamily(actor), proposals: [] };
 }

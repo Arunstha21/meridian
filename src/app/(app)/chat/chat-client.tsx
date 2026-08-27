@@ -1,24 +1,41 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Send, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Check, Send, Trash2, X } from "lucide-react";
 import { clearChatAction } from "./actions";
+import { fmtMoney } from "@/lib/format";
 
 export type ChatUiMessage = { role: "user" | "assistant"; content: string };
 
+export type ChatProposal = {
+  id: string;
+  name: string;
+  accountName: string;
+  amountLedgerMinor: number;
+  currency: string;
+  date: string;
+  merchant: string | null;
+};
+
 export function ChatClient({
   initialMessages,
+  initialProposal,
   enabled,
   userName
 }: {
   initialMessages: ChatUiMessage[];
+  initialProposal: ChatProposal | null;
   enabled: boolean;
   userName: string;
 }) {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatUiMessage[]>(initialMessages);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [acting, setActing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<ChatProposal | null>(initialProposal);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const send = async (e: React.FormEvent) => {
@@ -37,16 +54,71 @@ export function ChatClient({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message })
       });
-      const data = (await res.json()) as { reply?: string; error?: string };
+      const data = (await res.json()) as { reply?: string; error?: string; proposal?: ChatProposal | null };
       if (!res.ok || !data.reply) {
         setError(data.error ?? "The assistant could not respond.");
       } else {
         setMessages((m) => [...m, { role: "assistant", content: data.reply! }]);
+        setProposal(data.proposal ?? null);
       }
     } catch {
       setError("Network error — could not reach the assistant.");
     } finally {
       setBusy(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const confirmProposal = async () => {
+    if (!proposal || busy || acting) return;
+    setActing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ confirmProposalId: proposal.id })
+      });
+      const data = (await res.json()) as {
+        recorded?: { note: string };
+        error?: string;
+      };
+      if (!res.ok || !data.recorded) {
+        setError(data.error ?? "Could not record that transaction.");
+      } else {
+        setMessages((m) => [...m, { role: "assistant", content: data.recorded!.note }]);
+        setProposal(null);
+        router.refresh();
+      }
+    } catch {
+      setError("Network error — could not record that transaction.");
+    } finally {
+      setActing(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const cancelProposal = async () => {
+    if (!proposal || acting) return;
+    setActing(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ dismissProposalId: proposal.id })
+      });
+      if (res.ok) {
+        setProposal(null);
+      } else {
+        const data = (await res.json()) as { error?: string };
+        setError(data.error ?? "Could not discard that proposal.");
+        setProposal(null);
+      }
+    } catch {
+      setProposal(null);
+    } finally {
+      setActing(false);
       inputRef.current?.focus();
     }
   };
@@ -157,6 +229,37 @@ export function ChatClient({
         ) : null}
         {error ? (
           <p className="rounded-lg bg-destructive-bg px-3 py-2 text-sm text-destructive">{error}</p>
+        ) : null}
+        {proposal ? (
+          <div className="rounded-xl border border-border bg-surface-inset p-3 shadow-sm">
+            <p className="text-xs font-medium text-muted">Proposed transaction — not saved yet</p>
+            <p className="mt-1 text-sm font-medium">{proposal.name}</p>
+            <p className="text-sm">
+              {fmtMoney(proposal.amountLedgerMinor, proposal.currency)} · {proposal.accountName} ·{" "}
+              {proposal.date}
+              {proposal.merchant ? ` · ${proposal.merchant}` : ""}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={confirmProposal}
+                disabled={acting}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-fg disabled:opacity-40"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Confirm
+              </button>
+              <button
+                type="button"
+                onClick={cancelProposal}
+                disabled={acting}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium hover:bg-surface-hover disabled:opacity-40"
+              >
+                <X className="h-3.5 w-3.5" />
+                Discard
+              </button>
+            </div>
+          </div>
         ) : null}
       </div>
 
