@@ -12,3 +12,14 @@ next-env.d.ts
 npm-debug.log*
 .pnpm-debug.log*
 vitest.config.ts.timestamp-*
+.playwright-mcp/
+
+# UI design reference screenshots (kept locally, not part of the app)
+/budgets.png
+/chat.png
+/dashboard.png
+/recurring.png
+/acceptance-desktop-dashboard.png
+
+# Playwright MCP working artifacts
+.playwright-mcp/

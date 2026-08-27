@@ -11,11 +11,19 @@ void (0 as unknown as TransactionEntryInput);
 export const db = () => getDb();
 
 const TABLES = [
+  "mero_share_transactions",
+  "mero_share_holdings",
+  "mero_share_accounts",
+  "mero_share_connections",
+  "chat_messages",
+  "saved_filters",
+  "budgets",
   "transaction_tags",
   "transfers",
   "valuations",
   "transactions",
   "entries",
+  "recurring_series",
   "balances",
   "account_shares",
   "accounts",
@@ -36,7 +44,7 @@ const TABLES = [
 ];
 
 export async function truncateAll(): Promise<void> {
-  const client = (getDbClient());
+  const client = getDbClient();
   await client.unsafe(`TRUNCATE ${TABLES.join(", ")} CASCADE`);
 }
 
@@ -66,7 +74,9 @@ export async function makeUser(
     name: overrides.name ?? `Test ${unique}`,
     familyName: overrides.familyName ?? `Family ${unique}`
   });
-  await db().execute(sql`UPDATE users SET email_verified_at = now() WHERE id = ${res.userId}::uuid`);
+  await db().execute(
+    sql`UPDATE users SET email_verified_at = now() WHERE id = ${res.userId}::uuid`
+  );
   return { userId: res.userId, familyId: res.familyId, email };
 }
 
@@ -85,7 +95,9 @@ export function actorOf(user: TestUser, role: "admin" | "member" = "admin") {
 
 export async function makeSuperAdmin(): Promise<TestUser> {
   const user = await makeUser();
-  await db().execute(sql`UPDATE users SET platform_role = 'super_admin' WHERE id = ${user.userId}::uuid`);
+  await db().execute(
+    sql`UPDATE users SET platform_role = 'super_admin' WHERE id = ${user.userId}::uuid`
+  );
   return user;
 }
 
@@ -109,8 +121,14 @@ export async function makeAccount(
 export async function addTxn(
   user: TestUser,
   accountId: string,
-  input: Partial<{ date: string; name: string; categoryId: string | null; merchant: string | null; notes: string | null; tagIds: string[] }> &
-    { amountLedgerMinor: number }
+  input: Partial<{
+    date: string;
+    name: string;
+    categoryId: string | null;
+    merchant: string | null;
+    notes: string | null;
+    tagIds: string[];
+  }> & { amountLedgerMinor: number }
 ) {
   const res = await orchestrate.addTransaction(db(), actorOf(user), {
     accountId,
@@ -121,7 +139,9 @@ export async function addTxn(
   return res.entryId;
 }
 
-export async function latestBalance(accountId: string): Promise<{ balanceMinor: number; asOf: string } | null> {
+export async function latestBalance(
+  accountId: string
+): Promise<{ balanceMinor: number; asOf: string } | null> {
   const res = await db().execute<{ balance_minor: string; as_of: string }>(sql`
     SELECT balance_minor::text AS balance_minor, as_of::text AS as_of
     FROM balances WHERE account_id = ${accountId}::uuid ORDER BY as_of DESC LIMIT 1

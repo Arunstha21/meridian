@@ -34,8 +34,7 @@
 - CSRF: Next.js server actions verify Origin/Host on every mutation; cookies SameSite=Lax;
   export download is a session-gated GET with `no-store`.
 - Input validation at every action boundary (Zod); domain re-validates critical invariants.
-- Secrets redacted recursively in logs and diagnostics; provider credentials N/A (no
-  providers shipped).
+- Secrets are redacted recursively in logs and diagnostics. MeroShare CDSC username/password are AES-256-GCM encrypted at rest with `MERO_SHARE_ENCRYPTION_KEY`; its authorization header is in-memory for one sync only and is never persisted or logged.
 
 ## Operations
 

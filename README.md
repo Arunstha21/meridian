@@ -5,19 +5,19 @@ Self-hosted personal finance ledger. Know exactly where you stand.
 Meridian is a Next.js implementation of the core personal-finance contract described in the
 Sure clone plan: family-scoped accounts, a typed double-sided ledger with transfers and splits,
 materialized daily balances, server-owned reporting, durable background jobs, and rigorous
-authorization — without bank connections, investments, or AI surfaces.
+authorization, a guarded Sure-data migration, direct CDSC MeroShare portfolio sync, and optional AI surfaces.
 
 ## Stack
 
-| Concern | Choice |
-| --- | --- |
-| Framework | Next.js (App Router) + React + TypeScript (strict) |
-| Database | PostgreSQL 16+ via Drizzle ORM; reviewed SQL migrations |
-| Auth | In-house sessions (scrypt passwords, hashed opaque tokens, revocation) |
-| Queue | PostgreSQL-backed worker process (`FOR UPDATE SKIP LOCKED`, retries, dead-letter, cron) |
-| Validation | Zod at action boundaries; domain invariants enforced in services |
-| UI | Tailwind CSS v4 with semantic design tokens |
-| Tests | Vitest unit + integration against real Postgres |
+| Concern    | Choice                                                                                  |
+| ---------- | --------------------------------------------------------------------------------------- |
+| Framework  | Next.js (App Router) + React + TypeScript (strict)                                      |
+| Database   | PostgreSQL 16+ via Drizzle ORM; reviewed SQL migrations                                 |
+| Auth       | In-house sessions (scrypt passwords, hashed opaque tokens, revocation)                  |
+| Queue      | PostgreSQL-backed worker process (`FOR UPDATE SKIP LOCKED`, retries, dead-letter, cron) |
+| Validation | Zod at action boundaries; domain invariants enforced in services                        |
+| UI         | Tailwind CSS v4 with semantic design tokens                                             |
+| Tests      | Vitest unit + integration against real Postgres                                         |
 
 ## Requirements
 
@@ -41,21 +41,23 @@ The demo seed creates `demo@meridian.local` with password `meridian-demo-2026`
 
 ## Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Web app in development mode |
-| `npm run build` / `npm start` | Production build and serve |
-| `npm run worker` | Background job runner (emails, maintenance crons) |
-| `npm run db:migrate` | Apply pending migrations |
-| `npm run db:migrate:down` | Revert the most recent migration |
-| `npm test` | Unit + integration tests (needs reachable Postgres) |
-| `npm run lint` / `typecheck` / `format:check` | CI checks |
+| Command                                       | Purpose                                             |
+| --------------------------------------------- | --------------------------------------------------- |
+| `npm run dev`                                 | Web app in development mode                         |
+| `npm run build` / `npm start`                 | Production build and serve                          |
+| `npm run worker`                              | Background job runner (emails, maintenance crons)   |
+| `npm run db:migrate`                          | Apply pending migrations                            |
+| `npm run db:migrate:down`                     | Revert the most recent migration                    |
+| `npm test`                                    | Unit + integration tests (needs reachable Postgres) |
+| `npm run lint` / `typecheck` / `format:check` | CI checks                                           |
 
 ## Environment
 
 See `.env.example`. Everything is validated at boot (`src/lib/env.ts`) — the process refuses to
 start with missing or malformed configuration. No secrets are ever committed or logged;
 sensitive keys are redacted by the logging helper.
+
+MeroShare is optional and requires `MERO_SHARE_ENCRYPTION_KEY` (a 32-byte base64 key) before a CDSC login can be saved. Meridian encrypts the username and password at rest, while the CDSC authorization header exists only for the in-flight sync.
 
 ## Testing
 
