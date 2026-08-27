@@ -6,6 +6,7 @@ import { getUserPrivacyMode } from "@/server/domain/users";
 import { Card, PageHeader } from "@/components/ds/card";
 import { ProfileForms } from "./forms";
 import { OrgForm } from "./org-form";
+import Link from "next/link";
 
 export const metadata = { title: "Settings" };
 
@@ -33,14 +34,20 @@ export default async function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-4 text-sm font-semibold">Profile & preferences</h2>
-          <ProfileForms name={actor.name} email={actor.email} timezone={family.timezone} timezones={TIMEZONES} privacy={privacy} />
+          <h2 className="mb-4 text-base font-medium">Profile & preferences</h2>
+          <ProfileForms
+            name={actor.name}
+            email={actor.email}
+            timezone={family.timezone}
+            timezones={TIMEZONES}
+            privacy={privacy}
+          />
         </Card>
 
         <Card>
-          <h2 className="mb-4 text-sm font-semibold">Organization</h2>
+          <h2 className="mb-4 text-base font-medium">Organization</h2>
           {actor.familyRole === "admin" ? (
             <OrgForm familyName={family.name} currency={family.currency} locale={family.locale} />
           ) : (
@@ -49,6 +56,34 @@ export default async function SettingsPage() {
               name, currency or locale.
             </p>
           )}
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <h2 className="mb-4 text-base font-medium">Manage</h2>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              {
+                href: "/settings/recurring",
+                label: "Recurring transactions",
+                hint: "Automated bills & income"
+              },
+              { href: "/settings/categories", label: "Categories", hint: "Spending categories" },
+              { href: "/settings/tags", label: "Tags", hint: "Flexible labels" },
+              { href: "/settings/members", label: "Members", hint: "Family & invitations" },
+              { href: "/settings/security", label: "Security", hint: "Sessions & password" },
+              { href: "/settings/data", label: "Data", hint: "Export & imports" }
+            ].map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="block rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-surface-hover"
+                >
+                  <span className="block text-sm font-medium">{item.label}</span>
+                  <span className="block text-xs text-muted">{item.hint}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Card>
       </div>
     </>

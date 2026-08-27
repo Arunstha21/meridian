@@ -32,8 +32,11 @@ export default async function TransactionDetailPage({
   ]);
 
   return (
-    <>
-      <PageHeader title={detail.entry.name} subtitle={`Recorded ${fmtDate(detail.entry.date)} · ${detail.account.name}`} />
+    <div className="space-y-6 pb-6 lg:pb-12">
+      <PageHeader
+        title={detail.entry.name}
+        subtitle={`Recorded ${fmtDate(detail.entry.date)} · ${detail.account.name}`}
+      />
       <TransactionDetailClient
         entry={detail.entry}
         level={detail.level}
@@ -42,9 +45,13 @@ export default async function TransactionDetailPage({
         merchant={detail.merchant}
         transferId={detail.transferId}
         transferPartnerName={detail.transferPartner?.accountName}
-        splits={detail.children.map((c) => ({ id: c.id, name: c.name, amountMinor: c.amountMinor }))}
+        splits={detail.children.map((c) => ({
+          id: c.id,
+          name: c.name,
+          amountMinor: c.amountMinor
+        }))}
         suggestions={suggestions}
       />
-    </>
+    </div>
   );
 }

@@ -11,7 +11,11 @@ import { AccountActions } from "./actions-panel";
 
 export const metadata = { title: "Account" };
 
-export default async function AccountDetailPage({ params }: { params: Promise<{ accountId: string }> }) {
+export default async function AccountDetailPage({
+  params
+}: {
+  params: Promise<{ accountId: string }>;
+}) {
   const { accountId } = await params;
   const actor = await requireVerifiedActor();
   const db = getDb();
@@ -27,7 +31,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
   const members = await familyMemberOptions(db, actor.familyId);
 
   return (
-    <>
+    <div className="space-y-6 pb-6 lg:pb-12">
       <PageHeader
         title={account.name}
         subtitle={`${labelForType(account.type)}${account.institution ? ` · ${account.institution}` : ""}`}
@@ -41,10 +45,10 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-sm font-medium text-muted">Balance</h2>
+            <h2 className="text-base font-medium text-primary">Balance</h2>
             <div className="flex gap-2">
               <Badge tone={isLiability(account.type) ? "warning" : "success"}>
                 {isLiability(account.type) ? "Liability" : "Asset"}
@@ -54,33 +58,40 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
           <p className="tabular mt-1 text-3xl font-semibold">
-            <Amount minor={overview.displayBalanceMinor} currency={account.currency} masked={privacy} />
+            <Amount
+              minor={overview.displayBalanceMinor}
+              currency={account.currency}
+              masked={privacy}
+            />
           </p>
           <p className="mt-1 text-xs text-muted">Opened {fmtDate(account.openedOn)}</p>
           <div className="mt-4">
-            <Sparkline points={series.map((pt) => ({ date: pt.date, valueMinor: pt.balanceMinor }))} masked={privacy} />
+            <Sparkline
+              points={series.map((pt) => ({ date: pt.date, valueMinor: pt.balanceMinor }))}
+              masked={privacy}
+            />
           </div>
         </Card>
 
         <Card className="space-y-3">
-          <h2 className="text-sm font-medium text-muted">Shortcuts</h2>
+          <h2 className="text-base font-medium text-primary">Shortcuts</h2>
           <Link
             href={`/transactions/new?account=${account.id}`}
-            className="block rounded-lg border border-border px-3 py-2 text-sm hover:bg-border/30"
+            className="block rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-hover"
           >
             + New transaction
           </Link>
           {valuationDriven && level === "full_control" ? (
             <Link
               href={`/accounts/${account.id}?valuation=1`}
-              className="block rounded-lg border border-border px-3 py-2 text-sm hover:bg-border/30"
+              className="block rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-hover"
             >
               Update valuation
             </Link>
           ) : null}
           <Link
             href="/transactions?kind=transfer"
-            className="block rounded-lg border border-border px-3 py-2 text-sm hover:bg-border/30"
+            className="block rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-hover"
           >
             Move money (transfers)
           </Link>
@@ -96,7 +107,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
 
       {level === "full_control" ? (
         <Card>
-          <h2 className="mb-2 text-sm font-medium text-muted">Sharing</h2>
+          <h2 className="mb-2 text-base font-medium text-primary">Sharing</h2>
           {shares.length === 0 ? (
             <p className="text-sm text-muted">Not shared with anyone yet.</p>
           ) : (
@@ -109,12 +120,14 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
               ))}
             </ul>
           )}
-          <p className="mt-3 text-xs text-muted">Manage sharing and lifecycle from the account menu.</p>
+          <p className="mt-3 text-xs text-muted">
+            Manage sharing and lifecycle from the account menu.
+          </p>
         </Card>
       ) : null}
 
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Activity</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Activity</h2>
         {recentActivity.length === 0 ? (
           <p className="text-sm text-muted">No activity recorded yet.</p>
         ) : (
@@ -125,7 +138,10 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
                   {e.kind === "valuation" ? (
                     <span className="truncate text-sm font-medium">{e.name}</span>
                   ) : (
-                    <Link href={`/transactions/${e.id}`} className="truncate text-sm font-medium hover:underline">
+                    <Link
+                      href={`/transactions/${e.id}`}
+                      className="truncate text-sm font-medium hover:underline"
+                    >
                       {e.name}
                     </Link>
                   )}
@@ -144,7 +160,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
           </ul>
         )}
       </Card>
-    </>
+    </div>
   );
 }
 

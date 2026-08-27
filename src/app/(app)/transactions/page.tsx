@@ -6,11 +6,13 @@ import { listAccountsForActor } from "@/server/domain/accounts";
 import { listCategories } from "@/server/domain/categories";
 import { listTags } from "@/server/domain/tags";
 import { getUserPrivacyMode } from "@/server/domain/users";
+import { listSavedFilters } from "@/server/domain/saved-filters";
 import { Card, EmptyState, PageHeader } from "@/components/ds/card";
 import { Amount } from "@/components/finance/amount";
 import { fmtDate } from "@/lib/format";
 import { Select, Input } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { SavedFilterBar } from "./saved-filter-bar";
 
 export const metadata = { title: "Transactions" };
 
@@ -42,13 +44,26 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     limit: 25
   };
 
-  const [page, accounts, categories, tags] = await Promise.all([
+  const [page, accounts, categories, tags, savedFilters] = await Promise.all([
     listEntriesPage(db, actor, filters),
     listAccountsForActor(db, actor),
     listCategories(db, actor.familyId),
-    listTags(db, actor.familyId)
+    listTags(db, actor.familyId),
+    listSavedFilters(db, actor.userId)
   ]);
   const privacy = await getUserPrivacyMode(db, actor.userId);
+
+  const currentParams: Record<string, string> = Object.fromEntries(
+    Object.entries({
+      q: filters.search,
+      account: filters.accountId,
+      category: filters.categoryId,
+      tag: filters.tagId,
+      kind: filters.kind,
+      from: filters.from,
+      to: filters.to
+    }).flatMap(([k, v]) => (v !== undefined ? [[k, v] as const] : []))
+  );
 
   const nextQuery = (c: { date: string; id: string } | null) => {
     if (!c) return "";
@@ -62,7 +77,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   };
 
   return (
-    <>
+    <div className="space-y-4 pb-6 lg:pb-12">
       <PageHeader
         title="Transactions"
         actions={
@@ -72,7 +87,18 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         }
       />
 
-      <Card className="no-print">
+      {savedFilters.length > 0 || Object.keys(currentParams).length > 0 ? (
+        <SavedFilterBar
+          filters={savedFilters.map((f) => ({
+            id: f.id,
+            name: f.name,
+            params: (f.params ?? {}) as Record<string, string>
+          }))}
+          currentParams={currentParams}
+        />
+      ) : null}
+
+      <Card className="no-print overflow-hidden">
         <form method="get" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div className="sm:col-span-2">
             <label htmlFor="q" className="sr-only">Search</label>
@@ -144,7 +170,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             </thead>
             <tbody className="divide-y divide-border">
               {page.items.map((e: EntryListItem) => (
-                <tr key={e.id} className="hover:bg-border/20">
+                <tr key={e.id} className="transition-colors hover:bg-surface-hover">
                   <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(e.date)}</td>
                   <td className="px-4 py-3">
                     <Link href={`/transactions/${e.id}`} className="font-medium hover:underline">
@@ -180,7 +206,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
           </div>
         </Card>
       )}
-    </>
+    </div>
   );
 }
 

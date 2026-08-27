@@ -10,13 +10,13 @@ type Tag = { id: string; name: string; color: string | null };
 
 export function TagManager({ tags }: { tags: Tag[] }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Add a tag</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Add a tag</h2>
         <CreateForm />
       </Card>
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Existing tags</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Existing tags</h2>
         {tags.length === 0 ? (
           <p className="text-sm text-muted">Nothing yet.</p>
         ) : (

@@ -29,14 +29,21 @@ export default async function SecurityPage() {
           {sessions.map((s) => {
             const isCurrent = s.id === actor.sessionId;
             return (
-              <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+              >
                 <div>
                   <p className="font-medium">
-                    Session {s.id.slice(0, 8)}… {isCurrent ? <Badge tone="success">this device</Badge> : null}
+                    Session {s.id.slice(0, 8)}…{" "}
+                    {isCurrent ? <Badge tone="success">this device</Badge> : null}
                   </p>
                   <p className="text-xs text-muted">
                     Last used{" "}
-                    {new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(s.lastUsedAt)}
+                    {new Intl.DateTimeFormat("en", {
+                      dateStyle: "medium",
+                      timeStyle: "short"
+                    }).format(s.lastUsedAt)}
                     {s.ip ? ` · ${s.ip}` : ""}
                     {s.userAgent ? ` · ${s.userAgent.slice(0, 60)}` : ""}
                   </p>
@@ -54,7 +61,7 @@ export default async function SecurityPage() {
       </Card>
 
       <Card>
-        <h2 className="text-sm font-medium text-muted">What we protect</h2>
+        <h2 className="text-base font-medium text-primary">What we protect</h2>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
           <li>Passwords are hashed with scrypt; session tokens are stored hashed.</li>
           <li>Sessions expire after 30 days of inactivity and can be revoked instantly.</li>

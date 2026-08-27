@@ -16,8 +16,11 @@ export default async function NewTransactionPage() {
   const categories = await listCategories(db, actor.familyId);
 
   return (
-    <>
-      <PageHeader title="New transaction" subtitle={`Amounts are recorded in ${family.currency} family context per account currency.`} />
+    <div className="max-w-4xl space-y-6 pb-6 lg:pb-12">
+      <PageHeader
+        title="New transaction"
+        subtitle={`Amounts are recorded in ${family.currency} family context per account currency.`}
+      />
       <Suspense>
         <NewTransactionForms
           accounts={accounts
@@ -26,6 +29,6 @@ export default async function NewTransactionPage() {
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
         />
       </Suspense>
-    </>
+    </div>
   );
 }

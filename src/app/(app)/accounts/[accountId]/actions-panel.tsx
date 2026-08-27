@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Dialog } from "@/components/ds/dialog";
+import { Dialog, useDialogClose } from "@/components/ds/dialog";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 import { updateAccountAction, setAccountStatusAction, deleteAccountAction, shareAccountAction } from "@/app/(app)/accounts/actions";
@@ -44,7 +44,7 @@ export function AccountActions({
         title="Delete this account?"
         description="This permanently removes the account and every transaction in it. This cannot be undone."
       >
-        {(close) => <DeleteForm accountId={accountId} accountName={accountName} close={close} />}
+        <DeleteForm accountId={accountId} accountName={accountName} />
       </Dialog>
     </>
   );
@@ -110,7 +110,8 @@ function SharePanel({ accountId, members }: { accountId: string; members: Member
   );
 }
 
-function DeleteForm({ accountId, accountName, close }: { accountId: string; accountName: string; close: () => void }) {
+function DeleteForm({ accountId, accountName }: { accountId: string; accountName: string }) {
+  const close = useDialogClose();
   const [state, action] = useActionState(deleteAccountAction, undefined);
   return (
     <form action={action} className="space-y-4">

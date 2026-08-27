@@ -6,6 +6,9 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-raised: var(--surface-raised);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-inset-hover: var(--surface-inset-hover);
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-border: var(--border);
@@ -17,35 +20,41 @@
 }
 
 :root {
-  --primary: #4f46e5;
+  --primary: #171717;
   --primary-fg: #ffffff;
-  --bg: #f7f7fb;
+  --bg: #fafafa;
   --surface: #ffffff;
   --surface-raised: #ffffff;
-  --fg: #101223;
-  --muted: #667085;
-  --border: #e4e7ec;
-  --destructive: #d92d20;
-  --destructive-bg: #fef3f2;
-  --warning: #b54708;
-  --success: #067647;
-  --income: #067647;
+  --surface-hover: #f3f4f6;
+  --surface-inset: #f3f4f6;
+  --surface-inset-hover: #e5e7eb;
+  --fg: #171717;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --destructive: #ef4444;
+  --destructive-bg: #fef2f2;
+  --warning: #ca8a04;
+  --success: #15803d;
+  --income: #15803d;
 }
 
 .dark {
-  --primary: #818cf8;
-  --primary-fg: #0b1020;
-  --bg: #0a0d18;
-  --surface: #101527;
-  --surface-raised: #161c33;
-  --fg: #eef1f9;
-  --muted: #98a2b3;
-  --border: #232b45;
-  --destructive: #f04438;
+  --primary: #fafafa;
+  --primary-fg: #171717;
+  --bg: #000000;
+  --surface: #111827;
+  --surface-raised: #111827;
+  --surface-hover: #1f2937;
+  --surface-inset: #1f2937;
+  --surface-inset-hover: #374151;
+  --fg: #fafafa;
+  --muted: #9ca3af;
+  --border: #374151;
+  --destructive: #f87171;
   --destructive-bg: #2a1215;
-  --warning: #fdb022;
-  --success: #12b76a;
-  --income: #12b76a;
+  --warning: #facc15;
+  --success: #4ade80;
+  --income: #4ade80;
 }
 
 html {
@@ -56,10 +65,23 @@ html.dark {
   color-scheme: dark;
 }
 
+html,
+body {
+  min-height: 100%;
+}
+
 body {
   background-color: var(--bg);
   color: var(--fg);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
+  margin: 0;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -68,6 +90,15 @@ body {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+.focus-ring {
+  outline: 2px solid transparent;
+  outline-offset: 0;
+}
+
+.focus-ring:focus-visible {
+  outline-color: var(--primary);
 }
 
 @media print {

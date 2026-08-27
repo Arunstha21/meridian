@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
+
+const DialogCloseContext = createContext<() => void>(() => {});
+
+export function useDialogClose() {
+  return useContext(DialogCloseContext);
+}
 
 export function Dialog({
   trigger,
@@ -12,7 +18,7 @@ export function Dialog({
   trigger: React.ReactNode;
   title: string;
   description?: string;
-  children: React.ReactNode | ((close: () => void) => React.ReactNode);
+  children: React.ReactNode;
   width?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -32,7 +38,7 @@ export function Dialog({
   const close = () => ref.current?.close();
 
   return (
-    <>
+    <DialogCloseContext.Provider value={close}>
       <button type="button" onClick={open} className="contents cursor-pointer">
         {trigger}
       </button>
@@ -57,10 +63,8 @@ export function Dialog({
           </div>
           {description ? <p className="text-sm text-muted">{description}</p> : null}
         </div>
-        <div className="p-5">
-          {typeof children === "function" ? children(close) : children}
-        </div>
+        <div className="p-5">{children}</div>
       </dialog>
-    </>
+    </DialogCloseContext.Provider>
   );
 }

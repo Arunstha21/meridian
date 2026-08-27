@@ -13,7 +13,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const db = getDb();
 
   const [user] = await db.select().from(users).where(eq(users.id, actor.userId)).limit(1);
-  const privacy = user ? await getPreference<boolean>((user?.preferences ?? {}) as Record<string, unknown>, "privacy_mode", false) : false;
+  const privacy = user
+    ? await getPreference<boolean>(
+        (user?.preferences ?? {}) as Record<string, unknown>,
+        "privacy_mode",
+        false
+      )
+    : false;
 
   const accounts = await listAccountsForActor(db, actor);
   const active = accounts.filter((a) => a.status === "active");
@@ -26,8 +32,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   });
   const assets = active.filter((a) => !isLiability(a.type)).map(toNav);
   const liabilities = active.filter((a) => isLiability(a.type)).map(toNav);
-  const netWorthMinor = [...assets, ...liabilities].reduce((acc, a) => acc + a.displayBalanceMinor, 0);
-
+  const netWorthMinor = [...assets, ...liabilities].reduce(
+    (total, account) => total + account.displayBalanceMinor,
+    0
+  );
   return (
     <Shell
       user={actor.name}

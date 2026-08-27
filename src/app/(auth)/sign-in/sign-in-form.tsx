@@ -15,15 +15,18 @@ export function SignInForm() {
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
       <Field label="Password" htmlFor="password">
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
       </Field>
       <SubmitButton className="w-full">Sign in</SubmitButton>
-      <div className="flex justify-between text-sm">
+      <div className="flex justify-center text-sm">
         <Link href="/forgot-password" className="text-primary underline-offset-4 hover:underline">
           Forgot password?
-        </Link>
-        <Link href="/sign-up" className="text-primary underline-offset-4 hover:underline">
-          Create account
         </Link>
       </div>
     </form>

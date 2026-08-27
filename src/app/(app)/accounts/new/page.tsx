@@ -5,14 +5,17 @@ import { NewAccountForm } from "./new-account-form";
 export const metadata = { title: "Add account" };
 
 export default async function NewAccountPage() {
-  await requireVerifiedActor();
-  const family = await currentFamily(await requireVerifiedActor());
+  const actor = await requireVerifiedActor();
+  const family = await currentFamily(actor);
   return (
-    <>
-      <PageHeader title="Add an account" subtitle="Manual accounts only — no bank connections in this release." />
+    <div className="max-w-3xl space-y-6 pb-6 lg:pb-12">
+      <PageHeader
+        title="Add an account"
+        subtitle="Manual accounts only — no bank connections in this release."
+      />
       <Card>
         <NewAccountForm defaultCurrency={family.currency} />
       </Card>
-    </>
+    </div>
   );
 }

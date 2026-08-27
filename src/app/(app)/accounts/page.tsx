@@ -18,11 +18,14 @@ export default async function AccountsPage() {
   const liabilities = accounts.filter((a) => isLiability(a.type));
 
   return (
-    <>
+    <div className="space-y-6 pb-6 lg:pb-12">
       <PageHeader
         title="Accounts"
         actions={
-          <Link href="/accounts/new" className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg">
+          <Link
+            href="/accounts/new"
+            className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg"
+          >
             Add account
           </Link>
         }
@@ -30,7 +33,7 @@ export default async function AccountsPage() {
 
       <AccountGroup title="Assets" items={assets} privacy={privacy} />
       <AccountGroup title="Liabilities" items={liabilities} privacy={privacy} />
-    </>
+    </div>
   );
 }
 
@@ -45,34 +48,47 @@ function AccountGroup({
 }) {
   if (items.length === 0) {
     return (
-      <section aria-label={title}>
+      <section aria-label={title} className="rounded-xl bg-surface-inset p-1">
         <EmptyState title={`No ${title.toLowerCase()} yet`} />
       </section>
     );
   }
   return (
-    <section aria-label={title}>
-      <h2 className="mb-2 px-1 text-sm font-medium uppercase tracking-wide text-muted">{title}</h2>
-      <ul className="grid gap-3 sm:grid-cols-2">
+    <section aria-label={title} className="rounded-xl bg-surface-inset p-1">
+      <div className="flex items-center justify-between px-3 py-2 text-xs font-medium text-muted">
+        <h2>{title}</h2>
+        <span>{items.length}</span>
+      </div>
+      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
         {items.map((a) => (
           <li key={a.id}>
             <Link
               href={`/accounts/${a.id}`}
-              className="block rounded-xl border border-border bg-surface p-4 transition-colors hover:bg-border/20"
+              className="flex items-center justify-between gap-3 px-4 py-4 transition-colors hover:bg-surface-hover"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{a.name}</p>
-                  <p className="text-xs text-muted">{labelForType(a.type)}{a.institution ? ` · ${a.institution}` : ""}</p>
+              <div className="min-w-0">
+                <p className="truncate font-medium">{a.name}</p>
+                <p className="text-xs text-muted">
+                  {a.institution === "MeroShare" ? "MeroShare investment" : labelForType(a.type)}
+                  {a.institution ? ` · ${a.institution}` : ""}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {!a.isJoint ? <Badge tone="primary">shared</Badge> : null}
+                  {a.status !== "active" ? <Badge tone="warning">{a.status}</Badge> : null}
+                  {!a.includedInReports ? (
+                    <Badge tone="neutral">excluded from reports</Badge>
+                  ) : null}
+                  {a.level !== "full_control" ? (
+                    <Badge tone="neutral">{permissionLabel(a.level)}</Badge>
+                  ) : null}
                 </div>
-                <Amount minor={a.displayBalanceMinor} currency={a.currency} masked={privacy} className="font-semibold" />
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {!a.isJoint ? <Badge tone="primary">shared</Badge> : null}
-                {a.status !== "active" ? <Badge tone="warning">{a.status}</Badge> : null}
-                {!a.includedInReports ? <Badge tone="neutral">excluded from reports</Badge> : null}
-                {a.level !== "full_control" ? <Badge tone="neutral">{permissionLabel(a.level)}</Badge> : null}
-              </div>
+              <Amount
+                minor={a.displayBalanceMinor}
+                currency={a.currency}
+                masked={privacy}
+                className="shrink-0 font-semibold"
+              />
             </Link>
           </li>
         ))}

@@ -35,7 +35,7 @@ export default async function MembersPage() {
       <InviteForm />
       <MemberTable members={members} currentUserId={actor.userId} isAdmin={isAdmin} />
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Pending invitations</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Pending invitations</h2>
         {pending.length === 0 ? (
           <p className="text-sm text-muted">No pending invitations.</p>
         ) : (
@@ -81,7 +81,9 @@ function MemberTable({
             <div>
               <p className="font-medium">
                 {m.name}
-                {m.id === currentUserId ? <span className="ml-1 text-xs text-muted">(you)</span> : null}
+                {m.id === currentUserId ? (
+                  <span className="ml-1 text-xs text-muted">(you)</span>
+                ) : null}
               </p>
               <p className="text-xs text-muted">{m.email}</p>
             </div>
@@ -92,8 +94,14 @@ function MemberTable({
                 <div className="flex gap-1.5">
                   <form action={manageMemberAction}>
                     <input type="hidden" name="userId" value={m.id} />
-                    <input type="hidden" name="op" value={m.role === "admin" ? "demote" : "promote"} />
-                    <SubmitButton variant="secondary">{m.role === "admin" ? "Demote" : "Make admin"}</SubmitButton>
+                    <input
+                      type="hidden"
+                      name="op"
+                      value={m.role === "admin" ? "demote" : "promote"}
+                    />
+                    <SubmitButton variant="secondary">
+                      {m.role === "admin" ? "Demote" : "Make admin"}
+                    </SubmitButton>
                   </form>
                   <form action={manageMemberAction}>
                     <input type="hidden" name="userId" value={m.id} />

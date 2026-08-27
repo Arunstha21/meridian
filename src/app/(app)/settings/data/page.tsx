@@ -1,6 +1,7 @@
 import { requireVerifiedActor, currentFamily } from "@/server/auth/context";
 import { Card, PageHeader, Alert } from "@/components/ds/card";
 import { DeleteFamilyForm } from "./delete-family-form";
+import { SureImportForm } from "./sure-import-form";
 
 export const metadata = { title: "Your data" };
 
@@ -16,7 +17,7 @@ export default async function DataPage() {
       />
 
       <Card>
-        <h2 className="mb-1 text-sm font-semibold">Export everything</h2>
+        <h2 className="mb-1 text-base font-medium text-primary">Export everything</h2>
         <p className="mb-4 text-sm text-muted">
           Download a complete JSON snapshot of your family: accounts, entries, categories, tags,
           sharing, and exchange rates.
@@ -30,6 +31,16 @@ export default async function DataPage() {
         </a>
       </Card>
 
+      <Card>
+        <h2 className="mb-1 text-base font-medium text-primary">Move from Sure</h2>
+        <p className="mb-4 text-sm text-muted">
+          Import Sure&apos;s standard family export into a new Meridian family. Accounts,
+          categories, tags, transactions, splits, transfers, and valuations are carried across with
+          their original dates.
+        </p>
+        <SureImportForm />
+      </Card>
+
       <Alert title="Deleting your family is permanent" tone="destructive">
         Every account, transaction, category, and member record will be destroyed immediately. There
         is no undo. Export first if you might want the data later.
@@ -37,7 +48,9 @@ export default async function DataPage() {
 
       {actor.familyRole === "admin" ? (
         <Card className="border-destructive/40">
-          <h2 className="mb-3 text-sm font-semibold text-destructive">Delete family “{family.name}”</h2>
+          <h2 className="mb-3 text-base font-medium text-destructive">
+            Delete family “{family.name}”
+          </h2>
           <DeleteFamilyForm familyName={family.name} />
         </Card>
       ) : (

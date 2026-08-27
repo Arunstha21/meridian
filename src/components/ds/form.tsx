@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted/70 disabled:opacity-60";
+  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-sm transition-[border-color,box-shadow] placeholder:text-muted/70 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60";
 
 export function Input({ className = "", ...props }: ComponentProps<"input">) {
   return <input className={`${inputClass} ${className}`} {...props} />;
@@ -34,7 +34,7 @@ export function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium">
+      <label htmlFor={htmlFor} className="block text-xs font-medium text-muted">
         {label}
       </label>
       {children}
@@ -51,7 +51,10 @@ export function Field({
 export function FormError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive-bg px-3 py-2 text-sm text-destructive">
+    <p
+      role="alert"
+      className="rounded-lg border border-destructive/30 bg-destructive-bg px-3 py-2 text-sm text-destructive"
+    >
       {message}
     </p>
   );

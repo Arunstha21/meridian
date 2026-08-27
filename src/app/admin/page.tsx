@@ -21,14 +21,14 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <>
+    <div className="min-h-screen space-y-6 bg-bg px-3 py-6 pb-12 text-fg sm:px-6 lg:px-10">
       <PageHeader
         title="Operations"
         subtitle="Support diagnostics visible only to platform super admins."
       />
 
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Feature flags</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Feature flags</h2>
         <ul className="divide-y divide-border">
           {flags.map((f) => (
             <li key={f.key} className="flex items-center justify-between gap-4 py-2.5">
@@ -51,16 +51,24 @@ export default async function AdminPage() {
 
       <Card>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted">Background jobs (recent)</h2>
+          <h2 className="text-base font-medium text-primary">Background jobs (recent)</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-160 text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
-                <th scope="col" className="py-2 font-medium">Queue</th>
-                <th scope="col" className="py-2 font-medium">Status</th>
-                <th scope="col" className="py-2 font-medium">Attempts</th>
-                <th scope="col" className="py-2 font-medium">Created</th>
+                <th scope="col" className="py-2 font-medium">
+                  Queue
+                </th>
+                <th scope="col" className="py-2 font-medium">
+                  Status
+                </th>
+                <th scope="col" className="py-2 font-medium">
+                  Attempts
+                </th>
+                <th scope="col" className="py-2 font-medium">
+                  Created
+                </th>
                 <th scope="col" className="py-2 font-medium"></th>
               </tr>
             </thead>
@@ -82,9 +90,15 @@ export default async function AdminPage() {
                     >
                       {j.status}
                     </Badge>
-                    {j.last_error ? <span className="ml-2 text-xs text-destructive">{j.last_error.slice(0, 60)}</span> : null}
+                    {j.last_error ? (
+                      <span className="ml-2 text-xs text-destructive">
+                        {j.last_error.slice(0, 60)}
+                      </span>
+                    ) : null}
                   </td>
-                  <td className="py-2">{j.attempts}/{j.max_attempts}</td>
+                  <td className="py-2">
+                    {j.attempts}/{j.max_attempts}
+                  </td>
                   <td className="py-2 text-muted">{fmtDate(String(j.created_at).slice(0, 10))}</td>
                   <td className="py-2 text-right">
                     {j.status === "dead" ? (
@@ -103,7 +117,7 @@ export default async function AdminPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Support diagnostics</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Support diagnostics</h2>
         {logs.length === 0 ? (
           <p className="text-sm text-muted">No diagnostics recorded. That is usually good news.</p>
         ) : (
@@ -111,12 +125,23 @@ export default async function AdminPage() {
             {logs.map((l) => (
               <li key={l.id} className="rounded-lg border border-border p-3 text-sm">
                 <div className="flex items-center gap-2">
-                  <Badge tone={l.level === "error" ? "destructive" : l.level === "warn" ? "warning" : "neutral"}>
+                  <Badge
+                    tone={
+                      l.level === "error"
+                        ? "destructive"
+                        : l.level === "warn"
+                          ? "warning"
+                          : "neutral"
+                    }
+                  >
                     {l.level}
                   </Badge>
                   <span className="font-medium">{l.category}</span>
                   <span className="text-xs text-muted">
-                    {new Intl.DateTimeFormat("en", { dateStyle: "short", timeStyle: "short" }).format(l.createdAt)}
+                    {new Intl.DateTimeFormat("en", {
+                      dateStyle: "short",
+                      timeStyle: "short"
+                    }).format(l.createdAt)}
                   </span>
                 </div>
                 <p className="mt-1">{l.message}</p>
@@ -130,6 +155,6 @@ export default async function AdminPage() {
           </ul>
         )}
       </Card>
-    </>
+    </div>
   );
 }

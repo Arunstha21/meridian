@@ -17,13 +17,13 @@ export function CategoryManager({
 }) {
   void currency;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Add a category</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Add a category</h2>
         <CreateForm categories={categories.filter((c) => !c.parentId)} />
       </Card>
       <Card>
-        <h2 className="mb-3 text-sm font-medium text-muted">Existing categories</h2>
+        <h2 className="mb-3 text-base font-medium text-primary">Existing categories</h2>
         {categories.length === 0 ? (
           <p className="text-sm text-muted">Nothing yet.</p>
         ) : (
@@ -57,7 +57,9 @@ function CreateForm({ categories }: { categories: Category[] }) {
         <Select id="cat-parent" name="parentId" defaultValue="">
           <option value="">Top level</option>
           {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
           ))}
         </Select>
       </Field>
