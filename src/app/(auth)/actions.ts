@@ -10,7 +10,7 @@ import { issueAuthToken, verificationUrl, consumeAuthToken, markEmailVerified } 
 import { revokeSession } from "@/server/security/session";
 import { consumeRateLimit } from "@/server/security/rate-limit";
 import { enqueue } from "@/server/queue";
-import { env, isProd } from "@/lib/env";
+import { env, isProd, requireEmailVerification } from "@/lib/env";
 import { errors } from "@/lib/errors";
 import { runAction, type ActionState } from "@/server/actions/runner";
 
@@ -52,24 +52,43 @@ export async function signUpAction(_prev: ActionState | undefined, formData: For
     await consumeRateLimit(db, `signup:${meta.ip ?? "unknown"}`, 10, 3600);
 
     const result = await registerUserWithFamily(db, input);
-    const token = await issueAuthToken(db, result.userId, "email_verification");
-    await enqueue(db, "email", {
-      to: input.email.toLowerCase(),
-      subject: "Verify your Meridian account",
-      text: `Welcome to Meridian!\n\nConfirm your email address:\n${verificationUrl(token)}\n\nThis link expires in 48 hours.`
-    });
 
-    const session = await import("@/server/security/session");
-    const { token: sessionToken } = await session.createSession(db, result.userId, meta);
-    const store = await cookies();
-    store.set(SESSION_COOKIE, sessionToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: isProd,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30
-    });
-    redirect("/verify-email");
+    // Only require email verification if env var is set
+    if (requireEmailVerification()) {
+      const token = await issueAuthToken(db, result.userId, "email_verification");
+      await enqueue(db, "email", {
+        to: input.email.toLowerCase(),
+        subject: "Verify your Meridian account",
+        text: `Welcome to Meridian!\n\nConfirm your email address:\n${verificationUrl(token)}\n\nThis link expires in 48 hours.`
+      });
+
+      const session = await import("@/server/security/session");
+      const { token: sessionToken } = await session.createSession(db, result.userId, meta);
+      const store = await cookies();
+      store.set(SESSION_COOKIE, sessionToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: isProd,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30
+      });
+      redirect("/verify-email");
+    } else {
+      // Auto-verify for direct signups when verification is disabled
+      await markEmailVerified(db, result.userId);
+
+      const session = await import("@/server/security/session");
+      const { token: sessionToken } = await session.createSession(db, result.userId, meta);
+      const store = await cookies();
+      store.set(SESSION_COOKIE, sessionToken, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: isProd,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30
+      });
+      redirect("/");
+    }
   });
 }
 

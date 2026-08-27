@@ -5,6 +5,7 @@ import { getDb } from "../db/client";
 import { families, users } from "../db/schema";
 import { findLiveSession, touchSession } from "../security/session";
 import { errors } from "@/lib/errors";
+import { requireEmailVerification } from "@/lib/env";
 
 export const SESSION_COOKIE = "meridian_session";
 
@@ -55,7 +56,7 @@ export async function requireActor(): Promise<Actor> {
 
 export async function requireVerifiedActor(): Promise<Actor> {
   const actor = await requireActor();
-  if (!actor.emailVerified) redirect("/verify-email");
+  if (requireEmailVerification() && !actor.emailVerified) redirect("/verify-email");
   return actor;
 }
 

@@ -15,6 +15,17 @@ const schema = z.object({
   DEBUG_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
   WORKER_POLL_MS: z.coerce.number().int().positive().default(500),
   WORKER_NAME: z.string().optional(),
+  REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).default("false"),
+  AI_BASE_URL: z.string().optional(),
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().optional(),
+  MERO_SHARE_ENCRYPTION_KEY: z
+    .string()
+    .optional()
+    .refine(
+      (value) => !value || Buffer.from(value, "base64").length === 32,
+      "MERO_SHARE_ENCRYPTION_KEY must be a 32-byte base64 value."
+    ),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development")
 });
 
@@ -34,4 +45,12 @@ export function adminEmails(): string[] {
   return env.ADMIN_EMAILS.split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
+}
+
+export function requireEmailVerification(): boolean {
+  return env.REQUIRE_EMAIL_VERIFICATION === "true";
+}
+
+export function aiChatEnabled(): boolean {
+  return Boolean(env.AI_BASE_URL && env.AI_MODEL);
 }

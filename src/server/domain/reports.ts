@@ -260,9 +260,13 @@ export async function netWorthSeries(
   exec: Executor,
   family: Family,
   userId: string,
-  days = 90
+  days: number | "all" = 90
 ): Promise<NetWorthPoint[]> {
   const ctx = newConversionContext();
+  const cutoff =
+    days === "all"
+      ? sql``
+      : sql`AND b.as_of >= current_date - ${String(days)}::int`;
   const res = await exec.execute<{ as_of: string; balance_minor: string; currency: string; type: string }>(sql`
     SELECT b.as_of::text AS as_of, b.balance_minor::text AS balance_minor, b.currency, a.type
     FROM balances b
@@ -271,7 +275,7 @@ export async function netWorthSeries(
       AND a.status = 'active'
       AND a.included_in_reports = true
       AND ${ACCESS_SQL(userId)}
-      AND b.as_of >= current_date - ${String(days)}::int
+      ${cutoff}
     ORDER BY b.as_of
   `);
 

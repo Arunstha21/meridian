@@ -6,6 +6,7 @@ import { pruneDebugLogs } from "../observability/debug-log";
 import { pruneFinishedJobs } from "./index";
 import { ensureSchedules, type CronDef } from "./worker-loop";
 import { recalculateAllActiveAccounts } from "../domain/balances-maintenance";
+import { postDueSeries } from "../domain/recurring";
 import { env } from "@/lib/env";
 
 export type JobPayloads = {
@@ -36,12 +37,17 @@ export async function createJobRegistry() {
     await pruneFinishedJobs(exec, 14);
   });
 
+  registry.set("recurring:post", async (_payload, exec) => {
+    await postDueSeries(exec);
+  });
+
   return registry;
 }
 
 export const CRON_DEFINITIONS: CronDef[] = [
   { key: "nightly-balances", queue: "maintenance:balances", cron: "2 4 * * *" },
-  { key: "nightly-cleanup", queue: "maintenance:cleanup", cron: "17 3 * * *" }
+  { key: "nightly-cleanup", queue: "maintenance:cleanup", cron: "17 3 * * *" },
+  { key: "recurring-post", queue: "recurring:post", cron: "*/30 * * * *" }
 ];
 
 export async function registerWorkerBootstraps(exec: Executor): Promise<void> {
