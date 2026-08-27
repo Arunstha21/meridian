@@ -38,3 +38,7 @@ export function fmtMonth(monthKey: string, locale = "en"): string {
 export function fmtPercent(ratio: number, locale = "en"): string {
   return new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 1 }).format(ratio);
 }
+
+export function pluralize(count: number, singular: string, plural?: string): string {
+  return `${count} ${count === 1 ? singular : (plural ?? `${singular}s`)}`;
+}

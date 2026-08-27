@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { importSureExportAction } from "./actions";
 import { FormError } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { pluralize } from "@/lib/format";
 
 export function SureImportForm() {
   const [state, action] = useActionState(importSureExportAction, undefined);
@@ -32,8 +33,9 @@ export function SureImportForm() {
           className="rounded-lg border border-success/30 bg-success/5 p-3 text-sm text-success"
           role="status"
         >
-          Imported {state.data.accounts} accounts, {state.data.transactions} transactions, and{" "}
-          {state.data.transfers} transfers.
+          Imported {pluralize(state.data.accounts, "account")},{" "}
+          {pluralize(state.data.transactions, "transaction")}, and{" "}
+          {pluralize(state.data.transfers, "transfer")}.
           {skipped.length ? (
             <p className="mt-1 text-xs text-muted">
               Not migrated: {skipped.map(([type, count]) => `${count} ${type}`).join(", ")}.
