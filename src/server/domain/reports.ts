@@ -256,6 +256,33 @@ export async function reportFxIssues(
 
 export type NetWorthPoint = { date: string; valueMinor: number };
 
+/**
+ * Net worth for an already-loaded account list (e.g. the sidebar), converting each
+ * balance into the family currency. Accounts with no known rate are excluded,
+ * mirroring dashboardSummary's behavior.
+ */
+export async function netWorthMinorForAccounts(
+  exec: Executor,
+  family: Pick<Family, "id" | "currency">,
+  accounts: { displayBalanceMinor: number; currency: string }[],
+  onDate: string
+): Promise<number> {
+  const ctx = newConversionContext();
+  let netWorth = 0;
+  for (const account of accounts) {
+    netWorth += await convertTo(
+      exec,
+      account.displayBalanceMinor,
+      account.currency,
+      family.currency,
+      onDate,
+      ctx
+    );
+  }
+  await reportFxIssues(exec, ctx, family.id, "sidebar");
+  return netWorth;
+}
+
 export async function netWorthSeries(
   exec: Executor,
   family: Family,

@@ -3,6 +3,7 @@ import { requireVerifiedActor, currentFamily } from "@/server/auth/context";
 import { getDb } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 import { listAccountsForActor, isLiability } from "@/server/domain/accounts";
+import { netWorthMinorForAccounts } from "@/server/domain/reports";
 import { getPreference } from "@/server/domain/users";
 import { signOutAction, togglePrivacyAction } from "@/server/actions/session-actions";
 import { Shell } from "@/components/layout/shell";
@@ -32,9 +33,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   });
   const assets = active.filter((a) => !isLiability(a.type)).map(toNav);
   const liabilities = active.filter((a) => isLiability(a.type)).map(toNav);
-  const netWorthMinor = [...assets, ...liabilities].reduce(
-    (total, account) => total + account.displayBalanceMinor,
-    0
+  const today = new Date().toISOString().slice(0, 10);
+  const netWorthMinor = await netWorthMinorForAccounts(
+    db,
+    family,
+    [...assets, ...liabilities],
+    today
   );
   return (
     <Shell
