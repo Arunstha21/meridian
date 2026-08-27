@@ -1,9 +1,11 @@
-import "dotenv/config";
-import { migrateDownStep, migrateStatusReport, migrateUp } from "../src/server/db/migrate";
+import { config } from "dotenv";
+config({ path: ".env.local", quiet: true });
+config({ quiet: true });
 
 const direction = process.argv[2] ?? "up";
 
 async function main() {
+  const { migrateDownStep, migrateStatusReport, migrateUp } = await import("../src/server/db/migrate");
   if (direction === "status") {
     const report = await migrateStatusReport();
     console.log(JSON.stringify(report, null, 2));

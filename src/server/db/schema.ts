@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   char,
+  check,
   date,
   index,
   integer,
@@ -112,10 +113,15 @@ export const categories = pgTable(
     parentId: uuid("parent_id"),
     name: text("name").notNull(),
     color: text("color"),
+    externalSource: text("external_source"),
+    externalId: text("external_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
   (t) => [
     uniqueIndex("categories_family_name_unique").on(t.familyId, sql`lower(${t.name})`),
+    uniqueIndex("categories_family_external_dedupe_idx")
+      .on(t.familyId, t.externalSource, t.externalId)
+      .where(sql`${t.externalId} IS NOT NULL`),
     index("categories_parent_idx").on(t.parentId)
   ]
 );
@@ -129,9 +135,16 @@ export const tags = pgTable(
       .references(() => families.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     color: text("color"),
+    externalSource: text("external_source"),
+    externalId: text("external_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
   },
-  (t) => [uniqueIndex("tags_family_name_unique").on(t.familyId, sql`lower(${t.name})`)]
+  (t) => [
+    uniqueIndex("tags_family_name_unique").on(t.familyId, sql`lower(${t.name})`),
+    uniqueIndex("tags_family_external_dedupe_idx")
+      .on(t.familyId, t.externalSource, t.externalId)
+      .where(sql`${t.externalId} IS NOT NULL`)
+  ]
 );
 
 export const accounts = pgTable(
@@ -151,10 +164,17 @@ export const accounts = pgTable(
     includedInReports: boolean("included_in_reports").notNull().default(true),
     openingBalanceMinor: bigint("opening_balance_minor", { mode: "number" }).notNull().default(0),
     openedOn: date("opened_on").notNull(),
+    externalSource: text("external_source"),
+    externalId: text("external_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
   },
-  (t) => [index("accounts_family_idx").on(t.familyId)]
+  (t) => [
+    index("accounts_family_idx").on(t.familyId),
+    uniqueIndex("accounts_family_external_dedupe_idx")
+      .on(t.familyId, t.externalSource, t.externalId)
+      .where(sql`${t.externalId} IS NOT NULL`)
+  ]
 );
 
 export const accountShares = pgTable(
@@ -181,6 +201,9 @@ export const entries = pgTable(
       .notNull()
       .references(() => accounts.id, { onDelete: "cascade" }),
     parentEntryId: uuid("parent_entry_id"),
+    recurringSeriesId: uuid("recurring_series_id").references(() => recurringSeries.id, {
+      onDelete: "set null"
+    }),
     date: date("date").notNull(),
     amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
     currency: char("currency", { length: 3 }).notNull(),
@@ -195,6 +218,7 @@ export const entries = pgTable(
   (t) => [
     index("entries_account_date_idx").on(t.accountId, t.date, t.id),
     index("entries_parent_idx").on(t.parentEntryId),
+    index("entries_recurring_idx").on(t.recurringSeriesId),
     uniqueIndex("entries_external_dedupe_idx")
       .on(t.accountId, t.externalSource, t.externalId)
       .where(sql`${t.externalId} IS NOT NULL`)
@@ -221,22 +245,19 @@ export const valuations = pgTable("valuations", {
   kind: text("kind").notNull().default("current")
 });
 
-export const transfers = pgTable(
-  "transfers",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    outflowEntryId: uuid("outflow_entry_id")
-      .notNull()
-      .unique()
-      .references(() => entries.id, { onDelete: "cascade" }),
-    inflowEntryId: uuid("inflow_entry_id")
-      .notNull()
-      .unique()
-      .references(() => entries.id, { onDelete: "cascade" }),
-    status: text("status").notNull().default("confirmed"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
-  }
-);
+export const transfers = pgTable("transfers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  outflowEntryId: uuid("outflow_entry_id")
+    .notNull()
+    .unique()
+    .references(() => entries.id, { onDelete: "cascade" }),
+  inflowEntryId: uuid("inflow_entry_id")
+    .notNull()
+    .unique()
+    .references(() => entries.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("confirmed"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
 
 export const transactionTags = pgTable(
   "transaction_tags",
@@ -371,3 +392,193 @@ export const cronSchedules = pgTable("cron_schedules", {
   lastRunAt: timestamp("last_run_at", { withTimezone: true }),
   enabled: boolean("enabled").notNull().default(true)
 });
+
+export const recurringSeries = pgTable(
+  "recurring_series",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    merchant: text("merchant"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
+    frequency: text("frequency").notNull(),
+    config: jsonb("config").notNull().default({}),
+    nextDue: date("next_due").notNull(),
+    active: boolean("active").notNull().default(true),
+    lastPostedEntryId: uuid("last_posted_entry_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    index("recurring_series_family_idx").on(t.familyId),
+    index("recurring_series_due_idx")
+      .on(t.active, t.nextDue)
+      .where(sql`${t.active}`),
+    check(
+      "recurring_series_frequency_check",
+      sql`${t.frequency} IN ('monthly', 'weekly', 'yearly')`
+    )
+  ]
+);
+
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id").references(() => categories.id, { onDelete: "cascade" }),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    check("budgets_amount_minor_check", sql`${t.amountMinor} > 0`),
+    uniqueIndex("budgets_family_category_unique")
+      .on(
+        t.familyId,
+        sql`coalesce(${t.categoryId}, '00000000-0000-0000-0000-000000000000'::uuid)`
+      )
+      .where(sql`${t.active}`)
+  ]
+);
+
+export const savedFilters = pgTable(
+  "saved_filters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    params: jsonb("params").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [uniqueIndex("saved_filters_user_name_unique").on(t.userId, sql`lower(${t.name})`)]
+);
+
+export const chatMessages = pgTable(
+  "chat_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull(),
+    content: text("content").notNull().default(""),
+    toolCalls: jsonb("tool_calls"),
+    toolCallId: text("tool_call_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [index("chat_messages_family_user_created_idx").on(t.familyId, t.userId, t.createdAt)]
+);
+
+export const meroShareConnections = pgTable(
+  "mero_share_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    clientId: integer("client_id").notNull(),
+    dpCode: text("dp_code").notNull(),
+    dpName: text("dp_name").notNull(),
+    usernameEncrypted: text("username_encrypted").notNull(),
+    passwordEncrypted: text("password_encrypted").notNull(),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [index("mero_share_connections_family_idx").on(t.familyId)]
+);
+
+export const meroShareAccounts = pgTable(
+  "mero_share_accounts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    connectionId: uuid("connection_id")
+      .notNull()
+      .references(() => meroShareConnections.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    boid: text("boid").notNull(),
+    name: text("name").notNull(),
+    currency: char("currency", { length: 3 }).notNull().default("NPR"),
+    totalValueMinor: bigint("total_value_minor", { mode: "number" }).notNull().default(0),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    uniqueIndex("mero_share_accounts_connection_boid_unique").on(t.connectionId, t.boid),
+    uniqueIndex("mero_share_accounts_account_unique").on(t.accountId)
+  ]
+);
+
+export const meroShareHoldings = pgTable(
+  "mero_share_holdings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    meroShareAccountId: uuid("mero_share_account_id")
+      .notNull()
+      .references(() => meroShareAccounts.id, { onDelete: "cascade" }),
+    ticker: text("ticker").notNull(),
+    name: text("name").notNull(),
+    quantity: numeric("quantity", { precision: 24, scale: 8 }).notNull(),
+    marketPriceMinor: bigint("market_price_minor", { mode: "number" }).notNull().default(0),
+    marketValueMinor: bigint("market_value_minor", { mode: "number" }).notNull().default(0),
+    costBasisMinor: bigint("cost_basis_minor", { mode: "number" }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    uniqueIndex("mero_share_holdings_account_ticker_unique").on(t.meroShareAccountId, t.ticker)
+  ]
+);
+
+export const meroShareTransactions = pgTable(
+  "mero_share_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    meroShareAccountId: uuid("mero_share_account_id")
+      .notNull()
+      .references(() => meroShareAccounts.id, { onDelete: "cascade" }),
+    externalId: text("external_id").notNull(),
+    ticker: text("ticker").notNull(),
+    name: text("name").notNull(),
+    quantity: numeric("quantity", { precision: 24, scale: 8 }).notNull(),
+    priceMinor: bigint("price_minor", { mode: "number" }),
+    estimatedValueMinor: bigint("estimated_value_minor", { mode: "number" }),
+    activityLabel: text("activity_label").notNull(),
+    occurredOn: date("occurred_on").notNull(),
+    description: text("description"),
+    transactionCode: text("transaction_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    uniqueIndex("mero_share_transactions_account_external_unique").on(
+      t.meroShareAccountId,
+      t.externalId
+    )
+  ]
+);
