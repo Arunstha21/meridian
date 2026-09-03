@@ -4,6 +4,7 @@ import { listFamilyMembers } from "@/server/domain/users";
 import { listPendingInvitations } from "@/server/domain/invitations";
 import { Badge, Card, PageHeader } from "@/components/ds/card";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { ConfirmDialog } from "@/components/ds/dialog";
 import { InviteForm } from "./invite-form";
 import { manageMemberAction, revokeInvitationAction } from "@/app/(app)/settings/actions";
 
@@ -103,11 +104,20 @@ function MemberTable({
                       {m.role === "admin" ? "Demote" : "Make admin"}
                     </SubmitButton>
                   </form>
-                  <form action={manageMemberAction}>
+                  <ConfirmDialog
+                    trigger={
+                      <span className="inline-flex rounded-lg bg-destructive px-3.5 py-2 text-sm font-medium text-white">
+                        Remove
+                      </span>
+                    }
+                    title={`Remove ${m.name}?`}
+                    description="They will lose access to this family. Transactions they recorded stay in the ledger."
+                    confirmLabel="Remove member"
+                    action={manageMemberAction}
+                  >
                     <input type="hidden" name="userId" value={m.id} />
                     <input type="hidden" name="op" value="remove" />
-                    <SubmitButton variant="destructive">Remove</SubmitButton>
-                  </form>
+                  </ConfirmDialog>
                 </div>
               ) : null}
             </div>

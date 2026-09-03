@@ -5,6 +5,7 @@ import { manageCategoryAction, deleteCategoryAction } from "@/app/(app)/settings
 import { Card } from "@/components/ds/card";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { ConfirmDialog } from "@/components/ds/dialog";
 
 type Category = { id: string; name: string; color: string | null; parentId: string | null };
 
@@ -68,11 +69,16 @@ function CreateForm({ categories }: { categories: Category[] }) {
   );
 }
 
-function DeleteButton({ categoryId }: { categoryId: string; categoryName?: string }) {
+function DeleteButton({ categoryId, categoryName }: { categoryId: string; categoryName?: string }) {
   return (
-    <form action={deleteCategoryAction}>
+    <ConfirmDialog
+      trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
+      title={`Delete ${categoryName ?? "this category"}?`}
+      description="Transactions keep their amounts; this category is removed from them."
+      confirmLabel="Delete category"
+      action={deleteCategoryAction}
+    >
       <input type="hidden" name="id" value={categoryId} />
-      <SubmitButton variant="ghost">Delete</SubmitButton>
-    </form>
+    </ConfirmDialog>
   );
 }

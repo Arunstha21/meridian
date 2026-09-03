@@ -13,7 +13,7 @@ import Link from "next/link";
 import { Card, Alert } from "@/components/ds/card";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
-import { Dialog, useDialogClose } from "@/components/ds/dialog";
+import { ConfirmDialog, Dialog, useDialogClose } from "@/components/ds/dialog";
 import { TagPicker } from "@/components/ds/tag-picker";
 
 export type DetailProps = {
@@ -213,12 +213,25 @@ export function TransactionDetailClient(p: DetailProps) {
 
         <Card>
           <h2 className="mb-2 text-base font-medium text-destructive">Danger zone</h2>
-          <form action={deleteEntryAction}>
-            <input type="hidden" name="entryId" value={p.entry.id} />
-            <SubmitButton variant="destructive" disabled={p.level !== "full_control"}>
+          {p.level === "full_control" ? (
+            <ConfirmDialog
+              trigger={
+                <span className="inline-flex rounded-lg bg-destructive px-3.5 py-2 text-sm font-medium text-white">
+                  Delete transaction
+                </span>
+              }
+              title="Delete this transaction?"
+              description="This permanently removes the transaction. This cannot be undone."
+              confirmLabel="Delete transaction"
+              action={deleteEntryAction}
+            >
+              <input type="hidden" name="entryId" value={p.entry.id} />
+            </ConfirmDialog>
+          ) : (
+            <SubmitButton variant="destructive" disabled>
               Delete transaction
             </SubmitButton>
-          </form>
+          )}
         </Card>
       </div>
     </div>

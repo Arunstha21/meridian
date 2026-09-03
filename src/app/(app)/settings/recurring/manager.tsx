@@ -10,6 +10,7 @@ import {
 import { Card, Badge } from "@/components/ds/card";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { ConfirmDialog } from "@/components/ds/dialog";
 import { fmtMoney } from "@/lib/format";
 
 type Series = {
@@ -105,10 +106,15 @@ export function RecurringManager({
                     <input type="hidden" name="id" value={s.id} />
                     <SubmitButton variant="ghost">Skip next</SubmitButton>
                   </form>
-                  <form action={deleteRecurringAction}>
+                  <ConfirmDialog
+                    trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
+                    title={`Delete “${s.name}”?`}
+                    description="Posted transactions stay in the ledger. Future occurrences will not be created."
+                    confirmLabel="Delete series"
+                    action={deleteRecurringAction}
+                  >
                     <input type="hidden" name="id" value={s.id} />
-                    <SubmitButton variant="ghost">Delete</SubmitButton>
-                  </form>
+                  </ConfirmDialog>
                 </div>
               </li>
             ))}

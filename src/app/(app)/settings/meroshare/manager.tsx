@@ -10,6 +10,7 @@ import {
 } from "./actions";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { ConfirmDialog } from "@/components/ds/dialog";
 
 type Capital = { id: number; code: string; name: string };
 type Connection = {
@@ -65,10 +66,15 @@ export function MeroShareManager({ connections }: { connections: Connection[] })
                     <input type="hidden" name="connectionId" value={item.connection.id} />
                     <SubmitButton variant="secondary">Sync now</SubmitButton>
                   </form>
-                  <form action={disconnectMeroShareAction}>
+                  <ConfirmDialog
+                    trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Disconnect</span>}
+                    title={`Disconnect ${item.connection.name}?`}
+                    description="Meridian keeps the investment account and its latest valuation. Credentials are removed."
+                    confirmLabel="Disconnect"
+                    action={disconnectMeroShareAction}
+                  >
                     <input type="hidden" name="connectionId" value={item.connection.id} />
-                    <SubmitButton variant="ghost">Disconnect</SubmitButton>
-                  </form>
+                  </ConfirmDialog>
                 </div>
               </div>
               <ul className="mt-3 divide-y divide-border rounded-lg border border-border">

@@ -5,6 +5,7 @@ import { manageTagAction, deleteTagAction } from "@/app/(app)/settings/actions-o
 import { Card } from "@/components/ds/card";
 import { Field, FormError, Input } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { ConfirmDialog } from "@/components/ds/dialog";
 
 type Tag = { id: string; name: string; color: string | null };
 
@@ -24,10 +25,15 @@ export function TagManager({ tags }: { tags: Tag[] }) {
             {tags.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <span>#{t.name}</span>
-                <form action={deleteTagAction}>
+                <ConfirmDialog
+                  trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
+                  title={`Delete #${t.name}?`}
+                  description="The tag is removed from every transaction that used it."
+                  confirmLabel="Delete tag"
+                  action={deleteTagAction}
+                >
                   <input type="hidden" name="id" value={t.id} />
-                  <SubmitButton variant="ghost">Delete</SubmitButton>
-                </form>
+                </ConfirmDialog>
               </li>
             ))}
           </ul>

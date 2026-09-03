@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check, Send, Trash2, X } from "lucide-react";
 import { clearChatAction } from "./actions";
 import { fmtMoney } from "@/lib/format";
+import { ConfirmDialog } from "@/components/ds/dialog";
 
 export type ChatUiMessage = { role: "user" | "assistant"; content: string };
 
@@ -163,16 +164,23 @@ export function ChatClient({
           </div>
         </div>
         {messages.length > 0 ? (
-          <form action={clear}>
-            <button
-              type="submit"
-              className="flex items-center gap-1.5 rounded-lg p-2 text-muted hover:bg-border/40 hover:text-destructive"
-              title="Clear conversation"
-            >
-              <Trash2 className="h-4 w-4" />
-              <span className="text-xs font-medium">Clear</span>
-            </button>
-          </form>
+          <ConfirmDialog
+            trigger={
+              <span
+                className="flex items-center gap-1.5 rounded-lg p-2 text-muted hover:bg-border/40 hover:text-destructive"
+                title="Clear conversation"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="text-xs font-medium">Clear</span>
+              </span>
+            }
+            title="Clear this conversation?"
+            description="Chat history is deleted. Unconfirmed proposals are discarded."
+            confirmLabel="Clear conversation"
+            action={async () => {
+              await clear();
+            }}
+          />
         ) : null}
       </div>
 

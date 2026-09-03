@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { Dialog, useDialogClose } from "@/components/ds/dialog";
+import { ConfirmDialog, Dialog, useDialogClose } from "@/components/ds/dialog";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 import { updateAccountAction, setAccountStatusAction, deleteAccountAction, shareAccountAction } from "@/app/(app)/accounts/actions";
@@ -38,11 +38,29 @@ export function AccountActions({
         <SharePanel accountId={accountId} members={members} />
       </Dialog>
 
-      <form action={setAccountStatusAction}>
-        <input type="hidden" name="accountId" value={accountId} />
-        <input type="hidden" name="status" value={status === "active" ? "disabled" : "active"} />
-        <SubmitButton variant="secondary">{status === "active" ? "Close account" : "Reopen account"}</SubmitButton>
-      </form>
+      {status === "active" ? (
+        <ConfirmDialog
+          trigger={
+            <span className="inline-flex rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium">
+              Close account
+            </span>
+          }
+          title="Close this account?"
+          description="Closed accounts keep their history but reject new transactions until you reopen them."
+          confirmLabel="Close account"
+          variant="secondary"
+          action={setAccountStatusAction}
+        >
+          <input type="hidden" name="accountId" value={accountId} />
+          <input type="hidden" name="status" value="disabled" />
+        </ConfirmDialog>
+      ) : (
+        <form action={setAccountStatusAction}>
+          <input type="hidden" name="accountId" value={accountId} />
+          <input type="hidden" name="status" value="active" />
+          <SubmitButton variant="secondary">Reopen account</SubmitButton>
+        </form>
+      )}
 
       <Dialog
         trigger={

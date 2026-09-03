@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useRef } from "react";
+import { SubmitButton } from "./submit-button";
 
 const DialogCloseContext = createContext<() => void>(() => {});
 
@@ -66,5 +67,54 @@ export function Dialog({
         <div className="p-5">{children}</div>
       </dialog>
     </DialogCloseContext.Provider>
+  );
+}
+
+export function ConfirmDialog({
+  trigger,
+  title,
+  description,
+  confirmLabel = "Confirm",
+  variant = "destructive",
+  action,
+  children
+}: {
+  trigger: React.ReactNode;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  variant?: "destructive" | "secondary";
+  action: (formData: FormData) => void | Promise<void>;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Dialog trigger={trigger} title={title} description={description}>
+      <ConfirmForm action={action} confirmLabel={confirmLabel} variant={variant}>
+        {children}
+      </ConfirmForm>
+    </Dialog>
+  );
+}
+
+function ConfirmForm({
+  action,
+  confirmLabel,
+  variant,
+  children
+}: {
+  action: (formData: FormData) => void | Promise<void>;
+  confirmLabel: string;
+  variant: "destructive" | "secondary";
+  children?: React.ReactNode;
+}) {
+  const close = useDialogClose();
+  return (
+    <form action={action} className="flex flex-wrap justify-end gap-2">
+      {children}
+      <button type="button" onClick={close} className="rounded-lg px-3 py-2 text-sm">
+        Cancel
+      </button>
+      <SubmitButton variant={variant}>{confirmLabel}</SubmitButton>
+    </form>
   );
 }
