@@ -43,7 +43,7 @@ export function parseAmountToMinor(input: string | number, currency: string): nu
   if (!/^[-+]?\d*(\.\d*)?$/.test(cleaned) || cleaned === "" || cleaned === "-" || cleaned === "+") {
     throw errors.money(`"${raw}" is not a valid amount.`);
   }
-  const negative = cleaned.startsWith("-") && !cleaned.startsWith("-0");
+  const negative = cleaned.startsWith("-");
   const unsigned = cleaned.replace(/^[-+]/, "");
   const [wholePart, fracPartRaw = ""] = unsigned.split(".");
   const exp = currencyExponent(currency);

@@ -11,6 +11,8 @@ describe("money", () => {
   it("parses decimal strings into minor units", () => {
     expect(parseAmountToMinor("10.50", "USD")).toBe(1050);
     expect(parseAmountToMinor("-3", "USD")).toBe(-300);
+    expect(parseAmountToMinor("-0.50", "USD")).toBe(-50);
+    expect(parseAmountToMinor("-0.00", "USD")).toBe(-0);
     expect(parseAmountToMinor("+0.01", "USD")).toBe(1);
     expect(parseAmountToMinor("1,234.56", "USD")).toBe(123456);
     expect(parseAmountToMinor("1000", "JPY")).toBe(1000);
