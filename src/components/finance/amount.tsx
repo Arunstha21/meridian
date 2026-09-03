@@ -19,12 +19,20 @@ export function Amount({
     return <span className={`tabular ${className}`}>•••••</span>;
   }
   const value = signed && minor > 0 ? `+${fmtMoney(minor, currency)}` : fmtMoney(minor, currency);
-  const tone = colorize ? (minor < 0 ? "text-income" : "") : "";
+  const tone = amountTone(minor, colorize);
   return (
     <span className={`tabular ${tone} ${className}`.trim()}>
-      {colorize && minor > 0 ? value : value}
+      {value}
     </span>
   );
+}
+
+/** Display amounts are already sign-flipped from the ledger: income is positive. */
+export function amountTone(minor: number, colorize: boolean): string {
+  if (!colorize) return "";
+  if (minor > 0) return "text-income";
+  if (minor < 0) return "text-destructive";
+  return "";
 }
 
 export function Sparkline({
