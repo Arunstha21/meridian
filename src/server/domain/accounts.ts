@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { accountShares, accounts, entries, users } from "../db/schema";
+import { accountShares, accounts, entries, families, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import {
   ACCOUNT_TYPES,
@@ -12,7 +12,7 @@ import {
 } from "../authorization/access";
 import { errors } from "@/lib/errors";
 import { isValidCurrency } from "@/lib/money";
-import { isIsoDate } from "@/lib/datetime";
+import { isIsoDate, todayIn } from "@/lib/datetime";
 import { recordAudit } from "../observability/audit";
 import { recalculateAccount, latestBalancesFor } from "./balances";
 
@@ -305,10 +305,19 @@ export async function getAccountOverview(
   const { account, level } = access;
 
   const seriesDays = opts.seriesDays ?? 60;
+  const [family] = await exec
+    .select({ timezone: families.timezone })
+    .from(families)
+    .where(eq(families.id, account.familyId))
+    .limit(1);
+  const today = todayIn(family?.timezone ?? "Etc/UTC");
 
   const balanceRows = await exec.execute<{ as_of: string; balance_minor: string }>(sql`
     SELECT as_of::text AS as_of, balance_minor::text AS balance_minor
-    FROM balances WHERE account_id = ${accountId}::uuid AND as_of >= current_date - ${String(seriesDays)}::int
+    FROM balances
+    WHERE account_id = ${accountId}::uuid
+      AND as_of >= ${today}::date - ${String(seriesDays)}::int
+      AND as_of <= ${today}::date
     ORDER BY as_of
   `);
 

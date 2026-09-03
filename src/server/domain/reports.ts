@@ -86,7 +86,7 @@ export async function dashboardSummary(
       AND a.status = 'active'
       AND a.included_in_reports = true
       AND ${ACCESS_SQL(userId)}
-      AND b.as_of <= current_date
+      AND b.as_of <= ${today}::date
     ORDER BY b.account_id, b.as_of DESC
   `);
 
@@ -290,10 +290,11 @@ export async function netWorthSeries(
   days: number | "all" = 90
 ): Promise<NetWorthPoint[]> {
   const ctx = newConversionContext();
+  const today = todayIn(family.timezone);
   const cutoff =
     days === "all"
       ? sql``
-      : sql`AND b.as_of >= current_date - ${String(days)}::int`;
+      : sql`AND b.as_of >= ${today}::date - ${String(days)}::int AND b.as_of <= ${today}::date`;
   const res = await exec.execute<{ as_of: string; balance_minor: string; currency: string; type: string }>(sql`
     SELECT b.as_of::text AS as_of, b.balance_minor::text AS balance_minor, b.currency, a.type
     FROM balances b
