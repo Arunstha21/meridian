@@ -2,7 +2,8 @@ import { eq } from "drizzle-orm";
 import { requireVerifiedActor, currentFamily } from "@/server/auth/context";
 import { getDb } from "@/server/db/client";
 import { users } from "@/server/db/schema";
-import { getUserPrivacyMode } from "@/server/domain/users";
+import { cookies } from "next/headers";
+import { getPreference, getUserPrivacyMode } from "@/server/domain/users";
 import { Card, PageHeader } from "@/components/ds/card";
 import { ProfileForms } from "./forms";
 import { OrgForm } from "./org-form";
@@ -30,6 +31,15 @@ export default async function SettingsPage() {
   const db = getDb();
   const [user] = await db.select().from(users).where(eq(users.id, actor.userId)).limit(1);
   const privacy = user ? await getUserPrivacyMode(db, actor.userId) : false;
+  const prefs = (user?.preferences ?? {}) as Record<string, unknown>;
+  const themePref = await getPreference<string>(prefs, "theme", "system");
+  const themeCookie = (await cookies()).get("theme")?.value;
+  const theme =
+    themeCookie === "light" || themeCookie === "dark" || themeCookie === "system"
+      ? themeCookie
+      : themePref === "light" || themePref === "dark" || themePref === "system"
+        ? themePref
+        : "system";
 
   return (
     <>
@@ -43,6 +53,7 @@ export default async function SettingsPage() {
             timezone={family.timezone}
             timezones={TIMEZONES}
             privacy={privacy}
+            theme={theme}
           />
         </Card>
 

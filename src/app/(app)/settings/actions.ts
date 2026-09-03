@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { getDb, withTransaction } from "@/server/db/client";
 import { assertActor, loadActor } from "@/server/auth/context";
@@ -40,7 +41,12 @@ export async function setPreferenceAction(formData: FormData): Promise<void> {
   const actor = await loadActor();
   if (!actor) return;
   const { key, value } = parsed.data;
+  if (key === "theme" && value !== "light" && value !== "dark" && value !== "system") return;
   await usersSvc.setUserPreference(getDb(), actor.userId, key, key === "privacy_mode" ? value === "on" : value);
+  if (key === "theme") {
+    const store = await cookies();
+    store.set("theme", value, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  }
   revalidatePath("/", "layout");
 }
 

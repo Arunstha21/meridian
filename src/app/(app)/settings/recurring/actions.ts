@@ -22,6 +22,7 @@ const seriesSchema = z.object({
   name: z.string().min(1).max(240),
   accountId: z.string().uuid(),
   amount: z.string().min(1),
+  kind: z.enum(["expense", "income"]).default("expense"),
   merchant: z.string().max(120).optional(),
   categoryId: z.string().uuid().or(z.literal("")).optional(),
   frequency: z.enum(["monthly", "weekly", "yearly"]),
@@ -56,11 +57,12 @@ export async function createRecurringAction(_prev: ActionState | undefined, form
       .limit(1);
     if (!account) throw new Error("Unknown account.");
 
+    const magnitude = Math.abs(parseAmountToMinor(input.amount, account.currency));
     await createSeries(db, actor, {
       accountId: input.accountId,
       name: input.name,
       merchant: input.merchant ?? null,
-      amountLedgerMinor: parseAmountToMinor(input.amount, account.currency),
+      amountLedgerMinor: input.kind === "income" ? -magnitude : magnitude,
       categoryId: input.categoryId || null,
       frequency: input.frequency,
       config: configFor(input.frequency, input.nextDue, formData),

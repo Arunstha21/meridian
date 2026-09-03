@@ -16,18 +16,21 @@ export function ProfileForms({
   email,
   timezone,
   timezones,
-  privacy
+  privacy,
+  theme
 }: {
   name: string;
   email: string;
   timezone: string;
   timezones: string[];
   privacy: boolean;
+  theme: "light" | "dark" | "system";
 }) {
   return (
     <div className="space-y-6">
       <NameForm name={name} />
       <PrivacyToggle privacy={privacy} />
+      <AppearanceForm theme={theme} />
       <TimezoneForm timezone={timezone} timezones={timezones} />
       <ChangePasswordForm />
       <ChangeEmailForm currentEmail={email} />
@@ -62,21 +65,27 @@ function PrivacyToggle({ privacy }: { privacy: boolean }) {
   );
 }
 
+function AppearanceForm({ theme }: { theme: "light" | "dark" | "system" }) {
+  return (
+    <form action={setPreferenceAction} className="space-y-3">
+      <input type="hidden" name="key" value="theme" />
+      <Field label="Appearance" htmlFor="s-theme">
+        <Select id="s-theme" name="value" defaultValue={theme}>
+          <option value="system">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </Select>
+      </Field>
+      <SubmitButton variant="secondary">Save appearance</SubmitButton>
+    </form>
+  );
+}
+
 function TimezoneForm({ timezone, timezones }: { timezone: string; timezones: string[] }) {
-  const [state, action] = useActionState(async (_prev: unknown, formData: FormData) => {
-    const fd = new FormData();
-    fd.set("key", "theme");
-    fd.set("value", String(formData.get("theme") ?? "system"));
-    await setPreferenceAction(fd);
-    const tz = new FormData();
-    tz.set("timezone", String(formData.get("timezone") ?? ""));
-    tz.set("locale", String(formData.get("locale") ?? "en"));
-    await updateFamilySettingsAction(undefined, tz);
-    return undefined;
-  }, undefined);
-  void state;
+  const [state, action] = useActionState(updateFamilySettingsAction, undefined);
   return (
     <form action={action} className="space-y-3">
+      <FormError message={state?.ok === false ? state.error : undefined} />
       <Field label="Time zone" htmlFor="s-tz">
         <Select id="s-tz" name="timezone" defaultValue={timezone}>
           {timezones.map((tz) => (
@@ -85,6 +94,7 @@ function TimezoneForm({ timezone, timezones }: { timezone: string; timezones: st
         </Select>
       </Field>
       <SubmitButton variant="secondary">Save time zone</SubmitButton>
+      {state?.ok ? <p className="text-xs text-success">Saved.</p> : null}
     </form>
   );
 }

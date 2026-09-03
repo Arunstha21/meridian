@@ -91,7 +91,8 @@ export function RecurringManager({
                     </p>
                   </div>
                   <span className="tabular shrink-0 font-medium">
-                    {fmtMoney(s.amountMinor, s.currency)}
+                    {s.amountMinor < 0 ? "Income · " : "Expense · "}
+                    {fmtMoney(Math.abs(s.amountMinor), s.currency)}
                   </span>
                 </div>
                 <div className="flex gap-2">
@@ -127,12 +128,29 @@ function CreateForm({
 }) {
   const [state, action] = useActionState(createRecurringAction, undefined);
   const [frequency, setFrequency] = useState("monthly");
+  const [kind, setKind] = useState<"expense" | "income">("expense");
 
   return (
     <form action={action} className="space-y-4">
       <FormError message={state?.ok === false ? state.error : undefined} />
+      <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-inset p-1" role="group" aria-label="Series type">
+        {(["expense", "income"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={kind === k}
+            onClick={() => setKind(k)}
+            className={`rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors ${
+              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted hover:bg-surface-hover"
+            }`}
+          >
+            {k}
+          </button>
+        ))}
+      </div>
+      <input type="hidden" name="kind" value={kind} />
       <Field label="Name" htmlFor="recurring-name">
-        <Input id="recurring-name" name="name" required maxLength={240} placeholder="Rent" />
+        <Input id="recurring-name" name="name" required maxLength={240} placeholder={kind === "income" ? "Salary" : "Rent"} />
       </Field>
       <Field label="Account" htmlFor="recurring-account">
         <Select id="recurring-account" name="accountId" required>
