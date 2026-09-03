@@ -80,7 +80,8 @@ export function NewAccountForm({ defaultCurrency }: { defaultCurrency: string })
 
       <div className="space-y-2 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" name="includedInReports" defaultChecked className="h-4 w-4" />
+          <input type="hidden" name="includedInReports" value="off" />
+          <input type="checkbox" name="includedInReports" value="on" defaultChecked className="h-4 w-4" />
           Include this account in reports
         </label>
         <label className="flex items-center gap-2">

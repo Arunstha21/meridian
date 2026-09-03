@@ -8,6 +8,7 @@ import { Badge, Card, PageHeader } from "@/components/ds/card";
 import { Amount, Sparkline } from "@/components/finance/amount";
 import { fmtDate } from "@/lib/format";
 import { AccountActions } from "./actions-panel";
+import { ValuationForm } from "./valuation-form";
 
 export const metadata = { title: "Account" };
 
@@ -40,6 +41,8 @@ export default async function AccountDetailPage({
             accountId={account.id}
             status={account.status}
             accountName={account.name}
+            institution={account.institution}
+            includedInReports={account.includedInReports}
             members={members}
           />
         }
@@ -82,12 +85,12 @@ export default async function AccountDetailPage({
             + New transaction
           </Link>
           {valuationDriven && level === "full_control" ? (
-            <Link
-              href={`/accounts/${account.id}?valuation=1`}
+            <a
+              href="#valuation"
               className="block rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-surface-hover"
             >
               Update valuation
-            </Link>
+            </a>
           ) : null}
           <Link
             href="/transactions?kind=transfer"
@@ -124,6 +127,10 @@ export default async function AccountDetailPage({
             Manage sharing and lifecycle from the account menu.
           </p>
         </Card>
+      ) : null}
+
+      {valuationDriven && level === "full_control" ? (
+        <ValuationForm accountId={account.id} currency={account.currency} />
       ) : null}
 
       <Card>

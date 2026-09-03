@@ -73,7 +73,7 @@ function AccountGroup({
                   {a.institution ? ` · ${a.institution}` : ""}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-2">
-                  {!a.isJoint ? <Badge tone="primary">shared</Badge> : null}
+                  {!a.isJoint ? <Badge tone="primary">personal</Badge> : null}
                   {a.status !== "active" ? <Badge tone="warning">{a.status}</Badge> : null}
                   {!a.includedInReports ? (
                     <Badge tone="neutral">excluded from reports</Badge>

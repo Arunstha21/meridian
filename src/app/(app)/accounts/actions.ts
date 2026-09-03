@@ -45,7 +45,7 @@ export async function createAccountAction(
           ? parseAmountToMinor(input.openingBalance, input.currency)
           : 0,
         openedOn: input.openedOn,
-        includedInReports: input.includedInReports !== "off",
+        includedInReports: input.includedInReports === "on",
         joint: input.joint === "on"
       });
       accountId = res.accountId;

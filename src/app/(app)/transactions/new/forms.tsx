@@ -6,21 +6,28 @@ import { createTransactionAction, createTransferAction } from "../../actions";
 import { Card, Alert } from "@/components/ds/card";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { TagPicker } from "@/components/ds/tag-picker";
 
 export type Option = { id: string; name: string };
 type AccountOption = Option & { currency: string };
 
 export function NewTransactionForms({
   accounts,
-  categories
+  categories,
+  tags
 }: {
   accounts: AccountOption[];
   categories: Option[];
+  tags: Option[];
 }) {
   const params = useSearchParams();
   const preset = params.get("account") ?? "";
   const [mode, setMode] = useState<"expense" | "income" | "transfer">("expense");
   const active = accounts.filter((a) => a.currency);
+  const canTransfer = active.length >= 2;
+  const modes = canTransfer
+    ? (["expense", "income", "transfer"] as const)
+    : (["expense", "income"] as const);
 
   return (
     <>
@@ -29,7 +36,7 @@ export function NewTransactionForms({
         aria-label="Transaction type"
         className="flex max-w-fit gap-1 rounded-lg bg-surface-inset p-1"
       >
-        {(["expense", "income", "transfer"] as const).map((m) => (
+        {modes.map((m) => (
           <button
             key={m}
             role="tab"
@@ -44,14 +51,14 @@ export function NewTransactionForms({
         ))}
       </div>
 
-      {active.length < 2 ? (
-        <Alert title="Add at least two accounts first">
+      {active.length === 0 ? (
+        <Alert title="Add an account first">
           You need one account to record transactions and two to move money between them.
         </Alert>
-      ) : mode === "transfer" ? (
+      ) : mode === "transfer" && canTransfer ? (
         <TransferForm accounts={active} presetAccount={preset} />
       ) : (
-        <EntryForm mode={mode} accounts={active} categories={categories} presetAccount={preset} />
+        <EntryForm mode={mode === "transfer" ? "expense" : mode} accounts={active} categories={categories} tags={tags} presetAccount={preset} />
       )}
     </>
   );
@@ -61,11 +68,13 @@ function EntryForm({
   mode,
   accounts,
   categories,
+  tags,
   presetAccount
 }: {
   mode: "expense" | "income";
   accounts: AccountOption[];
   categories: Option[];
+  tags: Option[];
   presetAccount: string;
 }) {
   const [state, action] = useActionState(createTransactionAction, undefined);
@@ -116,6 +125,9 @@ function EntryForm({
           <Field label="Notes (optional)" htmlFor="notes">
             <Textarea id="notes" name="notes" maxLength={5000} />
           </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <TagPicker tags={tags} />
         </div>
         <div className="sm:col-span-2">
           <SubmitButton>Record {mode}</SubmitButton>

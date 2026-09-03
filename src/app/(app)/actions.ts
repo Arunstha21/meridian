@@ -11,6 +11,7 @@ import { errors } from "@/lib/errors";
 import { runAction, formValues, optionalString, type ActionState } from "@/server/actions/runner";
 import * as valuationsSvc from "@/server/domain/valuations";
 import * as orchestrate from "@/server/domain/orchestrate";
+import { parseTagIds } from "@/components/ds/tag-picker";
 
 async function currencyFor(accountId: string): Promise<string> {
   const res = await getDb().execute<{ currency: string }>(
@@ -55,7 +56,8 @@ export async function createTransactionAction(
         name: input.name,
         categoryId: input.categoryId ? input.categoryId : null,
         merchant: optionalString(input.merchant),
-        notes: optionalString(input.notes)
+        notes: optionalString(input.notes),
+        tagIds: parseTagIds(formData)
       });
     });
     revalidatePath("/transactions");
@@ -94,6 +96,7 @@ export async function updateTransactionAction(
     if (input.notes !== undefined) patch.notes = input.notes.trim() === "" ? null : input.notes;
     if (input.merchant !== undefined) patch.merchant = input.merchant.trim() === "" ? null : input.merchant;
     if (input.categoryId !== undefined) patch.categoryId = input.categoryId === "" ? null : input.categoryId;
+    patch.replaceTagIds = parseTagIds(formData);
     if (input.amount !== undefined && input.amount !== "" && input.ledgerSign) {
       const currency = await currencyForOfEntry(input.entryId);
       const magnitude = Math.abs(parseAmountToMinor(input.amount, currency));

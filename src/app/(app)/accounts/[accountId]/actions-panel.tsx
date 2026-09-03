@@ -12,17 +12,26 @@ export function AccountActions({
   accountId,
   status,
   accountName,
+  institution,
+  includedInReports,
   members
 }: {
   accountId: string;
   status: string;
   accountName: string;
+  institution: string | null;
+  includedInReports: boolean;
   members: Member[];
 }) {
   return (
     <>
       <Dialog trigger={<span className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium">Edit</span>} title="Account settings">
-        <EditSettings accountId={accountId} />
+        <EditSettings
+          accountId={accountId}
+          name={accountName}
+          institution={institution}
+          includedInReports={includedInReports}
+        />
       </Dialog>
 
       <Dialog trigger={<span className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium">Share</span>} title="Share with family members">
@@ -50,20 +59,37 @@ export function AccountActions({
   );
 }
 
-function EditSettings({ accountId }: { accountId: string }) {
+function EditSettings({
+  accountId,
+  name,
+  institution,
+  includedInReports
+}: {
+  accountId: string;
+  name: string;
+  institution: string | null;
+  includedInReports: boolean;
+}) {
   const [state, action] = useActionState(updateAccountAction, undefined);
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="accountId" value={accountId} />
       <FormError message={state?.ok === false ? state.error : undefined} />
       <Field label="Name" htmlFor="edit-name">
-        <Input id="edit-name" name="name" required maxLength={120} />
+        <Input id="edit-name" name="name" required maxLength={120} defaultValue={name} />
       </Field>
       <Field label="Institution" htmlFor="edit-institution">
-        <Input id="edit-institution" name="institution" maxLength={120} />
+        <Input id="edit-institution" name="institution" maxLength={120} defaultValue={institution ?? ""} />
       </Field>
       <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="includedInReports" value="on" defaultChecked className="h-4 w-4" />
+        <input type="hidden" name="includedInReports" value="off" />
+        <input
+          type="checkbox"
+          name="includedInReports"
+          value="on"
+          defaultChecked={includedInReports}
+          className="h-4 w-4"
+        />
         Include in reports
       </label>
       <SubmitButton>Save changes</SubmitButton>

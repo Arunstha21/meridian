@@ -5,6 +5,7 @@ import { Check } from "lucide-react";
 import { quickAddAction } from "./actions";
 import { FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { TagPicker } from "@/components/ds/tag-picker";
 
 type Option = { id: string; name: string; currency?: string };
 
@@ -14,7 +15,15 @@ function todayIso(): string {
 
 type QuickAddState = Awaited<ReturnType<typeof quickAddAction>>;
 
-export function QuickAddForm({ accounts, categories }: { accounts: Option[]; categories: Option[] }) {
+export function QuickAddForm({
+  accounts,
+  categories,
+  tags
+}: {
+  accounts: Option[];
+  categories: Option[];
+  tags: Option[];
+}) {
   const [state, setState] = useState<QuickAddState>();
   const [kind, setKind] = useState<"expense" | "income">("expense");
   const [savedFlash, setSavedFlash] = useState(false);
@@ -104,6 +113,8 @@ export function QuickAddForm({ accounts, categories }: { accounts: Option[]; cat
           ))}
         </Select>
       </label>
+
+      <TagPicker tags={tags} />
 
       <input type="hidden" name="date" value={todayIso()} />
 

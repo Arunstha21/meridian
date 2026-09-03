@@ -9,6 +9,7 @@ import { accounts } from "@/server/db/schema";
 import { addTransaction } from "@/server/domain/orchestrate";
 import { runAction, optionalString, type ActionState } from "@/server/actions/runner";
 import { parseAmountToMinor } from "@/lib/money";
+import { parseTagIds } from "@/components/ds/tag-picker";
 
 const quickSchema = z.object({
   accountId: z.string().uuid(),
@@ -42,7 +43,8 @@ export async function quickAddAction(
         name: input.name,
         categoryId: optionalString(input.categoryId ?? undefined),
         merchant: null,
-        notes: null
+        notes: null,
+        tagIds: parseTagIds(formData)
       });
     });
     revalidatePath("/transactions");
