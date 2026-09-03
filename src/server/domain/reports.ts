@@ -164,7 +164,7 @@ export async function dashboardSummary(
       AND ${ACCESS_SQL(userId)}
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
-      AND e.parent_entry_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
       AND e.amount_minor > 0
       AND e.date BETWEEN ${from}::date AND ${to}::date
     GROUP BY t.category_id, c.name, e.currency
@@ -391,7 +391,7 @@ export async function spendingByCategory(
       AND ${ACCESS_SQL(userId)}
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
-      AND e.parent_entry_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
       AND e.amount_minor > 0
       AND e.date BETWEEN ${range.from}::date AND ${range.to}::date
     GROUP BY t.category_id, c.name, e.currency

@@ -31,6 +31,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const kind = one("kind") as "expense" | "income" | "transfer" | undefined;
   const cursorRaw = one("cursor");
   const cursor = cursorRaw ? (() => { try { return JSON.parse(cursorRaw) as { date: string; id: string }; } catch { return null; } })() : null;
+  const direction = one("dir") === "prev" ? ("prev" as const) : ("next" as const);
 
   const filters = {
     accountId: one("account"),
@@ -41,6 +42,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     from: one("from"),
     to: one("to"),
     cursor,
+    direction,
     limit: 25
   };
 
@@ -65,7 +67,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     }).flatMap(([k, v]) => (v !== undefined ? [[k, v] as const] : []))
   );
 
-  const nextQuery = (c: { date: string; id: string } | null) => {
+  const tagNameById = new Map(tags.map((t) => [t.id, t.name]));
+
+  const listQuery = (c: { date: string; id: string } | null, dir?: "prev") => {
     if (!c) return "";
     const params = new URLSearchParams();
     for (const key of ["account", "category", "tag", "kind", "q", "from", "to"] as const) {
@@ -73,6 +77,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       if (v) params.set(key, v);
     }
     params.set("cursor", JSON.stringify(c));
+    if (dir === "prev") params.set("dir", "prev");
     return `?${params.toString()}`;
   };
 
@@ -180,6 +185,9 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                     <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
                       {e.categoryName ? <span>{e.categoryName}</span> : <span>Uncategorized</span>}
                       {e.merchant ? <span>· {e.merchant}</span> : null}
+                      {e.tagIds.map((id) => (
+                        <span key={id}>#{tagNameById.get(id) ?? "tag"}</span>
+                      ))}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-muted">{e.accountName}</td>
@@ -191,13 +199,13 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             </tbody>
           </table>
           <div className="flex items-center justify-between px-4 py-3 text-sm">
-            {cursor ? (
-              <Link href={`/transactions${prevQuery(sp)}`} className="text-primary hover:underline">← Previous</Link>
+            {page.hasPrevious && page.items[0] ? (
+              <Link href={`/transactions${listQuery({ date: page.items[0].date, id: page.items[0].id }, "prev")}`} className="text-primary hover:underline">← Previous</Link>
             ) : (
               <span />
             )}
             {page.nextCursor ? (
-              <Link href={`/transactions${nextQuery(page.nextCursor)}`} className="text-primary hover:underline">
+              <Link href={`/transactions${listQuery(page.nextCursor)}`} className="text-primary hover:underline">
                 Next →
               </Link>
             ) : (
@@ -210,6 +218,4 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   );
 }
 
-function prevQuery(_sp: Record<string, string | string[] | undefined>): string {
-  return "/transactions";
-}
+

@@ -330,6 +330,7 @@ export type EntryListFilters = {
   from?: string;
   to?: string;
   cursor?: { date: string; id: string } | null;
+  direction?: "next" | "prev";
   limit?: number;
 };
 
@@ -358,8 +359,13 @@ export async function listEntriesPage(
   exec: Executor,
   actor: Actor,
   filters: EntryListFilters
-): Promise<{ items: EntryListItem[]; nextCursor: { date: string; id: string } | null }> {
+): Promise<{
+  items: EntryListItem[];
+  nextCursor: { date: string; id: string } | null;
+  hasPrevious: boolean;
+}> {
   const limit = Math.min(Math.max(filters.limit ?? 25, 1), 100);
+  const goingPrev = filters.direction === "prev" && Boolean(filters.cursor);
   const conditions = [
     eq(entries.entryableType, "transaction"),
     eq(accounts.familyId, actor.familyId),
@@ -398,10 +404,20 @@ export async function listEntriesPage(
   if (filters.from && isIsoDate(filters.from)) conditions.push(gte(entries.date, filters.from));
   if (filters.to && isIsoDate(filters.to)) conditions.push(lte(entries.date, filters.to));
   if (filters.cursor) {
-    conditions.push(
-      sql`(${entries.date}, ${entries.id}) < (${filters.cursor.date}::date, ${filters.cursor.id}::uuid)`
-    );
+    if (goingPrev) {
+      conditions.push(
+        sql`(${entries.date}, ${entries.id}) > (${filters.cursor.date}::date, ${filters.cursor.id}::uuid)`
+      );
+    } else {
+      conditions.push(
+        sql`(${entries.date}, ${entries.id}) < (${filters.cursor.date}::date, ${filters.cursor.id}::uuid)`
+      );
+    }
   }
+
+  const orderBy = goingPrev
+    ? [asc(entries.date), asc(entries.id)]
+    : [desc(entries.date), desc(entries.id)];
 
   const rows = await exec
     .select({
@@ -425,12 +441,16 @@ export async function listEntriesPage(
     .innerJoin(transactions, eq(transactions.entryId, entries.id))
     .leftJoin(categories, eq(categories.id, transactions.categoryId))
     .where(and(...conditions))
-    .orderBy(desc(entries.date), desc(entries.id))
+    .orderBy(...orderBy)
     .limit(limit + 1);
 
-  const page = rows.slice(0, limit);
+  const extra = rows.length > limit;
+  const slice = rows.slice(0, limit);
+  const page = goingPrev ? [...slice].reverse() : slice;
+  const hasNext = goingPrev ? Boolean(filters.cursor) : extra;
+  const hasPrevious = goingPrev ? extra : Boolean(filters.cursor);
   const nextCursor =
-    rows.length > limit && page.length > 0
+    hasNext && page.length > 0
       ? { date: page[page.length - 1]!.date, id: page[page.length - 1]!.id }
       : null;
 
@@ -454,7 +474,8 @@ export async function listEntriesPage(
       hasChildren: false,
       tagIds: tagsByEntry.get(r.id) ?? []
     })),
-    nextCursor
+    nextCursor,
+    hasPrevious
   };
 }
 
@@ -532,6 +553,7 @@ export async function getEntryDetail(exec: Executor, actor: Actor, entryId: stri
     tagIds: tagRows.map((r) => r.tagId),
     transferId: txn?.transferId ?? null,
     transferPartner,
+    parentId: entry.parentEntryId,
     children
   };
 }

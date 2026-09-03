@@ -92,8 +92,16 @@ describe("transaction entries", () => {
     const p1 = await entriesSvc.listEntriesPage(db(), actorOf(user), { limit: 4 });
     expect(p1.items).toHaveLength(4);
     expect(p1.nextCursor).toBeTruthy();
+    expect(p1.hasPrevious).toBe(false);
     const p2 = await entriesSvc.listEntriesPage(db(), actorOf(user), { limit: 4, cursor: p1.nextCursor });
     expect(p2.items.length + p1.items.length).toBe(8);
+    expect(p2.hasPrevious).toBe(true);
+    const back = await entriesSvc.listEntriesPage(db(), actorOf(user), {
+      limit: 4,
+      cursor: { date: p2.items[0]!.date, id: p2.items[0]!.id },
+      direction: "prev"
+    });
+    expect(back.items.map((i) => i.id)).toEqual(p1.items.map((i) => i.id));
   });
 
   it("deletes entries atomically including transfer unlinking", async () => {
@@ -124,10 +132,24 @@ describe("splits", () => {
       ])
     ).rejects.toMatchObject({ code: "validation.failed" });
 
+    const food = await (await import("@/server/domain/categories")).createCategory(
+      db(),
+      actorOf(user),
+      { name: "Food" }
+    );
     await orchestrate.splitTransaction(db(), actorOf(user), parentId, [
-      { amountLedgerMinor: 4000, name: "Food part" },
+      { amountLedgerMinor: 4000, name: "Food part", categoryId: food.categoryId },
       { amountLedgerMinor: 2000, name: "Supplies part" }
     ]);
+
+    const listed = await entriesSvc.listEntriesPage(db(), actorOf(user), {});
+    expect(listed.items.map((i) => i.name).sort()).toEqual(["Food part", "Supplies part"]);
+    expect(listed.items.find((i) => i.name === "Food part")?.categoryId).toBe(food.categoryId);
+    expect(listed.items.some((i) => i.id === parentId)).toBe(false);
+
+    const child = listed.items.find((i) => i.name === "Food part")!;
+    const childDetail = await entriesSvc.getEntryDetail(db(), actorOf(user), child.id);
+    expect(childDetail.parentId).toBe(parentId);
 
     const balance = (await import("../helpers")).latestBalance;
     const bal = await balance(accountId);
@@ -136,6 +158,8 @@ describe("splits", () => {
     await orchestrate.unsplitTransaction(db(), actorOf(user), parentId);
     const restored = await balance(accountId);
     expect(restored!.balanceMinor).toBe(14000);
+    const afterUnsplit = await entriesSvc.listEntriesPage(db(), actorOf(user), {});
+    expect(afterUnsplit.items.map((i) => i.id)).toEqual([parentId]);
   });
 
   it("refuses splitting transfer legs", async () => {

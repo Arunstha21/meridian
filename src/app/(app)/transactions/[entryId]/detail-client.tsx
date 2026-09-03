@@ -9,10 +9,12 @@ import {
   unsplitEntryAction,
   unlinkTransferAction
 } from "@/app/(app)/actions";
+import Link from "next/link";
 import { Card, Alert } from "@/components/ds/card";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 import { Dialog, useDialogClose } from "@/components/ds/dialog";
+import { TagPicker } from "@/components/ds/tag-picker";
 
 export type DetailProps = {
   entry: {
@@ -25,10 +27,13 @@ export type DetailProps = {
   };
   level: "full_control" | "read_write" | "read_only";
   categories: { id: string; name: string }[];
+  tags: { id: string; name: string }[];
   categoryId: string | null;
+  tagIds: string[];
   merchant: string | null;
   transferId: string | null;
   transferPartnerName?: string;
+  parentId: string | null;
   splits: { id: string; name: string; amountMinor: number }[];
   suggestions: {
     entryId: string;
@@ -118,6 +123,9 @@ export function TransactionDetailClient(p: DetailProps) {
               />
             </Field>
           </div>
+          <div className="sm:col-span-2">
+            <TagPicker tags={p.tags} selected={p.tagIds} />
+          </div>
           <div className="flex items-center gap-3 sm:col-span-2">
             <SubmitButton>Save changes</SubmitButton>
             {!canCore && p.level === "read_write" ? (
@@ -155,12 +163,21 @@ export function TransactionDetailClient(p: DetailProps) {
 
         <Card>
           <h2 className="mb-2 text-base font-medium text-primary">Split</h2>
-          {p.splits.length > 0 ? (
+          {p.parentId ? (
+            <p className="text-sm text-muted">
+              This is part of a split.{" "}
+              <Link href={`/transactions/${p.parentId}`} className="text-primary hover:underline">
+                Open original transaction
+              </Link>
+            </p>
+          ) : p.splits.length > 0 ? (
             <>
               <ul className="divide-y divide-border text-sm">
                 {p.splits.map((c) => (
                   <li key={c.id} className="flex justify-between py-2">
-                    <span>{c.name}</span>
+                    <Link href={`/transactions/${c.id}`} className="hover:underline">
+                      {c.name}
+                    </Link>
                     <span className="tabular">{displayAmount(c.amountMinor)}</span>
                   </li>
                 ))}
@@ -179,7 +196,11 @@ export function TransactionDetailClient(p: DetailProps) {
               }
               title="Split into parts"
             >
-              <SplitForm parentEntryId={p.entry.id} totalMinor={p.entry.amountMinor} />
+              <SplitForm
+                parentEntryId={p.entry.id}
+                totalMinor={p.entry.amountMinor}
+                categories={p.categories}
+              />
             </Dialog>
           ) : (
             <p className="text-sm text-muted">
@@ -246,16 +267,19 @@ function SuggestTransfer({
 
 function SplitForm({
   parentEntryId,
-  totalMinor
+  totalMinor,
+  categories
 }: {
   parentEntryId: string;
   totalMinor: number;
+  categories: { id: string; name: string }[];
 }) {
   const close = useDialogClose();
   const [state, action] = useActionState(splitEntryAction, undefined);
-  const [rows, setRows] = useState([0, 0]);
+  const [rows, setRows] = useState([{ amount: 0, name: "", categoryId: "" }, { amount: 0, name: "", categoryId: "" }]);
 
-  const parts = rows.map((v) => Math.round(v));
+  const sign = totalMinor < 0 ? -1 : 1;
+  const parts = rows.map((row) => Math.round(row.amount) * sign);
   const sum = parts.reduce((a, b) => a + b, 0);
   const remaining = totalMinor - sum;
 
@@ -266,33 +290,67 @@ function SplitForm({
         name="payload"
         value={JSON.stringify({
           parentEntryId,
-          parts: parts.map((amountLedgerMinor) => ({ amountLedgerMinor }))
+          parts: rows.map((row) => ({
+            amountLedgerMinor: Math.round(row.amount) * sign,
+            name: row.name.trim() || undefined,
+            categoryId: row.categoryId || null
+          }))
         })}
       />
       <FormError message={state?.ok === false ? state.error : undefined} />
       <p className="text-sm text-muted">
         Parts must add up to the full original amount. Remaining:{" "}
-        <strong className="tabular">{(remaining / 100).toFixed(2)}</strong>
+        <strong className="tabular">{(Math.abs(remaining) / 100).toFixed(2)}</strong>
       </p>
-      {rows.map((_, i) => (
-        <Field key={i} label={`Part ${i + 1}`} htmlFor={`part-${i}`}>
-          <Input
-            id={`part-${i}`}
-            type="number"
-            step="0.01"
-            inputMode="decimal"
-            required
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              setRows((prev) => prev.map((old, idx) => (idx === i ? Math.round(v * 100) : old)));
-            }}
-          />
-        </Field>
+      {rows.map((row, i) => (
+        <div key={i} className="grid gap-2 sm:grid-cols-3">
+          <Field label={`Part ${i + 1} amount`} htmlFor={`part-${i}`}>
+            <Input
+              id={`part-${i}`}
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              required
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, amount: Math.round(v * 100) } : old)));
+              }}
+            />
+          </Field>
+          <Field label="Name" htmlFor={`part-name-${i}`}>
+            <Input
+              id={`part-name-${i}`}
+              maxLength={240}
+              value={row.name}
+              onChange={(e) => {
+                const name = e.target.value;
+                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, name } : old)));
+              }}
+            />
+          </Field>
+          <Field label="Category" htmlFor={`part-cat-${i}`}>
+            <Select
+              id={`part-cat-${i}`}
+              value={row.categoryId}
+              onChange={(e) => {
+                const categoryId = e.target.value;
+                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, categoryId } : old)));
+              }}
+            >
+              <option value="">Uncategorized</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
       ))}
       <div className="flex justify-between">
         <button
           type="button"
-          onClick={() => setRows((r) => [...r, 0])}
+          onClick={() => setRows((r) => [...r, { amount: 0, name: "", categoryId: "" }])}
           className="text-sm text-primary hover:underline"
         >
           + Add part

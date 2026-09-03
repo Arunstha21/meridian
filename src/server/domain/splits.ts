@@ -1,6 +1,6 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { entries, transactions } from "../db/schema";
+import { categories, entries, tags, transactionTags, transactions } from "../db/schema";
 import type { Actor } from "../auth/context";
 import {
   assertAccountOpen,
@@ -39,11 +39,15 @@ export async function splitEntry(
   await assertAccountOpen(exec, actor, parent.accountId, "manage");
 
   const [txn] = await exec
-    .select({ transferId: transactions.transferId })
+    .select({
+      transferId: transactions.transferId,
+      merchant: transactions.merchant
+    })
     .from(transactions)
     .where(eq(transactions.entryId, parentEntryId))
     .limit(1);
-  if (txn?.transferId) {
+  if (!txn) throw errors.notFound("Transaction");
+  if (txn.transferId) {
     throw errors.conflict("Unlink the transfer before splitting this transaction.");
   }
 
@@ -71,17 +75,54 @@ export async function splitEntry(
     );
   }
 
+  const categoryIds = [...new Set(children.map((c) => c.categoryId).filter((id): id is string => Boolean(id)))];
+  if (categoryIds.length > 0) {
+    const rows = await exec
+      .select({ id: categories.id })
+      .from(categories)
+      .where(and(inArray(categories.id, categoryIds), eq(categories.familyId, actor.familyId)));
+    if (rows.length !== categoryIds.length) throw errors.validation("Unknown category.");
+  }
+  const tagIds = [...new Set(children.flatMap((c) => c.tagIds ?? []))];
+  if (tagIds.length > 0) {
+    const rows = await exec
+      .select({ id: tags.id })
+      .from(tags)
+      .where(and(inArray(tags.id, tagIds), eq(tags.familyId, actor.familyId)));
+    if (rows.length !== tagIds.length) throw errors.validation("Unknown tag.");
+  }
+
   await exec.transaction(async (tx) => {
     for (const c of children) {
-      await tx.insert(entries).values({
-        accountId: parent.accountId,
-        parentEntryId: parent.id,
-        date: parent.date,
-        amountMinor: c.amountLedgerMinor,
-        currency: parent.currency,
-        name: c.name?.trim() || parent.name,
-        entryableType: "transaction"
-      });
+      const [child] = await tx
+        .insert(entries)
+        .values({
+          accountId: parent.accountId,
+          parentEntryId: parent.id,
+          date: parent.date,
+          amountMinor: c.amountLedgerMinor,
+          currency: parent.currency,
+          name: c.name?.trim() || parent.name,
+          notes: parent.notes,
+          entryableType: "transaction"
+        })
+        .returning({ id: entries.id });
+      const childId = child?.id;
+      if (!childId) throw errors.conflict("Failed to create split part.");
+      const [childTxn] = await tx
+        .insert(transactions)
+        .values({
+          entryId: childId,
+          categoryId: c.categoryId ?? null,
+          merchant: txn.merchant
+        })
+        .returning({ id: transactions.id });
+      const childTxnId = childTxn?.id;
+      if (!childTxnId) throw errors.conflict("Failed to create split transaction.");
+      const partTags = [...new Set(c.tagIds ?? [])];
+      if (partTags.length > 0) {
+        await tx.insert(transactionTags).values(partTags.map((tagId) => ({ transactionId: childTxnId, tagId })));
+      }
     }
   });
 
