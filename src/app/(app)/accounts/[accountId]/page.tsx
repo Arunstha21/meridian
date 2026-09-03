@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireVerifiedActor } from "@/server/auth/context";
+import { requireVerifiedActor, currentFamily } from "@/server/auth/context";
+import { todayIn } from "@/lib/datetime";
 import { getDb } from "@/server/db/client";
 import { getAccountOverview, isLiability, familyMemberOptions } from "@/server/domain/accounts";
 import { getUserPrivacyMode } from "@/server/domain/users";
@@ -19,6 +20,7 @@ export default async function AccountDetailPage({
 }) {
   const { accountId } = await params;
   const actor = await requireVerifiedActor();
+  const family = await currentFamily(actor);
   const db = getDb();
 
   let overview;
@@ -130,7 +132,7 @@ export default async function AccountDetailPage({
       ) : null}
 
       {valuationDriven && level === "full_control" ? (
-        <ValuationForm accountId={account.id} currency={account.currency} />
+        <ValuationForm accountId={account.id} currency={account.currency} today={todayIn(family.timezone)} />
       ) : null}
 
       <Card>

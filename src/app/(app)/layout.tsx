@@ -7,6 +7,7 @@ import { netWorthMinorForAccounts } from "@/server/domain/reports";
 import { getPreference } from "@/server/domain/users";
 import { signOutAction, togglePrivacyAction } from "@/server/actions/session-actions";
 import { Shell } from "@/components/layout/shell";
+import { todayIn } from "@/lib/datetime";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const actor = await requireVerifiedActor();
@@ -33,7 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   });
   const assets = active.filter((a) => !isLiability(a.type)).map(toNav);
   const liabilities = active.filter((a) => isLiability(a.type)).map(toNav);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn(family.timezone);
   const netWorthMinor = await netWorthMinorForAccounts(
     db,
     family,

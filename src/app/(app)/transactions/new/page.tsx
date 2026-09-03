@@ -6,6 +6,7 @@ import { listCategories } from "@/server/domain/categories";
 import { listTags } from "@/server/domain/tags";
 import { PageHeader } from "@/components/ds/card";
 import { NewTransactionForms } from "./forms";
+import { todayIn } from "@/lib/datetime";
 
 export const metadata = { title: "New transaction" };
 
@@ -32,6 +33,7 @@ export default async function NewTransactionPage() {
             .map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
           tags={tags.map((t) => ({ id: t.id, name: t.name }))}
+          today={todayIn(family.timezone)}
         />
       </Suspense>
     </div>

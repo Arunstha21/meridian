@@ -1,6 +1,7 @@
 import { requireVerifiedActor, currentFamily } from "@/server/auth/context";
 import { Card, PageHeader } from "@/components/ds/card";
 import { NewAccountForm } from "./new-account-form";
+import { todayIn } from "@/lib/datetime";
 
 export const metadata = { title: "Add account" };
 
@@ -14,7 +15,7 @@ export default async function NewAccountPage() {
         subtitle="Manual accounts only — no bank connections in this release."
       />
       <Card>
-        <NewAccountForm defaultCurrency={family.currency} />
+        <NewAccountForm defaultCurrency={family.currency} today={todayIn(family.timezone)} />
       </Card>
     </div>
   );

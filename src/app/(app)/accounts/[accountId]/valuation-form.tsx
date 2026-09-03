@@ -6,9 +6,16 @@ import { Card } from "@/components/ds/card";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 
-export function ValuationForm({ accountId, currency }: { accountId: string; currency: string }) {
+export function ValuationForm({
+  accountId,
+  currency,
+  today
+}: {
+  accountId: string;
+  currency: string;
+  today: string;
+}) {
   const [state, action] = useActionState(recordValuationAction, undefined);
-  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <Card id="valuation">

@@ -12,10 +12,9 @@ const TYPES = [
   { value: "other_liability", label: "Other liability", hint: "A debt you track manually" }
 ];
 
-export function NewAccountForm({ defaultCurrency }: { defaultCurrency: string }) {
+export function NewAccountForm({ defaultCurrency, today }: { defaultCurrency: string; today: string }) {
   const [state, action] = useActionState(createAccountAction, undefined);
   const [type, setType] = useState("depository");
-  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <form action={action} className="space-y-5">

@@ -9,20 +9,18 @@ import { TagPicker } from "@/components/ds/tag-picker";
 
 type Option = { id: string; name: string; currency?: string };
 
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
 type QuickAddState = Awaited<ReturnType<typeof quickAddAction>>;
 
 export function QuickAddForm({
   accounts,
   categories,
-  tags
+  tags,
+  today
 }: {
   accounts: Option[];
   categories: Option[];
   tags: Option[];
+  today: string;
 }) {
   const [state, setState] = useState<QuickAddState>();
   const [kind, setKind] = useState<"expense" | "income">("expense");
@@ -116,7 +114,7 @@ export function QuickAddForm({
 
       <TagPicker tags={tags} />
 
-      <input type="hidden" name="date" value={todayIso()} />
+      <input type="hidden" name="date" value={today} />
 
       <SubmitButton className="w-full py-3 text-base">Save transaction</SubmitButton>
     </form>

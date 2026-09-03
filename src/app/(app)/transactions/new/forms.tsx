@@ -14,11 +14,13 @@ type AccountOption = Option & { currency: string };
 export function NewTransactionForms({
   accounts,
   categories,
-  tags
+  tags,
+  today
 }: {
   accounts: AccountOption[];
   categories: Option[];
   tags: Option[];
+  today: string;
 }) {
   const params = useSearchParams();
   const preset = params.get("account") ?? "";
@@ -56,9 +58,16 @@ export function NewTransactionForms({
           You need one account to record transactions and two to move money between them.
         </Alert>
       ) : mode === "transfer" && canTransfer ? (
-        <TransferForm accounts={active} presetAccount={preset} />
+        <TransferForm accounts={active} presetAccount={preset} today={today} />
       ) : (
-        <EntryForm mode={mode === "transfer" ? "expense" : mode} accounts={active} categories={categories} tags={tags} presetAccount={preset} />
+        <EntryForm
+          mode={mode === "transfer" ? "expense" : mode}
+          accounts={active}
+          categories={categories}
+          tags={tags}
+          presetAccount={preset}
+          today={today}
+        />
       )}
     </>
   );
@@ -69,16 +78,17 @@ function EntryForm({
   accounts,
   categories,
   tags,
-  presetAccount
+  presetAccount,
+  today
 }: {
   mode: "expense" | "income";
   accounts: AccountOption[];
   categories: Option[];
   tags: Option[];
   presetAccount: string;
+  today: string;
 }) {
   const [state, action] = useActionState(createTransactionAction, undefined);
-  const today = new Date().toISOString().slice(0, 10);
   return (
     <Card>
       <form action={action} className="grid gap-4 sm:grid-cols-2">
@@ -139,13 +149,14 @@ function EntryForm({
 
 function TransferForm({
   accounts,
-  presetAccount
+  presetAccount,
+  today
 }: {
   accounts: AccountOption[];
   presetAccount: string;
+  today: string;
 }) {
   const [state, action] = useActionState(createTransferAction, undefined);
-  const today = new Date().toISOString().slice(0, 10);
   const sameCurrency = accounts.filter(
     (a) =>
       !presetAccount ||

@@ -8,14 +8,13 @@ export function isIsoDate(value: string): value is IsoDate {
 
 export type IsoDate = string & { readonly __isoDate: unique symbol };
 
-export function todayIn(tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
+export function todayIn(tz: string, now = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: tz,
     year: "numeric",
     month: "2-digit",
     day: "2-digit"
-  }).format(new Date());
-  return parts;
+  }).format(now);
 }
 
 export function addDays(iso: string, days: number): string {

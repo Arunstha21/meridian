@@ -3,7 +3,7 @@ import type { Executor } from "../db/client";
 import type { Family } from "../auth/context";
 import { getRate, convertMinor } from "./exchange-rates";
 import { captureDebugLog } from "../observability/debug-log";
-import { addMonths, endOfMonth, monthKeyIn, monthKeyOf, startOfMonth } from "@/lib/datetime";
+import { addMonths, endOfMonth, monthKeyIn, monthKeyOf, startOfMonth, todayIn } from "@/lib/datetime";
 
 export type FxIssue = { base: string; quote: string; date: string };
 
@@ -69,7 +69,7 @@ export async function dashboardSummary(
   userId: string
 ): Promise<DashboardSummary> {
   const ctx = newConversionContext();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIn(family.timezone);
   const currency = family.currency;
 
   const balanceRows = await exec.execute<{
