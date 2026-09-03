@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { sql } from "drizzle-orm";
-import { db, makeUser, makeAccount, truncateAll, actorOf } from "../helpers";
+import { db, makeUser, makeAccount, truncateAll, actorOf, latestBalance } from "../helpers";
 import {
   createProposal,
   claimProposalForConfirmation,
@@ -9,7 +9,7 @@ import {
   pendingProposal,
   purgeExpiredProposals
 } from "@/server/domain/chat-proposals";
-import { createTransactionEntry } from "@/server/domain/entries";
+import { addTransaction } from "@/server/domain/orchestrate";
 import { chatProposals, entries } from "@/server/db/schema";
 
 beforeAll(async () => {
@@ -58,7 +58,7 @@ describe("chat proposal confirmation gate", () => {
     const payload = await claimProposalForConfirmation(db(), actor, proposal.id);
     if (!payload) throw new Error("claim failed");
 
-    const { entryId, duplicated } = await createTransactionEntry(db(), actor, {
+    const { entryId, duplicated } = await addTransaction(db(), actor, {
       accountId: payload.accountId,
       date: payload.date,
       amountLedgerMinor: payload.amountLedgerMinor,
@@ -74,6 +74,9 @@ describe("chat proposal confirmation gate", () => {
       .where(eq(entries.id, entryId));
     expect(row?.amount).toBe(450);
     expect(row?.name).toBe("Coffee");
+
+    const bal = await latestBalance(accountId);
+    expect(bal?.balanceMinor).toBe(-450);
   });
 
   it("never confirms an expired proposal", async () => {

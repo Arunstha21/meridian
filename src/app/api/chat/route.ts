@@ -9,7 +9,7 @@ import {
   claimProposalForConfirmation,
   dismissProposal
 } from "@/server/domain/chat-proposals";
-import { createTransactionEntry } from "@/server/domain/entries";
+import { addTransaction } from "@/server/domain/orchestrate";
 import { runAgent } from "@/server/ai/agent";
 import { consumeRateLimit } from "@/server/security/rate-limit";
 import { aiChatEnabled } from "@/lib/env";
@@ -79,7 +79,7 @@ async function confirmTransaction(
     return NextResponse.json({ error: PROPOSAL_TTL_NOTE }, { status: 410 });
   }
 
-  const { entryId, duplicated } = await createTransactionEntry(db, actor, {
+  const { entryId, duplicated } = await addTransaction(db, actor, {
     accountId: payload.accountId,
     date: payload.date,
     amountLedgerMinor: payload.amountLedgerMinor,
