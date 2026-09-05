@@ -24,6 +24,7 @@ type Series = {
   nextDue: string;
   active: boolean;
   accountStatus: string;
+  canManage: boolean;
 };
 
 type Option = { id: string; name: string; currency: string };
@@ -96,16 +97,23 @@ export function RecurringManager({
                     {fmtMoney(Math.abs(s.amountMinor), s.currency)}
                   </span>
                 </div>
+                {s.canManage ? (
                 <div className="flex gap-2">
                   <form action={toggleRecurringAction}>
                     <input type="hidden" name="id" value={s.id} />
                     <input type="hidden" name="active" value={s.active ? "false" : "true"} />
                     <SubmitButton variant="ghost">{s.active ? "Pause" : "Resume"}</SubmitButton>
                   </form>
-                  <form action={skipNextOccurrenceAction}>
+                  <ConfirmDialog
+                    trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Skip next</span>}
+                    title={`Skip the next “${s.name}”?`}
+                    description={`The next posting on ${s.nextDue} will be skipped. Already posted transactions stay.`}
+                    confirmLabel="Skip next"
+                    variant="secondary"
+                    action={skipNextOccurrenceAction}
+                  >
                     <input type="hidden" name="id" value={s.id} />
-                    <SubmitButton variant="ghost">Skip next</SubmitButton>
-                  </form>
+                  </ConfirmDialog>
                   <ConfirmDialog
                     trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
                     title={`Delete “${s.name}”?`}
@@ -116,6 +124,7 @@ export function RecurringManager({
                     <input type="hidden" name="id" value={s.id} />
                   </ConfirmDialog>
                 </div>
+                ) : null}
               </li>
             ))}
           </ul>

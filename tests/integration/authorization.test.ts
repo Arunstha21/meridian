@@ -8,6 +8,8 @@ import * as entriesSvc from "@/server/domain/entries";
 import * as familiesSvc from "@/server/domain/families";
 import * as usersSvc from "@/server/domain/users";
 import * as valuationsSvc from "@/server/domain/valuations";
+import * as recurringSvc from "@/server/domain/recurring";
+import * as orchestrate from "@/server/domain/orchestrate";
 import { errors } from "@/lib/errors";
 import { daysAgo } from "../helpers";
 
@@ -146,6 +148,86 @@ describe("family lifecycle guards", () => {
     await familiesSvc.deleteFamily(db(), actorOf(admin), fam!.name);
     const gone = await familiesSvc.getFamilyById(db(), admin.familyId);
     expect(gone).toBeNull();
+  });
+});
+
+describe("recurring account access", () => {
+  it("denies creating or listing series on an unshared personal account", async () => {
+    const owner = await makeUser();
+    const member = await makeUser({ email: `rec-${Date.now()}@test.local` });
+    await joinFamily(member, owner.familyId);
+    const accountId = await makeAccount(owner, { joint: false });
+
+    await expect(
+      recurringSvc.createSeries(db(), actorOf(member), {
+        accountId,
+        name: "Rent",
+        amountLedgerMinor: 1000,
+        frequency: "monthly",
+        config: { dayOfMonth: 1 },
+        nextDue: daysAgo(0)
+      })
+    ).rejects.toMatchObject({ code: "resource.not_found" });
+
+    const ownerSeriesId = await recurringSvc.createSeries(db(), actorOf(owner), {
+      accountId,
+      name: "Rent",
+      amountLedgerMinor: 1000,
+      frequency: "monthly",
+      config: { dayOfMonth: 1 },
+      nextDue: daysAgo(0)
+    });
+    const visible = await recurringSvc.listSeries(db(), actorOf(member));
+    expect(visible.map((s) => s.id)).not.toContain(ownerSeriesId);
+  });
+
+  it("denies skip/toggle/delete for read_only shares", async () => {
+    const owner = await makeUser();
+    const member = await makeUser({ email: `rec-ro-${Date.now()}@test.local` });
+    await joinFamily(member, owner.familyId);
+    const accountId = await makeAccount(owner, { joint: false });
+    await accountsSvc.shareAccount(db(), actorOf(owner), accountId, member.userId, "read_only");
+    const seriesId = await recurringSvc.createSeries(db(), actorOf(owner), {
+      accountId,
+      name: "Gym",
+      amountLedgerMinor: 4000,
+      frequency: "monthly",
+      config: { dayOfMonth: 1 },
+      nextDue: daysAgo(0)
+    });
+
+    const listed = await recurringSvc.listSeries(db(), actorOf(member));
+    expect(listed.map((s) => s.id)).toContain(seriesId);
+
+    await expect(recurringSvc.setSeriesActive(db(), actorOf(member), seriesId, false)).rejects.toMatchObject({
+      code: "access.denied"
+    });
+    await expect(recurringSvc.skipNextOccurrence(db(), actorOf(member), seriesId)).rejects.toMatchObject({
+      code: "access.denied"
+    });
+    await expect(recurringSvc.deleteSeries(db(), actorOf(member), seriesId)).rejects.toMatchObject({
+      code: "access.denied"
+    });
+  });
+});
+
+describe("transfer unlink access", () => {
+  it("denies unlinking when the actor is read_only on a leg", async () => {
+    const owner = await makeUser();
+    const member = await makeUser({ email: `unlink-${Date.now()}@test.local` });
+    await joinFamily(member, owner.familyId);
+    const from = await makeAccount(owner, { joint: false });
+    const to = await makeAccount(owner, { joint: true });
+    await accountsSvc.shareAccount(db(), actorOf(owner), from, member.userId, "read_only");
+    const { transferId } = await orchestrate.makeTransferWithEntries(db(), actorOf(owner), {
+      fromAccountId: from,
+      toAccountId: to,
+      date: daysAgo(1),
+      amountDisplayMinor: 500
+    });
+    await expect(orchestrate.unlinkTransfer(db(), actorOf(member), transferId)).rejects.toMatchObject({
+      code: "access.denied"
+    });
   });
 });
 

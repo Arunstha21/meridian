@@ -1,7 +1,8 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { accounts, categories, entries, families, recurringSeries, transactions } from "../db/schema";
 import type { Actor } from "../auth/context";
+import { accessibleAccountIds, assertAccountAccess, assertAccountOpen } from "../authorization/access";
 import { recalculateAccount } from "./balances";
 import { recordAudit } from "../observability/audit";
 import { captureDebugLog } from "../observability/debug-log";
@@ -115,14 +116,9 @@ async function assertAccountAndCategory(
   accountId: string,
   categoryId: string | null
 ): Promise<typeof accounts.$inferSelect> {
-  const [account] = await exec
-    .select()
-    .from(accounts)
-    .where(and(eq(accounts.id, accountId), eq(accounts.familyId, actor.familyId)))
-    .limit(1);
-  if (!account) throw errors.validation("Unknown account.");
-  if (account.status !== "active") throw errors.conflict("Account is closed.");
-  if (categoryId) {    const [category] = await exec
+  const { account } = await assertAccountOpen(exec, actor, accountId, "manage");
+  if (categoryId) {
+    const [category] = await exec
       .select({ id: categories.id })
       .from(categories)
       .where(and(eq(categories.id, categoryId), eq(categories.familyId, actor.familyId)))
@@ -130,6 +126,17 @@ async function assertAccountAndCategory(
     if (!category) throw errors.validation("Unknown category.");
   }
   return account;
+}
+
+async function requireSeriesManage(exec: Executor, actor: Actor, seriesId: string) {
+  const [existing] = await exec
+    .select()
+    .from(recurringSeries)
+    .where(and(eq(recurringSeries.id, seriesId), eq(recurringSeries.familyId, actor.familyId)))
+    .limit(1);
+  if (!existing) throw errors.notFound("Recurring series");
+  await assertAccountAccess(exec, actor, existing.accountId, "manage");
+  return existing;
 }
 
 export async function createSeries(exec: Executor, actor: Actor, input: RecurringSeriesInput): Promise<string> {
@@ -217,6 +224,7 @@ export async function updateSeries(
 }
 
 export async function deleteSeries(exec: Executor, actor: Actor, seriesId: string): Promise<void> {
+  await requireSeriesManage(exec, actor, seriesId);
   const deleted = await exec
     .delete(recurringSeries)
     .where(and(eq(recurringSeries.id, seriesId), eq(recurringSeries.familyId, actor.familyId)))
@@ -231,7 +239,52 @@ export async function deleteSeries(exec: Executor, actor: Actor, seriesId: strin
   });
 }
 
-export async function listSeries(exec: Executor, familyId: string) {
+export async function setSeriesActive(
+  exec: Executor,
+  actor: Actor,
+  seriesId: string,
+  active: boolean
+): Promise<void> {
+  await requireSeriesManage(exec, actor, seriesId);
+  await exec
+    .update(recurringSeries)
+    .set({ active, updatedAt: new Date() })
+    .where(and(eq(recurringSeries.id, seriesId), eq(recurringSeries.familyId, actor.familyId)));
+  await recordAudit(exec, {
+    familyId: actor.familyId,
+    actorUserId: actor.userId,
+    action: "recurring.updated",
+    entityType: "recurring_series",
+    entityId: seriesId,
+    metadata: { active }
+  });
+}
+
+export async function skipNextOccurrence(exec: Executor, actor: Actor, seriesId: string): Promise<string> {
+  const existing = await requireSeriesManage(exec, actor, seriesId);
+  const skipped = nextOccurrence(
+    existing.frequency as Frequency,
+    existing.config as SeriesConfig,
+    existing.nextDue
+  );
+  await exec
+    .update(recurringSeries)
+    .set({ nextDue: skipped, updatedAt: new Date() })
+    .where(eq(recurringSeries.id, seriesId));
+  await recordAudit(exec, {
+    familyId: actor.familyId,
+    actorUserId: actor.userId,
+    action: "recurring.updated",
+    entityType: "recurring_series",
+    entityId: seriesId,
+    metadata: { skippedTo: skipped }
+  });
+  return skipped;
+}
+
+export async function listSeries(exec: Executor, actor: Actor) {
+  const accountIds = await accessibleAccountIds(exec, actor);
+  if (accountIds.length === 0) return [];
   return exec
     .select({
       id: recurringSeries.id,
@@ -250,7 +303,7 @@ export async function listSeries(exec: Executor, familyId: string) {
     })
     .from(recurringSeries)
     .innerJoin(accounts, eq(accounts.id, recurringSeries.accountId))
-    .where(eq(recurringSeries.familyId, familyId))
+    .where(and(eq(recurringSeries.familyId, actor.familyId), inArray(recurringSeries.accountId, accountIds)))
     .orderBy(asc(recurringSeries.nextDue));
 }
 

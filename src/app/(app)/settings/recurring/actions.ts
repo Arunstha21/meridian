@@ -5,16 +5,18 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireVerifiedActor } from "@/server/auth/context";
 import { getDb } from "@/server/db/client";
-import { accounts, recurringSeries } from "@/server/db/schema";
+import { accounts } from "@/server/db/schema";
 import {
   createSeries,
   deleteSeries,
-  nextOccurrence,
+  setSeriesActive,
+  skipNextOccurrence,
   type Frequency,
   type SeriesConfig
 } from "@/server/domain/recurring";
 import { runAction, type ActionState } from "@/server/actions/runner";
 import { parseAmountToMinor } from "@/lib/money";
+import { errors } from "@/lib/errors";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD");
 
@@ -55,7 +57,7 @@ export async function createRecurringAction(_prev: ActionState | undefined, form
       .from(accounts)
       .where(and(eq(accounts.id, input.accountId), eq(accounts.familyId, actor.familyId)))
       .limit(1);
-    if (!account) throw new Error("Unknown account.");
+    if (!account) throw errors.validation("Unknown account.");
 
     const magnitude = Math.abs(parseAmountToMinor(input.amount, account.currency));
     await createSeries(db, actor, {
@@ -78,11 +80,7 @@ export async function toggleRecurringAction(formData: FormData): Promise<void> {
     const actor = await requireVerifiedActor();
     const id = String(formData.get("id") ?? "");
     const active = formData.get("active") === "true";
-    const db = getDb();
-    await db
-      .update(recurringSeries)
-      .set({ active, updatedAt: new Date() })
-      .where(and(eq(recurringSeries.id, id), eq(recurringSeries.familyId, actor.familyId)));
+    await setSeriesActive(getDb(), actor, id, active);
     revalidatePath("/settings/recurring");
   });
 }
@@ -98,19 +96,8 @@ export async function deleteRecurringAction(formData: FormData): Promise<void> {
 export async function skipNextOccurrenceAction(formData: FormData): Promise<void> {
   await runAction("recurring.skip", async () => {
     const actor = await requireVerifiedActor();
-    const db = getDb();
     const id = String(formData.get("id") ?? "");
-    const [series] = await db
-      .select()
-      .from(recurringSeries)
-      .where(and(eq(recurringSeries.id, id), eq(recurringSeries.familyId, actor.familyId)))
-      .limit(1);
-    if (!series) return;
-    const skipped = nextOccurrence(series.frequency as Frequency, series.config as SeriesConfig, series.nextDue);
-    await db
-      .update(recurringSeries)
-      .set({ nextDue: skipped, updatedAt: new Date() })
-      .where(eq(recurringSeries.id, id));
+    await skipNextOccurrence(getDb(), actor, id);
     revalidatePath("/settings/recurring");
   });
 }

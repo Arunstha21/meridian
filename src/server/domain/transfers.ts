@@ -2,7 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { accounts, entries, transactions, transfers } from "../db/schema";
 import type { Actor } from "../auth/context";
-import { assertAccountAccessLevel, assertAccountOpen } from "../authorization/access";
+import { assertAccountAccess, assertAccountOpen } from "../authorization/access";
 import { errors } from "@/lib/errors";
 import { addMinor, negateMinor } from "@/lib/money";
 import { diffDays, isIsoDate } from "@/lib/datetime";
@@ -206,7 +206,7 @@ export async function removeTransfer(exec: Executor, actor: Actor, transferId: s
   for (const leg of legs) {
     const [acc] = await exec.select().from(accounts).where(eq(accounts.id, leg.accountId)).limit(1);
     if (!acc || acc.familyId !== actor.familyId) throw errors.forbidden();
-    await assertAccountAccessLevel(exec, actor, acc.id);
+    await assertAccountAccess(exec, actor, acc.id, "manage");
     familyId = actor.familyId;
   }
 
@@ -276,7 +276,7 @@ export async function suggestTransferMatches(
         a.owner_id IS NULL OR a.owner_id = ${actor.userId}
         OR EXISTS (SELECT 1 FROM account_shares s WHERE s.account_id = a.id AND s.user_id = ${actor.userId})
       )
-      AND abs(e.amount_minor) <= ${Math.abs(base.entry.amountMinor)}
+      AND abs(e.amount_minor) = ${Math.abs(base.entry.amountMinor)}
     ORDER BY abs(e.date - ${base.entry.date}::date), abs(e.amount_minor - ${Math.abs(base.entry.amountMinor)})
     LIMIT 10
   `);

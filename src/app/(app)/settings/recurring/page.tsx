@@ -13,7 +13,7 @@ export default async function RecurringPage() {
   const db = getDb();
 
   const [series, accounts, categories] = await Promise.all([
-    listSeries(db, actor.familyId),
+    listSeries(db, actor),
     listAccountsForActor(db, actor),
     listCategories(db, actor.familyId)
   ]);
@@ -27,6 +27,7 @@ export default async function RecurringPage() {
       <RecurringManager
         series={series.map((s) => ({
           id: s.id,
+          accountId: s.accountId,
           accountName: s.accountName,
           name: s.name,
           merchant: s.merchant,
@@ -36,10 +37,11 @@ export default async function RecurringPage() {
           config: s.config as Record<string, unknown>,
           nextDue: s.nextDue,
           active: s.active,
-          accountStatus: s.accountStatus
+          accountStatus: s.accountStatus,
+          canManage: accounts.some((a) => a.id === s.accountId && a.level === "full_control")
         }))}
         accounts={accounts
-          .filter((a) => a.status === "active")
+          .filter((a) => a.status === "active" && a.level === "full_control")
           .map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
         categories={categories.map((c) => ({ id: c.id, name: c.name }))}
       />
