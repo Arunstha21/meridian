@@ -183,6 +183,73 @@ describe("Sure family import", () => {
     expect(transfers.rows?.[0]?.count).toBe("1");
   });
 
+  it("skips pending and incomplete transfers instead of aborting the family", async () => {
+    const user = await makeUser({ familyName: "Partial transfer family" });
+    const ndjson = [
+      {
+        type: "Account",
+        data: {
+          id: "cash",
+          name: "Wallet",
+          accountable_type: "Depository",
+          balance: "0",
+          currency: "USD",
+          created_at: "2026-01-01"
+        }
+      },
+      {
+        type: "Transaction",
+        data: {
+          id: "t-out",
+          account_id: "cash",
+          date: "2026-08-13",
+          amount: "5.00",
+          name: "Pending move",
+          tag_ids: []
+        }
+      },
+      {
+        type: "Transfer",
+        data: {
+          id: "pending-move",
+          outflow_transaction_id: "t-out",
+          inflow_transaction_id: "missing-in",
+          status: "pending"
+        }
+      },
+      {
+        type: "Transfer",
+        data: {
+          id: "orphan-move",
+          outflow_transaction_id: "t-out",
+          inflow_transaction_id: "still-missing",
+          status: "confirmed"
+        }
+      }
+    ]
+      .map((row) => JSON.stringify(row))
+      .join("\n");
+
+    const result = await importSureExport(
+      db(),
+      actorOf(user),
+      "sure.ndjson",
+      new TextEncoder().encode(ndjson)
+    );
+    expect(result.accounts).toBe(1);
+    expect(result.transactions).toBe(1);
+    expect(result.transfers).toBe(0);
+    expect(result.skipped.Transfer).toBe(2);
+    const transfers = await db().execute<{ count: string }>(sql`
+      SELECT count(*)::text AS count
+      FROM transfers t
+      JOIN entries e ON e.id = t.outflow_entry_id
+      JOIN accounts a ON a.id = e.account_id
+      WHERE a.family_id = ${user.familyId}::uuid
+    `);
+    expect(transfers.rows?.[0]?.count).toBe("0");
+  });
+
   it("refuses to merge a Sure archive into a family that already has data", async () => {
     const user = await makeUser();
     const existing = await db().execute(sql`

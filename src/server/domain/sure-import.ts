@@ -266,23 +266,23 @@ async function importRecords(
 
   let transferCount = 0;
   for (const record of transferRecords) {
-    const inflowEntryId = transactionMap.get(
-      requiredId(record.data.inflow_transaction_id, "transfer inflow")
-    );
-    const outflowEntryId = transactionMap.get(
-      requiredId(record.data.outflow_transaction_id, "transfer outflow")
-    );
-    if (!inflowEntryId || !outflowEntryId || inflowEntryId === outflowEntryId) {
-      throw errors.validation(
-        "A Sure transfer references transactions that could not be migrated."
-      );
+    const inflowSourceId =
+      typeof record.data.inflow_transaction_id === "string" ? record.data.inflow_transaction_id.trim() : "";
+    const outflowSourceId =
+      typeof record.data.outflow_transaction_id === "string" ? record.data.outflow_transaction_id.trim() : "";
+    const inflowEntryId = inflowSourceId ? transactionMap.get(inflowSourceId) : undefined;
+    const outflowEntryId = outflowSourceId ? transactionMap.get(outflowSourceId) : undefined;
+    const pending = String(record.data.status ?? "confirmed") === "pending";
+    if (pending || !inflowEntryId || !outflowEntryId || inflowEntryId === outflowEntryId) {
+      skipped.Transfer = (skipped.Transfer ?? 0) + 1;
+      continue;
     }
     const [transfer] = await exec
       .insert(transfers)
       .values({
         inflowEntryId,
         outflowEntryId,
-        status: String(record.data.status ?? "confirmed") === "pending" ? "pending" : "confirmed"
+        status: "confirmed"
       })
       .returning({ id: transfers.id });
     if (!transfer) throw errors.conflict("Could not import a Sure transfer.");
