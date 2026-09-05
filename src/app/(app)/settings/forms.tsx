@@ -17,7 +17,8 @@ export function ProfileForms({
   timezone,
   timezones,
   privacy,
-  theme
+  theme,
+  canEditTimezone
 }: {
   name: string;
   email: string;
@@ -25,13 +26,20 @@ export function ProfileForms({
   timezones: string[];
   privacy: boolean;
   theme: "light" | "dark" | "system";
+  canEditTimezone: boolean;
 }) {
   return (
     <div className="space-y-6">
       <NameForm name={name} />
       <PrivacyToggle privacy={privacy} />
       <AppearanceForm theme={theme} />
-      <TimezoneForm timezone={timezone} timezones={timezones} />
+      {canEditTimezone ? (
+        <TimezoneForm timezone={timezone} timezones={timezones} />
+      ) : (
+        <p className="text-sm text-muted">
+          Time zone is {timezone}. Only a family admin can change it.
+        </p>
+      )}
       <ChangePasswordForm />
       <ChangeEmailForm currentEmail={email} />
     </div>

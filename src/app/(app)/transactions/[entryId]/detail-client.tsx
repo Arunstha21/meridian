@@ -145,19 +145,36 @@ export function TransactionDetailClient(p: DetailProps) {
               <p className="text-sm">
                 Linked with <strong>{p.transferPartnerName}</strong>.
               </p>
-              <form action={unlinkTransferAction} className="mt-3">
-                <input type="hidden" name="transferId" value={p.transferId} />
-                <input type="hidden" name="entryId" value={p.entry.id} />
-                <SubmitButton variant="secondary">Unlink transfer</SubmitButton>
-              </form>
+              {canCore ? (
+                <div className="mt-3">
+                  <ConfirmDialog
+                    trigger={
+                      <span className="inline-flex rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium">
+                        Unlink transfer
+                      </span>
+                    }
+                    title="Unlink this transfer?"
+                    description="Both transactions stay in their accounts. They will no longer be treated as a pair."
+                    confirmLabel="Unlink"
+                    variant="secondary"
+                    action={unlinkTransferAction}
+                  >
+                    <input type="hidden" name="transferId" value={p.transferId} />
+                    <input type="hidden" name="entryId" value={p.entry.id} />
+                  </ConfirmDialog>
+                </div>
+              ) : null}
             </>
-          ) : (
+          ) : canCore ? (
             <SuggestTransfer
               entryId={p.entry.id}
+              amountMinor={p.entry.amountMinor}
               suggestions={p.suggestions}
               linkState={linkState?.ok === false ? linkState.error : undefined}
               linkAction={linkAction}
             />
+          ) : (
+            <p className="text-sm text-muted">You do not have permission to link a transfer.</p>
           )}
         </Card>
 
@@ -182,10 +199,24 @@ export function TransactionDetailClient(p: DetailProps) {
                   </li>
                 ))}
               </ul>
-              <form action={unsplitEntryAction} className="mt-3">
-                <input type="hidden" name="parentEntryId" value={p.entry.id} />
-                <SubmitButton variant="secondary">Remove split</SubmitButton>
-              </form>
+              {canCore ? (
+                <div className="mt-3">
+                  <ConfirmDialog
+                    trigger={
+                      <span className="inline-flex rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium">
+                        Remove split
+                      </span>
+                    }
+                    title="Remove this split?"
+                    description="The original transaction is restored as a single amount. Split parts are deleted."
+                    confirmLabel="Remove split"
+                    variant="secondary"
+                    action={unsplitEntryAction}
+                  >
+                    <input type="hidden" name="parentEntryId" value={p.entry.id} />
+                  </ConfirmDialog>
+                </div>
+              ) : null}
             </>
           ) : canCore && !p.transferId ? (
             <Dialog
@@ -240,15 +271,18 @@ export function TransactionDetailClient(p: DetailProps) {
 
 function SuggestTransfer({
   entryId,
+  amountMinor,
   suggestions,
   linkState,
   linkAction
 }: {
   entryId: string;
+  amountMinor: number;
   suggestions: DetailProps["suggestions"];
   linkState?: string;
   linkAction: (fd: FormData) => void;
 }) {
+  const currentIsOutflow = amountMinor > 0;
   return (
     <div className="space-y-3">
       {linkState ? <Alert title={linkState} tone="destructive" /> : null}
@@ -266,8 +300,8 @@ function SuggestTransfer({
                 <span className="block text-xs text-muted">{s.accountName}</span>
               </span>
               <form action={linkAction} className="shrink-0">
-                <input type="hidden" name="outflowEntryId" value={entryId} />
-                <input type="hidden" name="inflowEntryId" value={s.entryId} />
+                <input type="hidden" name="outflowEntryId" value={currentIsOutflow ? entryId : s.entryId} />
+                <input type="hidden" name="inflowEntryId" value={currentIsOutflow ? s.entryId : entryId} />
                 <SubmitButton variant="secondary">Link</SubmitButton>
               </form>
             </li>

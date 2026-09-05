@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/server/db/client";
 import { loadActor, SESSION_COOKIE } from "@/server/auth/context";
@@ -24,4 +25,5 @@ export async function togglePrivacyAction(): Promise<void> {
   if (!actor) return;
   const current = await getUserPrivacyMode(db, actor.userId);
   await setUserPreference(db, actor.userId, "privacy_mode", !current);
+  revalidatePath("/", "layout");
 }

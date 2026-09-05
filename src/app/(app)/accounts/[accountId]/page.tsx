@@ -39,14 +39,16 @@ export default async function AccountDetailPage({
         title={account.name}
         subtitle={`${labelForType(account.type)}${account.institution ? ` · ${account.institution}` : ""}`}
         actions={
-          <AccountActions
-            accountId={account.id}
-            status={account.status}
-            accountName={account.name}
-            institution={account.institution}
-            includedInReports={account.includedInReports}
-            members={members}
-          />
+          level === "full_control" ? (
+            <AccountActions
+              accountId={account.id}
+              status={account.status}
+              accountName={account.name}
+              institution={account.institution}
+              includedInReports={account.includedInReports}
+              members={members}
+            />
+          ) : undefined
         }
       />
 

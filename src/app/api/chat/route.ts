@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { loadActor } from "@/server/auth/context";
 import type { Actor } from "@/server/auth/context";
-import { getDb } from "@/server/db/client";
+import { getDb, withTransaction } from "@/server/db/client";
 import type { Executor } from "@/server/db/client";
+import { requireEmailVerification } from "@/lib/env";
 import { loadHistory, appendUserMessage, appendAssistantMessage } from "@/server/domain/chat";
 import {
   claimProposalForConfirmation,
@@ -32,6 +33,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const actor = await loadActor();
   if (!actor) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  if (requireEmailVerification() && !actor.emailVerified) {
+    return NextResponse.json({ error: "Verify your email address first." }, { status: 403 });
+  }
 
   const raw = await request.json().catch(() => null);
   const parsed = bodySchema.safeParse(raw);
@@ -69,38 +73,44 @@ export async function POST(request: Request): Promise<NextResponse> {
 }
 
 async function confirmTransaction(
-  db: Executor,
+  _db: Executor,
   actor: Actor,
   proposalId: string
 ): Promise<NextResponse> {
-  // The atomic claim means a double-clicked Confirm can only execute one write.
-  const payload = await claimProposalForConfirmation(db, actor, proposalId);
-  if (!payload) {
+  // Claim + ledger write share one transaction so a failed write leaves the
+  // proposal pending (retryable) instead of confirmed-and-lost.
+  const result = await withTransaction(async (tx) => {
+    const payload = await claimProposalForConfirmation(tx, actor, proposalId);
+    if (!payload) return { kind: "gone" as const };
+
+    const { entryId, duplicated } = await addTransaction(tx, actor, {
+      accountId: payload.accountId,
+      date: payload.date,
+      amountLedgerMinor: payload.amountLedgerMinor,
+      name: payload.name,
+      merchant: payload.merchant,
+      categoryId: payload.categoryId
+    });
+
+    const note = `Recorded "${payload.name}" — ${fmtMoney(payload.amountLedgerMinor, payload.currency)} on ${payload.date} in ${payload.accountName}${duplicated ? " (matched an existing entry)" : ""}.`;
+    await appendUserMessage(tx, actor.familyId, actor.userId, "(confirmed the proposed transaction)");
+    await appendAssistantMessage(tx, actor.familyId, actor.userId, note);
+    return { kind: "ok" as const, payload, entryId, duplicated, note };
+  });
+
+  if (result.kind === "gone") {
     return NextResponse.json({ error: PROPOSAL_TTL_NOTE }, { status: 410 });
   }
 
-  const { entryId, duplicated } = await addTransaction(db, actor, {
-    accountId: payload.accountId,
-    date: payload.date,
-    amountLedgerMinor: payload.amountLedgerMinor,
-    name: payload.name,
-    merchant: payload.merchant,
-    categoryId: payload.categoryId
-  });
-
-  const note = `Recorded "${payload.name}" — ${fmtMoney(payload.amountLedgerMinor, payload.currency)} on ${payload.date} in ${payload.accountName}${duplicated ? " (matched an existing entry)" : ""}.`;
-  await appendUserMessage(db, actor.familyId, actor.userId, "(confirmed the proposed transaction)");
-  await appendAssistantMessage(db, actor.familyId, actor.userId, note);
-
   return NextResponse.json({
     recorded: {
-      entryId,
-      note,
-      name: payload.name,
-      accountName: payload.accountName,
-      amountLedgerMinor: payload.amountLedgerMinor,
-      currency: payload.currency,
-      date: payload.date
+      entryId: result.entryId,
+      note: result.note,
+      name: result.payload.name,
+      accountName: result.payload.accountName,
+      amountLedgerMinor: result.payload.amountLedgerMinor,
+      currency: result.payload.currency,
+      date: result.payload.date
     }
   });
 }

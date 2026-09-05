@@ -25,7 +25,7 @@ export default async function QuickAddPage() {
       <Card className="mt-6">
         <QuickAddForm
           accounts={accounts
-            .filter((a) => a.status === "active")
+            .filter((a) => a.status === "active" && a.level === "full_control")
             .map((a) => ({ id: a.id, name: a.name, currency: a.currency }))}
           categories={categories.map((c) => ({ id: c.id, name: c.name }))}
           tags={tags.map((t) => ({ id: t.id, name: t.name }))}

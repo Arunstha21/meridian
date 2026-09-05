@@ -54,6 +54,7 @@ export default async function SettingsPage() {
             timezones={TIMEZONES}
             privacy={privacy}
             theme={theme}
+            canEditTimezone={actor.familyRole === "admin"}
           />
         </Card>
 
