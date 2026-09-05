@@ -37,3 +37,10 @@ export async function checkDb(): Promise<boolean> {
     return false;
   }
 }
+
+export async function closeDb(): Promise<void> {
+  if (!pool) return;
+  await pool.end();
+  pool = null;
+  dbInstance = null;
+}

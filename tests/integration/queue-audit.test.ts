@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { sql } from "drizzle-orm";
 import { db, makeUser, makeAccount, addTxn, truncateAll, actorOf } from "../helpers";
-import { enqueue, runPendingNow, claimBatch, failJob } from "@/server/queue";
+import { enqueue, runPendingNow, claimBatch, failJob, pruneFinishedJobs } from "@/server/queue";
 import { createJobRegistry, registerWorkerBootstraps } from "@/server/queue/jobs";
 import { ensureSchedules, runDueCrons } from "@/server/queue/worker-loop";
 
@@ -79,6 +79,27 @@ describe("durable queue", () => {
       SELECT count(*)::text AS c FROM jobs WHERE queue='maintenance:cleanup'
     `);
     expect(Number(jobs.rows![0]!.c)).toBe(1);
+  });
+
+  it("prunes old completed and dead jobs but keeps recent dead letters", async () => {
+    const oldCompleted = await enqueue(db(), "email", { to: "old@test.local", subject: "x", text: "y" });
+    const oldDead = await enqueue(db(), "email", { to: "dead@test.local", subject: "x", text: "y" });
+    const recentDead = await enqueue(db(), "email", { to: "new@test.local", subject: "x", text: "y" });
+    await db().execute(sql`
+      UPDATE jobs SET status = 'completed', updated_at = now() - interval '20 days' WHERE id = ${oldCompleted}::uuid
+    `);
+    await db().execute(sql`
+      UPDATE jobs SET status = 'dead', updated_at = now() - interval '20 days' WHERE id = ${oldDead}::uuid
+    `);
+    await db().execute(sql`
+      UPDATE jobs SET status = 'dead', updated_at = now() WHERE id = ${recentDead}::uuid
+    `);
+    const removed = await pruneFinishedJobs(db(), 14);
+    expect(removed).toBeGreaterThanOrEqual(2);
+    const leftover = await db().execute<{ id: string }>(sql`
+      SELECT id::text AS id FROM jobs WHERE id IN (${oldCompleted}::uuid, ${oldDead}::uuid, ${recentDead}::uuid)
+    `);
+    expect(leftover.rows?.map((r) => r.id)).toEqual([recentDead]);
   });
 
   it("worker bootstrap registers maintenance crons", async () => {

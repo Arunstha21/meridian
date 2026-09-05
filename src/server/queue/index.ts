@@ -109,7 +109,7 @@ export async function replayDeadJob(exec: Executor, jobId: string): Promise<bool
 export async function pruneFinishedJobs(exec: Executor, olderThanDays: number): Promise<number> {
   const res = await exec.execute(sql`
     DELETE FROM jobs
-    WHERE status IN ('completed', 'failed')
+    WHERE status IN ('completed', 'dead')
       AND updated_at < now() - (${String(olderThanDays)} || ' days')::interval
   `);
   return res.rowCount ?? 0;

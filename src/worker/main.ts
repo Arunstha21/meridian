@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { getDb } from "@/server/db/client";
+import { closeDb, getDb } from "@/server/db/client";
 import {
   recoverStaleJobs,
   claimBatch,
@@ -13,17 +13,37 @@ import { log } from "@/lib/logger";
 
 const workerName = env.WORKER_NAME || `worker-${process.pid}`;
 let running = true;
+let wake: (() => void) | null = null;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(() => resolve(), ms);
+    wake = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+  }).finally(() => {
+    wake = null;
+  });
+}
+
+function stop(): void {
+  running = false;
+  wake?.();
+}
 
 async function tick(): Promise<void> {
   const db = getDb();
   const registry = await createJobRegistry();
   await recoverStaleJobs(db);
+  if (!running) return;
   await runDueCrons(db);
   for (let i = 0; i < 25; i++) {
     if (!running) return;
     const batch = await claimBatch(db, workerName, 10);
     if (batch.length === 0) break;
     for (const job of batch) {
+      if (!running) return;
       const handler = registry.get(job.queue);
       try {
         if (!handler) throw new Error(`No handler for queue "${job.queue}"`);
@@ -48,16 +68,14 @@ async function main() {
     } catch (e) {
       log.error({ err: e instanceof Error ? { name: e.name, message: e.message } : e }, "worker.tick_failed");
     }
-    await new Promise((r) => setTimeout(r, env.WORKER_POLL_MS));
+    if (!running) break;
+    await sleep(env.WORKER_POLL_MS);
   }
   log.info({}, "worker.stopped");
+  await closeDb();
 }
 
-process.on("SIGTERM", () => {
-  running = false;
-});
-process.on("SIGINT", () => {
-  running = false;
-});
+process.on("SIGTERM", stop);
+process.on("SIGINT", stop);
 
 void main();

@@ -1,6 +1,7 @@
 import { config } from "dotenv";
 import { z } from "zod";
 
+config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
 const schema = z.object({
@@ -9,6 +10,7 @@ const schema = z.object({
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   MAIL_TRANSPORT: z.enum(["console", "smtp"]).default("console"),
   SMTP_URL: z.string().optional(),
+  MAIL_FROM: z.string().min(3).optional(),
   ADMIN_EMAILS: z.string().default(""),
   SEED_DEMO: z.enum(["true", "false"]).default("false"),
   SEED_PASSWORD: z.string().optional(),
