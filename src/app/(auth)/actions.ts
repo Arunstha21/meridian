@@ -41,7 +41,9 @@ const signUpSchema = z.object({
   name: z.string().min(1).max(120),
   email: z.string().email(),
   password: z.string().min(1),
-  familyName: z.string().min(1).max(120)
+  familyName: z.string().min(1).max(120),
+  currency: z.string().length(3).optional(),
+  timezone: z.string().min(1).optional()
 });
 
 export async function signUpAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {

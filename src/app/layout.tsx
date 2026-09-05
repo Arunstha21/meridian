@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { ServiceWorkerRegistrar } from "@/components/layout/sw-registrar";
 import "./globals.css";
 
@@ -17,11 +17,12 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const themeCookie = (await cookies()).get("theme")?.value;
   const theme = themeCookie === "light" || themeCookie === "dark" ? themeCookie : "system";
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   const script = `(function(){try{var t=${JSON.stringify(theme)};var d=window.matchMedia("(prefers-color-scheme: dark)").matches;if(t==="dark"||(t==="system"&&d)){document.documentElement.classList.add("dark");}}catch(e){}})();`;
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: script }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: script }} />
       </head>
       <body>
         {children}

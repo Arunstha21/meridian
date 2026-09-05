@@ -35,6 +35,14 @@ npm run dev                           # web app on http://localhost:3000
 npm run worker                        # background jobs (separate terminal)
 ```
 
+Or run the stack with Docker:
+
+```bash
+docker compose up --build
+```
+
+That starts Postgres, applies migrations, serves the web app on http://localhost:3000, and runs the worker. Set `MAIL_FROM` (and SMTP) in the compose environment before using real email.
+
 The demo seed creates `demo@meridian.local` with password `meridian-demo-2026`
 (override with `SEED_PASSWORD`). Grant platform super-admin by adding your email to
 `ADMIN_EMAILS` before signing up, or promote directly in the database.

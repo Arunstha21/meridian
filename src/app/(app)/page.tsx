@@ -239,6 +239,41 @@ export default async function DashboardPage({
         </Card>
       </div>
 
+      {activeAccounts.length === 0 ? (
+        <Card>
+          <h2 className="text-base font-medium text-primary">Get started</h2>
+          <p className="mt-1 text-sm text-muted">
+            Three steps to a working ledger. You can change currency and time zone later in
+            Settings.
+          </p>
+          <ol className="mt-4 space-y-3 text-sm">
+            <li className="rounded-lg border border-border px-3 py-2.5">
+              <p className="font-medium">1. Confirm your household</p>
+              <p className="text-muted">
+                Reporting currency is {family.currency} in {family.timezone}.
+              </p>
+              <Link href="/settings" className="mt-1 inline-block text-primary hover:underline">
+                Review settings
+              </Link>
+            </li>
+            <li className="rounded-lg border border-border px-3 py-2.5">
+              <p className="font-medium">2. Add your first account</p>
+              <p className="text-muted">Cash, credit card, or another asset you want to track.</p>
+              <Link
+                href="/accounts/new"
+                className="mt-2 inline-flex rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg"
+              >
+                Add an account
+              </Link>
+            </li>
+            <li className="rounded-lg border border-border px-3 py-2.5">
+              <p className="font-medium">3. Record a transaction</p>
+              <p className="text-muted">Income, spending, or a transfer once you have an account.</p>
+            </li>
+          </ol>
+        </Card>
+      ) : null}
+
       <Card>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-medium text-primary">Accounts</h2>

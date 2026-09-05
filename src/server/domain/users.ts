@@ -5,6 +5,8 @@ import type { Actor } from "../auth/context";
 import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/crypto";
 import { errors } from "@/lib/errors";
 import { adminEmails } from "@/lib/env";
+import { isValidCurrency } from "@/lib/money";
+import { validateTimezone } from "./families";
 import { recordAudit } from "../observability/audit";
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -26,7 +28,14 @@ export type RegistrationResult = { userId: string; familyId: string };
 
 export async function registerUserWithFamily(
   exec: Executor,
-  input: { email: string; password: string; name: string; familyName: string }
+  input: {
+    email: string;
+    password: string;
+    name: string;
+    familyName: string;
+    currency?: string;
+    timezone?: string;
+  }
 ): Promise<RegistrationResult> {
   const email = normalizeEmail(input.email);
   if (!EMAIL_PATTERN.test(email)) throw errors.validation("Enter a valid email address.");
@@ -37,11 +46,18 @@ export async function registerUserWithFamily(
 
   const existing = await findUserByEmail(exec, email);
   if (existing) throw errors.conflict("That email is already registered.");
+  const currency = (input.currency ?? "USD").toUpperCase();
+  if (!isValidCurrency(currency)) throw errors.validation("Unknown currency code.");
+  const timezone = validateTimezone(input.timezone ?? "Etc/UTC");
 
   const result = await exec.transaction(async (tx) => {
     const [family] = await tx
       .insert(families)
-      .values({ name: input.familyName.trim() || `${name}'s family`, currency: "USD" })
+      .values({
+        name: input.familyName.trim() || `${name}'s family`,
+        currency,
+        timezone
+      })
       .returning({ id: families.id });
     const fid = family!.id;
     const [user] = await tx

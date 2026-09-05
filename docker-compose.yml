@@ -16,5 +16,33 @@ services:
       timeout: 3s
       retries: 10
 
+  web:
+    build: .
+    restart: unless-stopped
+    command: ["web"]
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://meridian:meridian@db:5432/meridian
+      APP_URL: http://localhost:3000
+      NODE_ENV: production
+      MAIL_TRANSPORT: console
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: ["worker"]
+    environment:
+      DATABASE_URL: postgres://meridian:meridian@db:5432/meridian
+      APP_URL: http://localhost:3000
+      NODE_ENV: production
+      MAIL_TRANSPORT: console
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   pgdata:

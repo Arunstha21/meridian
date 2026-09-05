@@ -54,7 +54,7 @@ export async function updateFamilySettings(
   });
 }
 
-function validateTimezone(tz: string): string {
+export function validateTimezone(tz: string): string {
   try {
     new Intl.DateTimeFormat("en", { timeZone: tz });
     return tz;

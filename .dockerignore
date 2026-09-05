@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.playwright-mcp
+coverage
+*.png
+.env
+.env.local
+.env.*.local
+graphify-out
+src/graphify-out
+tmp-run-tests.mjs

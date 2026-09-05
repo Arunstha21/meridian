@@ -1,6 +1,15 @@
 import nodemailer, { Transporter } from "nodemailer";
-import { env } from "@/lib/env";
+import { env, isProd } from "@/lib/env";
 import { log } from "@/lib/logger";
+
+export function mailFromAddress(): string {
+  if (env.MAIL_FROM) return env.MAIL_FROM;
+  try {
+    return `no-reply@${new URL(env.APP_URL).hostname}`;
+  } catch {
+    return "no-reply@localhost";
+  }
+}
 
 export interface MailInput {
   to: string;
@@ -14,7 +23,10 @@ export interface Mailer {
 
 class ConsoleMailer implements Mailer {
   async send(input: MailInput): Promise<void> {
-    log.info({ to: input.to, subject: input.subject, text: input.text }, "mail.console_delivery");
+    log.info(
+      { to: input.to, subject: input.subject, text: isProd ? "[redacted]" : input.text },
+      "mail.console_delivery"
+    );
   }
 }
 
@@ -27,7 +39,7 @@ class SmtpMailer implements Mailer {
 
   async send(input: MailInput): Promise<void> {
     await this.transporter.sendMail({
-      from: env.APP_URL.replace(/^https?:\/\//, "no-reply@"),
+      from: mailFromAddress(),
       to: input.to,
       subject: input.subject,
       text: input.text

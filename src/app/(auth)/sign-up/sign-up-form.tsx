@@ -2,8 +2,22 @@
 
 import { useActionState } from "react";
 import { signUpAction } from "../actions";
-import { Field, FormError, Input } from "@/components/ds/form";
+import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+
+const SIGNUP_CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "INR", "NPR", "SGD", "JPY"];
+const SIGNUP_TIMEZONES = [
+  "Etc/UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Kolkata",
+  "Asia/Kathmandu",
+  "Asia/Singapore",
+  "Australia/Sydney"
+];
 
 export function SignUpForm() {
   const [state, action] = useActionState(signUpAction, undefined);
@@ -26,6 +40,26 @@ export function SignUpForm() {
           placeholder="e.g. The Shresthas"
         />
       </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Reporting currency" htmlFor="currency">
+          <Select id="currency" name="currency" defaultValue="USD">
+            {SIGNUP_CURRENCIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Time zone" htmlFor="timezone">
+          <Select id="timezone" name="timezone" defaultValue="Etc/UTC">
+            {SIGNUP_TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>
+                {tz}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
       <Field label="Email" htmlFor="email">
         <Input id="email" name="email" type="email" autoComplete="email" required />
       </Field>
