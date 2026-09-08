@@ -50,6 +50,20 @@ export async function consumeAuthToken(
   return row ? { userId: row.userId } : null;
 }
 
+export async function invalidateUserTokens(
+  exec: Executor,
+  userId: string,
+  purpose?: TokenPurpose
+): Promise<void> {
+  if (purpose) {
+    await exec
+      .delete(authTokens)
+      .where(and(eq(authTokens.userId, userId), eq(authTokens.purpose, purpose)));
+  } else {
+    await exec.delete(authTokens).where(eq(authTokens.userId, userId));
+  }
+}
+
 export function verificationUrl(token: string): string {
   return `${env.APP_URL}/verify-email?token=${encodeURIComponent(token)}`;
 }

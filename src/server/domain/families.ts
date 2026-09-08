@@ -1,10 +1,11 @@
 import { eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { families, users } from "../db/schema";
+import { families, users, budgets } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { isValidCurrency } from "@/lib/money";
 import { errors } from "@/lib/errors";
 import { recordAudit } from "../observability/audit";
+import { convertMinor, getRate } from "./exchange-rates";
 
 export async function createFamilyWithOwner(
   exec: Executor,
@@ -37,9 +38,38 @@ export async function updateFamilySettings(
     updates.name = name;
   }
   if (patch.currency !== undefined) {
-    const c = patch.currency.toUpperCase();
-    if (!isValidCurrency(c)) throw errors.validation("Unknown currency code.");
-    updates.currency = c;
+    const newCurrency = patch.currency.toUpperCase();
+    if (!isValidCurrency(newCurrency)) throw errors.validation("Unknown currency code.");
+
+    const [current] = await exec
+      .select({ currency: families.currency })
+      .from(families)
+      .where(eq(families.id, actor.familyId))
+      .limit(1);
+
+    if (current && current.currency !== newCurrency) {
+      const oldCurrency = current.currency;
+      // F12: Migrate existing budget limits using exchange rates
+      const activeBudgets = await exec
+        .select()
+        .from(budgets)
+        .where(eq(budgets.familyId, actor.familyId));
+
+      if (activeBudgets.length > 0) {
+        const today = new Date().toISOString().slice(0, 10);
+        const rate = await getRate(exec, oldCurrency, newCurrency, today);
+        if (rate) {
+          for (const b of activeBudgets) {
+            const converted = convertMinor(b.amountMinor, rate, oldCurrency, newCurrency);
+            await exec
+              .update(budgets)
+              .set({ amountMinor: Math.max(1, converted), updatedAt: new Date() })
+              .where(eq(budgets.id, b.id));
+          }
+        }
+      }
+    }
+    updates.currency = newCurrency;
   }
   if (patch.timezone !== undefined) updates.timezone = validateTimezone(patch.timezone);
   if (patch.locale !== undefined) updates.locale = patch.locale;

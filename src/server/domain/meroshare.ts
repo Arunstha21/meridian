@@ -583,7 +583,7 @@ export async function listMeroShareConnections(exec: Executor, actor: Actor) {
   const groups = new Map<
     string,
     {
-      connection: typeof meroShareConnections.$inferSelect;
+      connection: { id: string; name: string; dpCode: string; dpName: string; lastSyncedAt: Date | null; createdAt: Date };
       accounts: Array<{
         id: string;
         name: string;
@@ -600,7 +600,17 @@ export async function listMeroShareConnections(exec: Executor, actor: Actor) {
     }
   >();
   for (const row of rows) {
-    const current = groups.get(row.connection.id) ?? { connection: row.connection, accounts: [] };
+    const current = groups.get(row.connection.id) ?? {
+      connection: {
+        id: row.connection.id,
+        name: row.connection.name,
+        dpCode: row.connection.dpCode,
+        dpName: row.connection.dpName,
+        lastSyncedAt: row.connection.lastSyncedAt,
+        createdAt: row.connection.createdAt
+      },
+      accounts: []
+    };
     if (row.meroAccount && row.accountId && row.accountName) {
       current.accounts.push({
         id: row.accountId,

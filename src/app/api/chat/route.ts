@@ -25,8 +25,52 @@ const bodySchema = z.union([
 ]);
 
 const PROPOSAL_TTL_NOTE = "That proposal is no longer available. Ask again if you still want it.";
+const MAX_REQUEST_BYTES = 32 * 1024; // 32KB payload limit
 
 export async function POST(request: Request): Promise<NextResponse> {
+  // S11: Verify Content-Type is application/json
+  const contentType = request.headers.get("content-type");
+  if (!contentType || !contentType.toLowerCase().includes("application/json")) {
+    return NextResponse.json({ error: "Unsupported Media Type: expected application/json." }, { status: 415 });
+  }
+
+  // S11: Verify Sec-Fetch-Site and Origin to prevent cross-site request forgery
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (secFetchSite && secFetchSite !== "same-origin" && secFetchSite !== "same-site") {
+    return NextResponse.json({ error: "Cross-site requests are forbidden." }, { status: 403 });
+  }
+
+  const origin = request.headers.get("origin");
+  let host = request.headers.get("host");
+  if (!host) {
+    try {
+      host = new URL(request.url).host;
+    } catch {
+      host = null;
+    }
+  }
+  if (origin && host) {
+    try {
+      const originHost = new URL(origin).host;
+      if (originHost !== host) {
+        return NextResponse.json({ error: "Invalid request origin." }, { status: 403 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Malformed origin header." }, { status: 403 });
+    }
+  }
+
+  // S11: Verify Content-Length within bounds
+  const contentLengthHeader = request.headers.get("content-length");
+  if (contentLengthHeader && Number(contentLengthHeader) > MAX_REQUEST_BYTES) {
+    return NextResponse.json({ error: "Request payload exceeds 32KB limit." }, { status: 413 });
+  }
+
+  const rawText = await request.text().catch(() => "");
+  if (rawText.length > MAX_REQUEST_BYTES) {
+    return NextResponse.json({ error: "Request payload exceeds 32KB limit." }, { status: 413 });
+  }
+
   if (!aiChatEnabled()) {
     return NextResponse.json({ error: "AI chat is not configured." }, { status: 503 });
   }
@@ -37,7 +81,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Verify your email address first." }, { status: 403 });
   }
 
-  const raw = await request.json().catch(() => null);
+  let raw: unknown = null;
+  try {
+    raw = JSON.parse(rawText);
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+
   const parsed = bodySchema.safeParse(raw);
   if (!parsed.success) return NextResponse.json({ error: "Invalid message." }, { status: 400 });
 

@@ -4,6 +4,23 @@ import type { Family } from "../auth/context";
 import { getRate, convertMinor } from "./exchange-rates";
 import { captureDebugLog } from "../observability/debug-log";
 import { addDays, addMonths, endOfMonth, monthKeyIn, monthKeyOf, startOfMonth, todayIn } from "@/lib/datetime";
+import { errors } from "@/lib/errors";
+
+function safeParseMinor(raw: string | number): number {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isSafeInteger(n)) {
+    throw errors.validation("Amount exceeds safe integer range.");
+  }
+  return n;
+}
+
+function safeAdd(a: number, b: number): number {
+  const sum = a + b;
+  if (!Number.isSafeInteger(sum)) {
+    throw errors.validation("Report aggregate exceeds safe integer bounds.");
+  }
+  return sum;
+}
 
 export type FxIssue = { base: string; quote: string; date: string };
 
@@ -64,14 +81,7 @@ export type DashboardSummary = {
   fxIssues?: FxIssue[];
 };
 
-const ACCESS_SQL = (userId: string) => sql`(
-  a.owner_id IS NULL
-  OR a.owner_id = ${userId}::uuid
-  OR EXISTS (
-    SELECT 1 FROM account_shares s
-    WHERE s.account_id = a.id AND s.user_id = ${userId}::uuid
-  )
-)`;
+const ACCESS_SQL = (userId: string) => sql`(\n  a.owner_id IS NULL\n  OR a.owner_id = ${userId}::uuid\n  OR EXISTS (\n    SELECT 1 FROM account_shares s\n    WHERE s.account_id = a.id AND s.user_id = ${userId}::uuid\n  )\n)`;
 
 export async function dashboardSummary(
   exec: Executor,
@@ -104,13 +114,13 @@ export async function dashboardSummary(
   let liabilitiesMinor = 0;
   let netWorth = 0;
   for (const r of balanceRows.rows ?? []) {
-    const converted = await convertTo(exec, Number(r.balance_minor), r.currency, currency, today, ctx);
+    const converted = await convertTo(exec, safeParseMinor(r.balance_minor), r.currency, currency, today, ctx);
     if (r.type === "credit_card" || r.type === "other_liability") {
-      liabilitiesMinor += -Math.min(0, converted);
+      liabilitiesMinor = safeAdd(liabilitiesMinor, -Math.min(0, converted));
     } else {
-      assetsMinor += converted;
+      assetsMinor = safeAdd(assetsMinor, converted);
     }
-    netWorth += converted;
+    netWorth = safeAdd(netWorth, converted);
   }
 
   const mk = monthKeyIn(family.timezone);
@@ -139,22 +149,24 @@ export async function dashboardSummary(
   let expenseThisMonthMinor = 0;
   let incomeThisMonthMinor = 0;
   for (const r of flows.rows ?? []) {
-    expenseThisMonthMinor += await convertTo(
+    const convertedOutflow = await convertTo(
       exec,
-      Number(r.outflow_minor),
+      safeParseMinor(r.outflow_minor),
       r.outflow_currency,
       currency,
       today,
       ctx
     );
-    incomeThisMonthMinor += await convertTo(
+    const convertedInflow = await convertTo(
       exec,
-      Number(r.inflow_minor),
+      safeParseMinor(r.inflow_minor),
       r.outflow_currency,
       currency,
       today,
       ctx
     );
+    expenseThisMonthMinor = safeAdd(expenseThisMonthMinor, convertedOutflow);
+    incomeThisMonthMinor = safeAdd(incomeThisMonthMinor, convertedInflow);
   }
 
   const categoryRows = await exec.execute<{
@@ -185,7 +197,7 @@ export async function dashboardSummary(
   for (const r of categoryRows.rows ?? []) {
     const converted = await convertTo(
       exec,
-      Number(r.total_minor),
+      safeParseMinor(r.total_minor),
       r.currency,
       currency,
       today,
@@ -196,7 +208,7 @@ export async function dashboardSummary(
     catTotals.set(key, {
       categoryId: r.category_id,
       name: r.name ?? "Uncategorized",
-      totalMinor: (existing?.totalMinor ?? 0) + converted
+      totalMinor: safeAdd(existing?.totalMinor ?? 0, converted)
     });
   }
   const topCategories = [...catTotals.values()].sort((a, b) => b.totalMinor - a.totalMinor).slice(0, 5);
@@ -239,7 +251,7 @@ export async function dashboardSummary(
       id: r.id,
       date: r.date.slice(0, 10),
       name: r.name,
-      amountMinor: Number(r.amount_minor),
+      amountMinor: safeParseMinor(r.amount_minor),
       currency: r.currency,
       accountName: r.account_name,
       transferId: r.transfer_id
@@ -286,7 +298,7 @@ export async function netWorthMinorForAccounts(
   const ctx = newConversionContext();
   let netWorth = 0;
   for (const account of accounts) {
-    netWorth += await convertTo(
+    const converted = await convertTo(
       exec,
       account.displayBalanceMinor,
       account.currency,
@@ -294,6 +306,7 @@ export async function netWorthMinorForAccounts(
       onDate,
       ctx
     );
+    netWorth = safeAdd(netWorth, converted);
   }
   await reportFxIssues(exec, ctx, family.id, "sidebar");
   return netWorth;
@@ -326,8 +339,8 @@ export async function netWorthSeries(
   const byDate = new Map<string, number>();
   for (const r of res.rows ?? []) {
     const d = r.as_of.slice(0, 10);
-    const converted = await convertTo(exec, Number(r.balance_minor), r.currency, family.currency, d, ctx);
-    byDate.set(d, (byDate.get(d) ?? 0) + converted);
+    const converted = await convertTo(exec, safeParseMinor(r.balance_minor), r.currency, family.currency, d, ctx);
+    byDate.set(d, safeAdd(byDate.get(d) ?? 0, converted));
   }
 
   await reportFxIssues(exec, ctx, family.id, "net_worth_series");
@@ -376,8 +389,10 @@ export async function incomeExpenseSeries(
     const entry = byMonth.get(r.mk);
     if (!entry) continue;
     const anchor = endOfMonth(`${r.mk}-01`);
-    entry.expenseMinor += await convertTo(exec, Number(r.outflow), r.currency, family.currency, anchor, ctx);
-    entry.incomeMinor += await convertTo(exec, Number(r.inflow), r.currency, family.currency, anchor, ctx);
+    const convertedExpense = await convertTo(exec, safeParseMinor(r.outflow), r.currency, family.currency, anchor, ctx);
+    const convertedIncome = await convertTo(exec, safeParseMinor(r.inflow), r.currency, family.currency, anchor, ctx);
+    entry.expenseMinor = safeAdd(entry.expenseMinor, convertedExpense);
+    entry.incomeMinor = safeAdd(entry.incomeMinor, convertedIncome);
   }
 
   await reportFxIssues(exec, ctx, family.id, "income_expense_series");
@@ -419,12 +434,12 @@ export async function spendingByCategory(
   const totals = new Map<string, { categoryId: string | null; name: string; totalMinor: number }>();
   let grand = 0;
   for (const r of res.rows ?? []) {
-    const converted = await convertTo(exec, Number(r.total_minor), r.currency, family.currency, range.to, ctx);
+    const converted = await convertTo(exec, safeParseMinor(r.total_minor), r.currency, family.currency, range.to, ctx);
     const key = r.category_id ?? "uncategorized";
     const existing = totals.get(key);
-    const next = (existing?.totalMinor ?? 0) + converted;
+    const next = safeAdd(existing?.totalMinor ?? 0, converted);
     totals.set(key, { categoryId: r.category_id, name: r.name ?? "Uncategorized", totalMinor: next });
-    grand += converted;
+    grand = safeAdd(grand, converted);
   }
 
   await reportFxIssues(exec, ctx, family.id, "spending_by_category");
@@ -463,8 +478,8 @@ export async function dailySpendingSeries(
   const byDate = new Map<string, number>();
   for (const r of res.rows ?? []) {
     const d = r.d.slice(0, 10);
-    const converted = await convertTo(exec, Number(r.outflow), r.currency, family.currency, d, ctx);
-    byDate.set(d, (byDate.get(d) ?? 0) + converted);
+    const converted = await convertTo(exec, safeParseMinor(r.outflow), r.currency, family.currency, d, ctx);
+    byDate.set(d, safeAdd(byDate.get(d) ?? 0, converted));
   }
   await reportFxIssues(exec, ctx, family.id, "daily_spending");
 

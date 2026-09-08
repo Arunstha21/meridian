@@ -5,6 +5,22 @@ import { isValuationDriven } from "../authorization/access";
 import { addDays, diffDays, isIsoDate, minDate, todayIn } from "@/lib/datetime";
 import { errors } from "@/lib/errors";
 
+function safeParseMinor(raw: string | number): number {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isSafeInteger(n)) {
+    throw errors.validation("Amount exceeds safe integer range.");
+  }
+  return n;
+}
+
+function safeSubtract(a: number, b: number): number {
+  const res = a - b;
+  if (!Number.isSafeInteger(res)) {
+    throw errors.validation("Calculated balance exceeds safe integer bounds.");
+  }
+  return res;
+}
+
 type AccountMeta = {
   id: string;
   currency: string;
@@ -32,7 +48,7 @@ async function loadAccountMeta(exec: Executor, accountId: string): Promise<Accou
     id: row.id,
     currency: row.currency,
     type: row.type,
-    openingBalanceMinor: Number(row.opening_balance_minor),
+    openingBalanceMinor: safeParseMinor(row.opening_balance_minor),
     openedOn: row.opened_on.slice(0, 10),
     timezone: row.timezone
   };
@@ -54,7 +70,9 @@ export async function recalculateAccount(
   }
 
   const dayCount = Math.max(1, diffDays(today, start) + 1);
-  const MAX_SUPPORTED_DAYS = 36500; // 100 years
+
+  // F04: Allow up to 36,500 days (100 years of ledger history), but fail visibly if exceeded
+  const MAX_SUPPORTED_DAYS = 36500;
   if (dayCount > MAX_SUPPORTED_DAYS) {
     throw errors.validation(
       `Account history span of ${dayCount} days exceeds the maximum supported limit (${MAX_SUPPORTED_DAYS} days).`
@@ -72,7 +90,7 @@ export async function recalculateAccount(
       ORDER BY date ASC, created_at ASC
     `);
     for (const r of res.rows ?? []) {
-      eventsByDate.set(r.date.slice(0, 10), Number(r.amount_minor));
+      eventsByDate.set(r.date.slice(0, 10), safeParseMinor(r.amount_minor));
     }
   } else {
     const res = await exec.execute<{ date: string; sum_minor: string }>(sql`
@@ -87,7 +105,7 @@ export async function recalculateAccount(
       ORDER BY date ASC
     `);
     for (const r of res.rows ?? []) {
-      eventsByDate.set(r.date.slice(0, 10), Number(r.sum_minor));
+      eventsByDate.set(r.date.slice(0, 10), safeParseMinor(r.sum_minor));
     }
   }
 
@@ -99,7 +117,7 @@ export async function recalculateAccount(
       .where(sql`${balancesTable.accountId} = ${accountId}::uuid AND ${balancesTable.asOf} < ${start}::date`)
       .orderBy(sql`${balancesTable.asOf} DESC`)
       .limit(1);
-    if (prev) baseline = prev.balanceMinor;
+    if (prev) baseline = safeParseMinor(prev.balanceMinor);
   }
 
   const rows: { accountId: string; asOf: string; balanceMinor: number; currency: string }[] = [];
@@ -113,7 +131,7 @@ export async function recalculateAccount(
       if (event !== undefined) displayBalance = event;
     } else {
       const delta = eventsByDate.get(cursor);
-      if (delta !== undefined) displayBalance -= delta;
+      if (delta !== undefined) displayBalance = safeSubtract(displayBalance, delta);
     }
     rows.push({ accountId, asOf: cursor, balanceMinor: displayBalance, currency: meta.currency });
     cursor = addDays(cursor, 1);
@@ -139,18 +157,25 @@ export async function recalculateAccount(
 export async function latestBalancesFor(
   exec: Executor,
   accountIds: string[]
-): Promise<Map<string, { balanceMinor: number; currency: string; asOf: string }>> {
-  if (accountIds.length === 0) return new Map();
-  const res = await exec.execute<{ account_id: string; balance_minor: string; currency: string; as_of: string }>(sql`
+): Promise<Map<string, { balanceMinor: number; asOf: string; currency: string }>> {
+  const result = new Map<string, { balanceMinor: number; asOf: string; currency: string }>();
+  if (!accountIds.length) return result;
+  const res = await exec.execute<{ account_id: string; balance_minor: string; as_of: string; currency: string }>(sql`
     SELECT DISTINCT ON (account_id)
-      account_id::text AS account_id, balance_minor::text AS balance_minor, currency, as_of::text AS as_of
+      account_id::text AS account_id,
+      balance_minor::text AS balance_minor,
+      as_of::text AS as_of,
+      currency
     FROM balances
     WHERE account_id IN (${sql.join(accountIds.map((id) => sql`${id}::uuid`), sql`, `)})
     ORDER BY account_id, as_of DESC
   `);
-  const map = new Map<string, { balanceMinor: number; currency: string; asOf: string }>();
   for (const r of res.rows ?? []) {
-    map.set(r.account_id, { balanceMinor: Number(r.balance_minor), currency: r.currency, asOf: r.as_of });
+    result.set(r.account_id, {
+      balanceMinor: safeParseMinor(r.balance_minor),
+      asOf: r.as_of.slice(0, 10),
+      currency: r.currency
+    });
   }
-  return map;
+  return result;
 }

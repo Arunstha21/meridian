@@ -89,13 +89,15 @@ export async function acceptInvitationForExistingUser(
   token: string,
   user: { id: string; email: string }
 ): Promise<{ userId: string; familyId: string; role: string }> {
-  const invitation = await getInvitationByToken(exec, token);
-  if (!invitation) throw errors.validation("This invitation link is invalid or has expired.");
-  if (user.email.toLowerCase() !== invitation.email) {
-    throw errors.forbidden("This invitation was sent to a different email address.");
-  }
-  await joinFamily(exec, invitation, user.id);
-  return { userId: user.id, familyId: invitation.familyId, role: invitation.role };
+  return exec.transaction(async (tx) => {
+    const invitation = await getInvitationByToken(tx, token);
+    if (!invitation) throw errors.validation("This invitation link is invalid or has expired.");
+    if (user.email.toLowerCase() !== invitation.email) {
+      throw errors.forbidden("This invitation was sent to a different email address.");
+    }
+    await joinFamily(tx, invitation, user.id);
+    return { userId: user.id, familyId: invitation.familyId, role: invitation.role };
+  });
 }
 
 export async function acceptInvitationWithNewAccount(
@@ -103,34 +105,38 @@ export async function acceptInvitationWithNewAccount(
   token: string,
   input: { name: string; password: string }
 ): Promise<{ userId: string; familyId: string; role: string }> {
-  const invitation = await getInvitationByToken(exec, token);
-  if (!invitation) throw errors.validation("This invitation link is invalid or has expired.");
-
   const name = input.name.trim();
   if (!name || name.length > 120) throw errors.validation("Your name must be 1–120 characters.");
   const policy = passwordPolicyError(input.password);
   if (policy) throw errors.validation(policy);
 
-  const clash = await findUserByEmail(exec, invitation.email);
-  if (clash) throw errors.conflict("An account with this email already exists. Sign in to accept.");
-
   const mustVerify = requireEmailVerification();
-  const [user] = await exec
-    .insert(users)
-    .values({
-      familyId: invitation.familyId,
-      email: invitation.email,
-      passwordHash: await hashPassword(input.password),
-      name,
-      familyRole: invitation.role,
-      platformRole: "user",
-      emailVerifiedAt: mustVerify ? null : new Date()
-    })
-    .returning({ id: users.id });
-  const userId = user!.id;
+  const passwordHash = await hashPassword(input.password);
 
-  await joinFamily(exec, invitation, userId, { alreadyMember: true });
-  return { userId, familyId: invitation.familyId, role: invitation.role };
+  return exec.transaction(async (tx) => {
+    const invitation = await getInvitationByToken(tx, token);
+    if (!invitation) throw errors.validation("This invitation link is invalid or has expired.");
+
+    const clash = await findUserByEmail(tx, invitation.email);
+    if (clash) throw errors.conflict("An account with this email already exists. Sign in to accept.");
+
+    const [user] = await tx
+      .insert(users)
+      .values({
+        familyId: invitation.familyId,
+        email: invitation.email,
+        passwordHash,
+        name,
+        familyRole: invitation.role,
+        platformRole: "user",
+        emailVerifiedAt: mustVerify ? null : new Date()
+      })
+      .returning({ id: users.id });
+    const userId = user!.id;
+
+    await joinFamily(tx, invitation, userId, { alreadyMember: true });
+    return { userId, familyId: invitation.familyId, role: invitation.role };
+  });
 }
 
 async function joinFamily(
@@ -176,5 +182,12 @@ export async function revokeInvitation(exec: Executor, actor: Actor, invitationI
     .delete(invitations)
     .where(and(eq(invitations.id, invitationId), eq(invitations.familyId, actor.familyId)))
     .returning({ id: invitations.id });
-  if (removed.length === 0) throw errors.notFound("Invitation");
+  if (!removed.length) throw errors.notFound("Invitation");
+  await recordAudit(exec, {
+    familyId: actor.familyId,
+    actorUserId: actor.userId,
+    action: "invitation.revoked",
+    entityType: "invitation",
+    entityId: invitationId
+  });
 }

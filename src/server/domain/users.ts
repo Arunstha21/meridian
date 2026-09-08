@@ -158,23 +158,26 @@ export async function performPasswordReset(
   const policy = passwordPolicyError(newPassword);
   if (policy) throw errors.validation(policy);
   const { consumeAuthToken, markEmailVerified } = await import("../security/auth-tokens");
-  const consumed = await consumeAuthToken(exec, token, "password_reset");
-  if (!consumed) throw errors.validation("This reset link is invalid or has expired.");
-
-  await exec
-    .update(users)
-    .set({ passwordHash: await hashPassword(newPassword), updatedAt: new Date() })
-    .where(eq(users.id, consumed.userId));
-  await markEmailVerified(exec, consumed.userId);
-
   const { revokeAllSessions } = await import("../security/session");
-  await revokeAllSessions(exec, consumed.userId);
+  const passwordHash = await hashPassword(newPassword);
 
-  await recordAudit(exec, {
-    actorUserId: consumed.userId,
-    action: "user.password_reset",
-    entityType: "user",
-    entityId: consumed.userId
+  await exec.transaction(async (tx) => {
+    const consumed = await consumeAuthToken(tx, token, "password_reset");
+    if (!consumed) throw errors.validation("This reset link is invalid or has expired.");
+
+    await tx
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, consumed.userId));
+    await markEmailVerified(tx, consumed.userId);
+    await revokeAllSessions(tx, consumed.userId);
+
+    await recordAudit(tx, {
+      actorUserId: consumed.userId,
+      action: "user.password_reset",
+      entityType: "user",
+      entityId: consumed.userId
+    });
   });
 }
 
@@ -232,16 +235,26 @@ export async function changeEmail(
   if (clash && clash.id !== actor.userId) {
     throw errors.conflict("That email is already registered.");
   }
-  await exec
-    .update(users)
-    .set({ email: newEmail, emailVerifiedAt: null, updatedAt: new Date() })
-    .where(eq(users.id, actor.userId));
-  await recordAudit(exec, {
-    familyId: actor.familyId,
-    actorUserId: actor.userId,
-    action: "user.email_changed",
-    entityType: "user",
-    entityId: actor.userId
+
+  await exec.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ email: newEmail, emailVerifiedAt: null, updatedAt: new Date() })
+      .where(eq(users.id, actor.userId));
+
+    const { invalidateUserTokens } = await import("../security/auth-tokens");
+    await invalidateUserTokens(tx, actor.userId);
+
+    const { revokeAllSessions } = await import("../security/session");
+    await revokeAllSessions(tx, actor.userId);
+
+    await recordAudit(tx, {
+      familyId: actor.familyId,
+      actorUserId: actor.userId,
+      action: "user.email_changed",
+      entityType: "user",
+      entityId: actor.userId
+    });
   });
 }
 
@@ -326,21 +339,18 @@ export async function setMemberRole(
     const admins = await countFamilyAdmins(exec, actor.familyId);
     if (admins <= 1) throw errors.conflict("Promote another admin before demoting the last admin.");
   }
-  await exec
-    .update(users)
-    .set({ familyRole: role, updatedAt: new Date() })
-    .where(eq(users.id, targetUserId));
+  await exec.update(users).set({ familyRole: role, updatedAt: new Date() }).where(eq(users.id, targetUserId));
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
     action: "member.role_changed",
     entityType: "user",
     entityId: targetUserId,
-    metadata: { newRole: role }
+    metadata: { role }
   });
 }
 
-export async function countFamilyAdmins(exec: Executor, familyId: string): Promise<number> {
+async function countFamilyAdmins(exec: Executor, familyId: string): Promise<number> {
   const [row] = await exec
     .select({ count: sql<number>`count(*)::int` })
     .from(users)

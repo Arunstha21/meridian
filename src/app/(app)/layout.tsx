@@ -25,6 +25,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const accounts = await listAccountsForActor(db, actor);
   const active = accounts.filter((a) => a.status === "active");
+  const reportAccounts = active.filter((a) => a.includedInReports);
   const toNav = (a: (typeof accounts)[number]) => ({
     id: a.id,
     name: a.name,
@@ -38,12 +39,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const netWorthMinor = await netWorthMinorForAccounts(
     db,
     family,
-    [...assets, ...liabilities],
+    reportAccounts.map((a) => ({
+      displayBalanceMinor: a.displayBalanceMinor,
+      currency: a.currency
+    })),
     today
   );
   return (
     <Shell
       user={actor.name}
+      email={actor.email}
       family={family.name}
       privacy={privacy}
       assets={assets}

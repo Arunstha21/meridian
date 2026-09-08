@@ -6,6 +6,8 @@ import { buildToolContext } from "./tools";
 import { errors } from "@/lib/errors";
 
 const MAX_TOOL_ROUNDS = 8;
+const MAX_TOTAL_TOOL_CALLS = 10;
+const AGENT_TIMEOUT_MS = 60_000;
 const MAX_HISTORY_MESSAGES = 40;
 
 export type AgentResult = {
@@ -54,11 +56,20 @@ export async function runAgent(
   ];
 
   const toolCallsMade: { name: string; args: string }[] = [];
+  const startTime = Date.now();
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    if (Date.now() - startTime > AGENT_TIMEOUT_MS) {
+      throw errors.validation("The assistant timed out while processing your request. Please try a simpler query.");
+    }
+
     const { message } = await chatCompletion(messages, tools);
 
     if (message.tool_calls && message.tool_calls.length > 0) {
+      if (toolCallsMade.length + message.tool_calls.length > MAX_TOTAL_TOOL_CALLS) {
+        throw errors.validation("The assistant exceeded its tool execution quota. Please try a simpler query.");
+      }
+
       messages.push({ role: "assistant", content: message.content ?? "", tool_calls: message.tool_calls });
       for (const call of message.tool_calls) {
         const result = await executeTool(call.function.name, call.function.arguments, ctx);
@@ -73,7 +84,7 @@ export async function runAgent(
     }
 
     const reply = message.content?.trim();
-    if (reply) return { reply, toolCallsMade, proposals: ctx.proposals };
+    if (reply) return { reply: reply.slice(0, 4000), toolCallsMade, proposals: ctx.proposals };
 
     throw errors.validation("The assistant returned an empty response. Try again.");
   }
