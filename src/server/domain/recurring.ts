@@ -178,48 +178,60 @@ export async function updateSeries(
   seriesId: string,
   patch: Partial<RecurringSeriesInput> & { active?: boolean }
 ): Promise<void> {
-  const [existing] = await exec
-    .select()
-    .from(recurringSeries)
-    .where(and(eq(recurringSeries.id, seriesId), eq(recurringSeries.familyId, actor.familyId)))
-    .limit(1);
-  if (!existing) throw errors.notFound("Recurring series");
+  await exec.transaction(async (tx) => {
+    const existing = await requireSeriesManage(tx, actor, seriesId);
 
-  const merged: RecurringSeriesInput = {
-    accountId: patch.accountId ?? existing.accountId,
-    name: patch.name ?? existing.name,
-    merchant: patch.merchant !== undefined ? patch.merchant : existing.merchant,
-    amountLedgerMinor: patch.amountLedgerMinor ?? existing.amountMinor,
-    categoryId: patch.categoryId !== undefined ? patch.categoryId : existing.categoryId,
-    frequency: (patch.frequency ?? existing.frequency) as Frequency,
-    config: patch.config ?? (existing.config as SeriesConfig),
-    nextDue: patch.nextDue ?? existing.nextDue
-  };
-  validateInput(merged);
-  await assertAccountAndCategory(exec, actor, merged.accountId, merged.categoryId ?? null);
+    let targetAccount: typeof accounts.$inferSelect | null = null;
+    if (patch.accountId && patch.accountId !== existing.accountId) {
+      targetAccount = await assertAccountAndCategory(
+        tx,
+        actor,
+        patch.accountId,
+        patch.categoryId !== undefined ? patch.categoryId : existing.categoryId
+      );
+      if (targetAccount.currency !== existing.currency) {
+        throw errors.validation("Cannot move recurring series across accounts with different currencies.");
+      }
+    } else if (patch.categoryId !== undefined && patch.categoryId !== null) {
+      await assertAccountAndCategory(tx, actor, existing.accountId, patch.categoryId);
+    }
 
-  await exec
-    .update(recurringSeries)
-    .set({
-      accountId: merged.accountId,
-      name: merged.name.trim(),
-      merchant: merged.merchant?.trim() || null,
-      amountMinor: merged.amountLedgerMinor,
-      categoryId: merged.categoryId ?? null,
-      frequency: merged.frequency,
-      config: merged.config,
-      nextDue: merged.nextDue,
-      active: patch.active ?? existing.active,
-      updatedAt: new Date()
-    })
-    .where(eq(recurringSeries.id, seriesId));
+    const merged: RecurringSeriesInput = {
+      accountId: patch.accountId ?? existing.accountId,
+      name: patch.name ?? existing.name,
+      merchant: patch.merchant !== undefined ? patch.merchant : existing.merchant,
+      amountLedgerMinor: patch.amountLedgerMinor ?? existing.amountMinor,
+      categoryId: patch.categoryId !== undefined ? patch.categoryId : existing.categoryId,
+      frequency: (patch.frequency ?? existing.frequency) as Frequency,
+      config: patch.config ?? (existing.config as SeriesConfig),
+      nextDue: patch.nextDue ?? existing.nextDue
+    };
+    validateInput(merged);
 
-  await recordAudit(exec, {
-    familyId: actor.familyId,
-    actorUserId: actor.userId,
-    action: "recurring.updated",
-    entityType: "recurring_series",
-    entityId: seriesId
+    await tx
+      .update(recurringSeries)
+      .set({
+        accountId: merged.accountId,
+        name: merged.name.trim(),
+        merchant: merged.merchant?.trim() || null,
+        amountMinor: merged.amountLedgerMinor,
+        currency: targetAccount ? targetAccount.currency : existing.currency,
+        categoryId: merged.categoryId ?? null,
+        frequency: merged.frequency,
+        config: merged.config,
+        nextDue: merged.nextDue,
+        active: patch.active ?? existing.active,
+        updatedAt: new Date()
+      })
+      .where(eq(recurringSeries.id, seriesId));
+
+    await recordAudit(tx, {
+      familyId: actor.familyId,
+      actorUserId: actor.userId,
+      action: "recurring.updated",
+      entityType: "recurring_series",
+      entityId: seriesId
+    });
   });
 }
 

@@ -44,13 +44,19 @@ export const isProd = env.NODE_ENV === "production";
 export const isTest = env.NODE_ENV === "test";
 
 export function adminEmails(): string[] {
-  return env.ADMIN_EMAILS.split(",")
+  const raw = process.env.ADMIN_EMAILS !== undefined ? process.env.ADMIN_EMAILS : env.ADMIN_EMAILS;
+  return raw
+    .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 }
 
 export function requireEmailVerification(): boolean {
-  return env.REQUIRE_EMAIL_VERIFICATION === "true";
+  const val =
+    process.env.REQUIRE_EMAIL_VERIFICATION !== undefined
+      ? process.env.REQUIRE_EMAIL_VERIFICATION
+      : env.REQUIRE_EMAIL_VERIFICATION;
+  return val === "true";
 }
 
 export function aiChatEnabled(): boolean {

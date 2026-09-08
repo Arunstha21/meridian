@@ -13,6 +13,8 @@ import * as invitationsSvc from "@/server/domain/invitations";
 import { issueAuthToken, verificationUrl } from "@/server/security/auth-tokens";
 import { revokeOtherSessions } from "@/server/security/session";
 import { enqueue } from "@/server/queue";
+import { adminEmails, env } from "@/lib/env";
+import { errors } from "@/lib/errors";
 
 const profileSchema = z.object({ name: z.string().min(1).max(120) });
 
@@ -23,15 +25,15 @@ export async function updateProfileAction(
   return runAction("profile.update", async () => {
     const actor = await assertActor();
     const input = profileSchema.parse(formValues(formData));
-    await withTransaction((tx) => usersSvc.updateProfile(tx, actor, { name: input.name }));
+    await usersSvc.updateProfile(getDb(), actor, input);
     revalidatePath("/settings");
     return undefined;
   });
 }
 
 const preferenceSchema = z.object({
-  key: z.enum(["privacy_mode", "theme"]),
-  value: z.string().min(1).max(20)
+  key: z.string().min(1),
+  value: z.string()
 });
 
 export async function setPreferenceAction(formData: FormData): Promise<void> {
@@ -136,7 +138,7 @@ export async function deleteFamilyAction(_prev: ActionState | undefined, formDat
     const actor = await assertActor();
     const input = deleteFamilySchema.parse(formValues(formData));
     await withTransaction((tx) => familiesSvc.deleteFamily(tx, actor, input.confirmName));
-    await revokeOtherSessions(getDb(), actor.userId);
+    await revokeOtherSessions(getDb(), actor.userId, actor.sessionId);
     const store = await import("next/headers").then((m) => m.cookies());
     store.delete("meridian_session");
     redirect("/sign-in?deleted=1");
@@ -149,24 +151,29 @@ const inviteSchema = z.object({
 });
 
 export async function createInvitationAction(
-  _prev: ActionState<{ inviteUrl: string }> | undefined,
+  _prev: ActionState<{ inviteUrl?: string }> | undefined,
   formData: FormData
-): Promise<ActionState<{ inviteUrl: string }>> {
+): Promise<ActionState<{ inviteUrl?: string }>> {
   return runAction("invitation.create", async () => {
     const actor = await assertActor();
     const input = inviteSchema.parse(formValues(formData));
+    const targetEmail = input.email.toLowerCase().trim();
+    if (adminEmails().includes(targetEmail)) {
+      throw errors.forbidden("Platform administrator addresses cannot be invited to join a family.");
+    }
     let url = "";
     await withTransaction(async (tx) => {
       const { token } = await invitationsSvc.createInvitation(tx, actor, input);
       url = invitationsSvc.invitationUrl(token);
       await enqueue(tx, "email", {
-        to: input.email.toLowerCase(),
+        to: targetEmail,
         subject: "You're invited to join a family on Meridian",
         text: `Accept your invitation:\n${url}\n\nThis link expires in 7 days.`
       });
     });
     revalidatePath("/settings/members");
-    return { inviteUrl: url };
+    const exposeUrl = env.MAIL_TRANSPORT === "console";
+    return { inviteUrl: exposeUrl ? url : undefined };
   });
 }
 

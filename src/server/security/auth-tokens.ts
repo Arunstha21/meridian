@@ -2,7 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm";
 import { Executor } from "../db/client";
 import { authTokens, users } from "../db/schema";
 import { hashToken, randomToken } from "@/lib/crypto";
-import { env } from "@/lib/env";
+import { env, adminEmails } from "@/lib/env";
 
 export type TokenPurpose = "email_verification" | "password_reset";
 
@@ -59,5 +59,17 @@ export function passwordResetUrl(token: string): string {
 }
 
 export async function markEmailVerified(exec: Executor, userId: string): Promise<void> {
-  await exec.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
+  const [user] = await exec
+    .select({ email: users.email })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const shouldBePlatformAdmin = user && adminEmails().includes(user.email.toLowerCase());
+  await exec
+    .update(users)
+    .set({
+      emailVerifiedAt: new Date(),
+      ...(shouldBePlatformAdmin ? { platformRole: "super_admin" as const } : {})
+    })
+    .where(eq(users.id, userId));
 }

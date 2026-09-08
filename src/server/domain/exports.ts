@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import {
   accountShares,
@@ -15,6 +15,7 @@ import {
 } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { recordAudit } from "../observability/audit";
+import { listAccountsForActor } from "./accounts";
 
 export const EXPORT_VERSION = 1;
 
@@ -26,33 +27,38 @@ export async function buildFamilyExport(exec: Executor, actor: Actor): Promise<F
   const [family] = await exec.select().from(families).where(eq(families.id, familyId)).limit(1);
   if (!family) throw new Error("Family not found");
 
-  const accountRows = await exec.select().from(accounts).where(eq(accounts.familyId, familyId));
+  const visibleAccounts = await listAccountsForActor(exec, actor);
+  const visibleAccountIds = visibleAccounts.map((a) => a.id);
+
   const categoryRows = await exec.select().from(categories).where(eq(categories.familyId, familyId));
   const tagRows = await exec.select().from(tags).where(eq(tags.familyId, familyId));
 
-  const entryRows = await exec
-    .select({
-      entry: entries,
-      txnCategoryId: transactions.categoryId,
-      txnMerchant: transactions.merchant,
-      txnTransferId: transactions.transferId,
-      valuationKind: valuations.kind
-    })
-    .from(entries)
-    .innerJoin(accounts, eq(accounts.id, entries.accountId))
-    .leftJoin(transactions, eq(transactions.entryId, entries.id))
-    .leftJoin(valuations, eq(valuations.entryId, entries.id))
-    .where(eq(accounts.familyId, familyId));
+  const entryRows =
+    visibleAccountIds.length > 0
+      ? await exec
+          .select({
+            entry: entries,
+            txnCategoryId: transactions.categoryId,
+            txnMerchant: transactions.merchant,
+            txnTransferId: transactions.transferId,
+            valuationKind: valuations.kind
+          })
+          .from(entries)
+          .innerJoin(accounts, eq(accounts.id, entries.accountId))
+          .leftJoin(transactions, eq(transactions.entryId, entries.id))
+          .leftJoin(valuations, eq(valuations.entryId, entries.id))
+          .where(and(eq(accounts.familyId, familyId), inArray(accounts.id, visibleAccountIds)))
+      : [];
 
   const tagLinks =
-    entryRows.length > 0
+    entryRows.length > 0 && visibleAccountIds.length > 0
       ? await exec
           .select({ entryId: entries.id, tagId: transactionTags.tagId })
           .from(transactionTags)
           .innerJoin(transactions, eq(transactions.id, transactionTags.transactionId))
           .innerJoin(entries, eq(entries.id, transactions.entryId))
           .innerJoin(accounts, eq(accounts.id, entries.accountId))
-          .where(eq(accounts.familyId, familyId))
+          .where(and(eq(accounts.familyId, familyId), inArray(accounts.id, visibleAccountIds)))
       : [];
 
   const memberRows = await exec
@@ -60,15 +66,18 @@ export async function buildFamilyExport(exec: Executor, actor: Actor): Promise<F
     .from(users)
     .where(eq(users.familyId, familyId));
 
-  const shareRows = await exec
-    .select({
-      accountId: accountShares.accountId,
-      userId: accountShares.userId,
-      permission: accountShares.permission
-    })
-    .from(accountShares)
-    .innerJoin(accounts, eq(accounts.id, accountShares.accountId))
-    .where(eq(accounts.familyId, familyId));
+  const shareRows =
+    visibleAccountIds.length > 0
+      ? await exec
+          .select({
+            accountId: accountShares.accountId,
+            userId: accountShares.userId,
+            permission: accountShares.permission
+          })
+          .from(accountShares)
+          .innerJoin(accounts, eq(accounts.id, accountShares.accountId))
+          .where(and(eq(accounts.familyId, familyId), inArray(accounts.id, visibleAccountIds)))
+      : [];
 
   const rateRows = await exec.select().from(exchangeRates);
 
@@ -85,7 +94,7 @@ export async function buildFamilyExport(exec: Executor, actor: Actor): Promise<F
     action: "family.exported",
     entityType: "family",
     entityId: familyId,
-    metadata: { accounts: accountRows.length, entries: entryRows.length }
+    metadata: { accounts: visibleAccounts.length, entries: entryRows.length }
   });
 
   return {
@@ -93,7 +102,7 @@ export async function buildFamilyExport(exec: Executor, actor: Actor): Promise<F
     exportedAt: new Date().toISOString(),
     family: serializeFamily(family, memberRows),
     shares: shareRows,
-    accounts: accountRows.map((a) => ({
+    accounts: visibleAccounts.map((a) => ({
       id: a.id,
       name: a.name,
       type: a.type,

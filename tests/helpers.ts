@@ -167,4 +167,9 @@ export async function setPassword(userId: string, hash: string): Promise<void> {
   await db().execute(sql`UPDATE users SET password_hash = ${hash} WHERE id = ${userId}::uuid`);
 }
 
+export async function joinFamily(user: TestUser, familyId: string): Promise<void> {
+  await db().execute(sql`UPDATE users SET family_id = ${familyId}::uuid WHERE id = ${user.userId}::uuid`);
+  user.familyId = familyId;
+}
+
 export const scryptHashForTests = hashPassword;

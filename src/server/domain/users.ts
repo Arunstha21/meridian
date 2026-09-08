@@ -1,10 +1,10 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { families, sessions, users } from "../db/schema";
+import { accounts, families, sessions, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/crypto";
 import { errors } from "@/lib/errors";
-import { adminEmails } from "@/lib/env";
+import { adminEmails, requireEmailVerification } from "@/lib/env";
 import { isValidCurrency } from "@/lib/money";
 import { validateTimezone } from "./families";
 import { recordAudit } from "../observability/audit";
@@ -50,6 +50,9 @@ export async function registerUserWithFamily(
   if (!isValidCurrency(currency)) throw errors.validation("Unknown currency code.");
   const timezone = validateTimezone(input.timezone ?? "Etc/UTC");
 
+  const mustVerify = requireEmailVerification();
+  const shouldBePlatformAdmin = !mustVerify && adminEmails().includes(email);
+
   const result = await exec.transaction(async (tx) => {
     const [family] = await tx
       .insert(families)
@@ -68,7 +71,8 @@ export async function registerUserWithFamily(
         passwordHash: await hashPassword(input.password),
         name,
         familyRole: "admin",
-        platformRole: adminEmails().includes(email) ? "super_admin" : "user"
+        platformRole: shouldBePlatformAdmin ? "super_admin" : "user",
+        emailVerifiedAt: mustVerify ? null : new Date()
       })
       .returning({ id: users.id });
     return { userId: user!.id, familyId: fid };
@@ -290,7 +294,16 @@ export async function removeMember(exec: Executor, actor: Actor, targetUserId: s
     const admins = await countFamilyAdmins(exec, actor.familyId);
     if (admins <= 1) throw errors.conflict("Promote another admin before removing the last admin.");
   }
-  await exec.delete(users).where(eq(users.id, targetUserId));
+
+  await exec.transaction(async (tx) => {
+    // Prevent the departing member's private accounts from silently converting to joint accounts
+    await tx
+      .delete(accounts)
+      .where(and(eq(accounts.familyId, actor.familyId), eq(accounts.ownerId, targetUserId)));
+
+    await tx.delete(users).where(eq(users.id, targetUserId));
+  });
+
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
@@ -313,18 +326,21 @@ export async function setMemberRole(
     const admins = await countFamilyAdmins(exec, actor.familyId);
     if (admins <= 1) throw errors.conflict("Promote another admin before demoting the last admin.");
   }
-  await exec.update(users).set({ familyRole: role, updatedAt: new Date() }).where(eq(users.id, targetUserId));
+  await exec
+    .update(users)
+    .set({ familyRole: role, updatedAt: new Date() })
+    .where(eq(users.id, targetUserId));
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
     action: "member.role_changed",
     entityType: "user",
     entityId: targetUserId,
-    metadata: { role }
+    metadata: { newRole: role }
   });
 }
 
-async function countFamilyAdmins(exec: Executor, familyId: string): Promise<number> {
+export async function countFamilyAdmins(exec: Executor, familyId: string): Promise<number> {
   const [row] = await exec
     .select({ count: sql<number>`count(*)::int` })
     .from(users)

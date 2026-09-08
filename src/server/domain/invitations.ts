@@ -4,7 +4,7 @@ import { invitations, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { hashPassword, hashToken, passwordPolicyError, randomToken } from "@/lib/crypto";
 import { errors } from "@/lib/errors";
-import { adminEmails, env } from "@/lib/env";
+import { adminEmails, env, requireEmailVerification } from "@/lib/env";
 import { recordAudit } from "../observability/audit";
 import { findUserByEmail, EMAIL_PATTERN } from "./users";
 
@@ -19,6 +19,10 @@ export async function createInvitation(
   if (actor.familyRole !== "admin") throw errors.forbidden("Only family admins can invite members.");
   const email = input.email.trim().toLowerCase();
   if (!EMAIL_PATTERN.test(email)) throw errors.validation("Enter a valid email address.");
+
+  if (adminEmails().includes(email)) {
+    throw errors.forbidden("Platform administrator addresses cannot be invited to join a family.");
+  }
 
   const existing = await findUserByEmail(exec, email);
   if (existing) throw errors.conflict("That person already has an account.");
@@ -110,6 +114,7 @@ export async function acceptInvitationWithNewAccount(
   const clash = await findUserByEmail(exec, invitation.email);
   if (clash) throw errors.conflict("An account with this email already exists. Sign in to accept.");
 
+  const mustVerify = requireEmailVerification();
   const [user] = await exec
     .insert(users)
     .values({
@@ -118,8 +123,8 @@ export async function acceptInvitationWithNewAccount(
       passwordHash: await hashPassword(input.password),
       name,
       familyRole: invitation.role,
-      platformRole: adminEmails().includes(invitation.email) ? "super_admin" : "user",
-      emailVerifiedAt: new Date()
+      platformRole: "user",
+      emailVerifiedAt: mustVerify ? null : new Date()
     })
     .returning({ id: users.id });
   const userId = user!.id;

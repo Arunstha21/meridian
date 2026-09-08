@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { sql } from "drizzle-orm";
-import { db, makeUser, makeAccount, addTxn, truncateAll, actorOf, daysAgo } from "../helpers";
+import { db, makeUser, makeAccount, addTxn, truncateAll, actorOf, daysAgo, joinFamily } from "../helpers";
 import * as reportsSvc from "@/server/domain/reports";
 import * as accountsSvc from "@/server/domain/accounts";
 import * as orchestrate from "@/server/domain/orchestrate";
@@ -112,5 +112,35 @@ describe("family export", () => {
     expect((data.accounts as unknown[]).length).toBeGreaterThanOrEqual(1);
     const entries = data.entries as Array<{ name: string; kind: string }>;
     expect(entries.some((e) => e.name === "Export me")).toBe(true);
+  });
+
+  it("excludes private accounts and entries of other members (S01)", async () => {
+    const admin = await makeUser({ familyName: "ExportPrivacyFamily" });
+    const member = await makeUser({ email: `member-${Date.now()}@test.local` });
+    await joinFamily(member, admin.familyId);
+
+    const adminPrivate = await makeAccount(admin, { name: "Admin Private", joint: false });
+    await addTxn(admin, adminPrivate, { amountLedgerMinor: 5000, name: "Secret Admin Txn" });
+
+    const memberPrivate = await makeAccount(member, { name: "Member Private", joint: false });
+    await addTxn(member, memberPrivate, { amountLedgerMinor: 7500, name: "Secret Member Txn" });
+
+    // Member export must NOT include admin's private account or transactions
+    const memberExport = await exportsSvc.buildFamilyExport(db(), actorOf(member, "member"));
+    const memberAccounts = memberExport.accounts as Array<{ id: string; name: string }>;
+    const memberEntries = memberExport.entries as Array<{ name: string }>;
+    expect(memberAccounts.some((a) => a.id === adminPrivate)).toBe(false);
+    expect(memberAccounts.some((a) => a.id === memberPrivate)).toBe(true);
+    expect(memberEntries.some((e) => e.name === "Secret Admin Txn")).toBe(false);
+    expect(memberEntries.some((e) => e.name === "Secret Member Txn")).toBe(true);
+
+    // Admin export must NOT include member's private account or transactions
+    const adminExport = await exportsSvc.buildFamilyExport(db(), actorOf(admin, "admin"));
+    const adminAccounts = adminExport.accounts as Array<{ id: string; name: string }>;
+    const adminEntries = adminExport.entries as Array<{ name: string }>;
+    expect(adminAccounts.some((a) => a.id === memberPrivate)).toBe(false);
+    expect(adminAccounts.some((a) => a.id === adminPrivate)).toBe(true);
+    expect(adminEntries.some((e) => e.name === "Secret Member Txn")).toBe(false);
+    expect(adminEntries.some((e) => e.name === "Secret Admin Txn")).toBe(true);
   });
 });

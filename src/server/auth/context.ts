@@ -66,10 +66,17 @@ export async function requireSuperAdmin(): Promise<Actor> {
   return actor;
 }
 
-export async function assertActor(): Promise<Actor> {
+export async function assertActor(opts: { allowUnverified?: boolean } = {}): Promise<Actor> {
   const actor = await loadActor();
   if (!actor) throw errors.unauthorized();
+  if (!opts.allowUnverified && requireEmailVerification() && !actor.emailVerified) {
+    throw errors.forbidden("Email verification is required.");
+  }
   return actor;
+}
+
+export async function assertVerifiedActor(): Promise<Actor> {
+  return assertActor({ allowUnverified: false });
 }
 
 export async function currentFamily(actor: Actor): Promise<Family> {

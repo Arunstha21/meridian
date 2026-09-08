@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getDb } from "@/server/db/client";
 import { loadActor } from "@/server/auth/context";
 import { buildFamilyExport } from "@/server/domain/exports";
+import { requireEmailVerification } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,12 @@ export async function GET() {
   const actor = await loadActor();
   if (!actor) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (requireEmailVerification() && !actor.emailVerified) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Email verification is required to export data." },
+      { status: 403 }
+    );
   }
   const db = getDb();
   const data = await buildFamilyExport(db, actor);

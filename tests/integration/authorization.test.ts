@@ -249,6 +249,95 @@ describe("valuations access", () => {
   });
 });
 
+describe("member removal privacy (S03)", () => {
+  it("deletes private accounts owned by a removed member instead of converting them to joint", async () => {
+    const admin = await makeUser({ familyName: "RemovalPrivacyFamily" });
+    const member = await makeUser({ email: `removal-${Date.now()}@test.local` });
+    await joinFamily(member, admin.familyId);
+
+    const privateAccount = await makeAccount(member, { name: "Member Private", joint: false });
+    const jointAccount = await makeAccount(member, { name: "Member Joint", joint: true });
+
+    // Admin removes member
+    await usersSvc.removeMember(db(), actorOf(admin, "admin"), member.userId);
+
+    // The private account must have been deleted, not left orphaned with ownerId null
+    await expect(accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), privateAccount)).rejects.toMatchObject({
+      code: "resource.not_found"
+    });
+
+    // The joint account should remain for the family
+    const jointOverview = await accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), jointAccount);
+    expect(jointOverview.account.id).toBe(jointAccount);
+  });
+});
+
+describe("recurring series authorization (S04)", () => {
+  it("denies reassigning recurring series without source or target manage permission", async () => {
+    const admin = await makeUser({ familyName: "RecurringAuthFamily" });
+    const member = await makeUser({ email: `recur-auth-${Date.now()}@test.local` });
+    await joinFamily(member, admin.familyId);
+
+    const adminAccount = await makeAccount(admin, { name: "Admin Checking", joint: false });
+    const memberAccount = await makeAccount(member, { name: "Member Checking", joint: false });
+
+    // Admin creates recurring series on admin account
+    const seriesId = await recurringSvc.createSeries(db(), actorOf(admin, "admin"), {
+      accountId: adminAccount,
+      name: "Monthly Gym",
+      amountLedgerMinor: 5000,
+      frequency: "monthly",
+      config: { dayOfMonth: 1 },
+      nextDue: "2026-10-01"
+    });
+
+    // Member has no access to adminAccount, cannot update or reassign series
+    await expect(
+      recurringSvc.updateSeries(db(), actorOf(member, "member"), seriesId, {
+        accountId: memberAccount
+      })
+    ).rejects.toMatchObject({ code: "resource.not_found" });
+
+    // If admin shares adminAccount with member as read_only:
+    await accountsSvc.shareAccount(db(), actorOf(admin, "admin"), adminAccount, member.userId, "read_only");
+
+    // Member with read_only on source still cannot update or reassign series
+    await expect(
+      recurringSvc.updateSeries(db(), actorOf(member, "member"), seriesId, {
+        accountId: memberAccount
+      })
+    ).rejects.toMatchObject({ code: "access.denied" });
+
+    // Admin (who has manage on adminAccount) cannot reassign to member's private account without manage permission on memberAccount
+    await expect(
+      recurringSvc.updateSeries(db(), actorOf(admin, "admin"), seriesId, {
+        accountId: memberAccount
+      })
+    ).rejects.toMatchObject({ code: "resource.not_found" });
+  });
+
+  it("denies moving recurring series across accounts with different currencies", async () => {
+    const user = await makeUser({ familyName: "RecurringFxFamily" });
+    const usdAccount = await makeAccount(user, { name: "USD Account", currency: "USD", joint: true });
+    const eurAccount = await makeAccount(user, { name: "EUR Account", currency: "EUR", joint: true });
+
+    const seriesId = await recurringSvc.createSeries(db(), actorOf(user, "admin"), {
+      accountId: usdAccount,
+      name: "USD Subscription",
+      amountLedgerMinor: 1000,
+      frequency: "monthly",
+      config: { dayOfMonth: 15 },
+      nextDue: "2026-10-15"
+    });
+
+    await expect(
+      recurringSvc.updateSeries(db(), actorOf(user, "admin"), seriesId, {
+        accountId: eurAccount
+      })
+    ).rejects.toMatchObject({ code: "validation.failed" });
+  });
+});
+
 async function joinFamily(user: Awaited<ReturnType<typeof makeUser>>, familyId: string) {
   await db().update(users).set({ familyId }).where(eq(users.id, user.userId));
   user.familyId = familyId;
