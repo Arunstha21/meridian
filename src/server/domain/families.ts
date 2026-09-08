@@ -40,28 +40,39 @@ export async function updateFamilySettings(
   if (patch.currency !== undefined) {
     const newCurrency = patch.currency.toUpperCase();
     if (!isValidCurrency(newCurrency)) throw errors.validation("Unknown currency code.");
+    updates.currency = newCurrency;
+  }
+  if (patch.timezone !== undefined) updates.timezone = validateTimezone(patch.timezone);
+  if (patch.locale !== undefined) updates.locale = validateLocale(patch.locale);
 
-    const [current] = await exec
-      .select({ currency: families.currency })
-      .from(families)
-      .where(eq(families.id, actor.familyId))
-      .limit(1);
-
-    if (current && current.currency !== newCurrency) {
-      const oldCurrency = current.currency;
-      // F12: Migrate existing budget limits using exchange rates
-      const activeBudgets = await exec
-        .select()
-        .from(budgets)
-        .where(eq(budgets.familyId, actor.familyId));
-
-      if (activeBudgets.length > 0) {
-        const today = new Date().toISOString().slice(0, 10);
-        const rate = await getRate(exec, oldCurrency, newCurrency, today);
-        if (rate) {
-          for (const b of activeBudgets) {
-            const converted = convertMinor(b.amountMinor, rate, oldCurrency, newCurrency);
-            await exec
+  // F13: the currency switch and the budget-limit conversion happen in one
+  // transaction, and a missing exchange rate aborts the change outright —
+  // budget amounts must never keep numeric meaning from the old currency.
+  await exec.transaction(async (tx) => {
+    if (updates.currency !== undefined) {
+      const [current] = await tx
+        .select({ currency: families.currency })
+        .from(families)
+        .where(eq(families.id, actor.familyId))
+        .limit(1);
+      const oldCurrency = current?.currency;
+      if (oldCurrency && oldCurrency !== updates.currency) {
+        const familyBudgets = await tx
+          .select()
+          .from(budgets)
+          .where(eq(budgets.familyId, actor.familyId));
+        const active = familyBudgets.filter((b) => b.active);
+        if (active.length > 0) {
+          const today = new Date().toISOString().slice(0, 10);
+          const rate = await getRate(tx, oldCurrency, updates.currency, today);
+          if (!rate) {
+            throw errors.validation(
+              `No exchange rate from ${oldCurrency} to ${updates.currency} is available. Add a rate or remove the active budgets before changing the family currency.`
+            );
+          }
+          for (const b of active) {
+            const converted = convertMinor(b.amountMinor, rate, oldCurrency, updates.currency);
+            await tx
               .update(budgets)
               .set({ amountMinor: Math.max(1, converted), updatedAt: new Date() })
               .where(eq(budgets.id, b.id));
@@ -69,11 +80,10 @@ export async function updateFamilySettings(
         }
       }
     }
-    updates.currency = newCurrency;
-  }
-  if (patch.timezone !== undefined) updates.timezone = validateTimezone(patch.timezone);
-  if (patch.locale !== undefined) updates.locale = validateLocale(patch.locale);
-  await exec.update(families).set(updates).where(eq(families.id, actor.familyId));
+
+    await tx.update(families).set(updates).where(eq(families.id, actor.familyId));
+  });
+
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
