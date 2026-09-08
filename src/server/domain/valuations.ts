@@ -4,6 +4,7 @@ import { accounts, entries, valuations } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { assertAccountAccessLevel, assertAccountOpen } from "../authorization/access";
 import { errors } from "@/lib/errors";
+import { displayToLedgerBalance } from "@/lib/money";
 import { isIsoDate } from "@/lib/datetime";
 import { recordAudit } from "../observability/audit";
 
@@ -38,13 +39,15 @@ export async function recordValuation(
     input.name?.trim() ||
     (input.kind === "reconciliation" ? "Reconciliation adjustment" : "Valuation update");
 
+  const ledgerAmount = displayToLedgerBalance(input.amountDisplayMinor, account.type);
+
   const entryId = await exec.transaction(async (tx) => {
     const [entry] = await tx
       .insert(entries)
       .values({
         accountId: account.id,
         date: input.date,
-        amountMinor: input.amountDisplayMinor,
+        amountMinor: ledgerAmount,
         currency: account.currency,
         name,
         entryableType: "valuation"

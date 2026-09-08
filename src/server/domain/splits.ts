@@ -31,6 +31,10 @@ export async function splitEntry(
   const [parent] = await exec.select().from(entries).where(eq(entries.id, parentEntryId)).limit(1);
   if (!parent || parent.entryableType !== "transaction") throw errors.notFound("Transaction");
 
+  if (parent.parentEntryId) {
+    throw errors.validation("Cannot split a transaction that is already a split part.");
+  }
+
   const access = await getAccountAccess(exec, actor, parent.accountId);
   if (!access.granted) throw errors.notFound("Transaction");
   if (!canEditCore(access.level)) {
@@ -75,53 +79,60 @@ export async function splitEntry(
     );
   }
 
-  const categoryIds = [...new Set(children.map((c) => c.categoryId).filter((id): id is string => Boolean(id)))];
+  const categoryIds = children.map((c) => c.categoryId).filter((id): id is string => !!id);
   if (categoryIds.length > 0) {
-    const rows = await exec
+    const matching = await exec
       .select({ id: categories.id })
       .from(categories)
-      .where(and(inArray(categories.id, categoryIds), eq(categories.familyId, actor.familyId)));
-    if (rows.length !== categoryIds.length) throw errors.validation("Unknown category.");
+      .where(and(eq(categories.familyId, actor.familyId), inArray(categories.id, categoryIds)));
+    if (matching.length !== new Set(categoryIds).size) {
+      throw errors.validation("One or more chosen categories do not belong to this family.");
+    }
   }
-  const tagIds = [...new Set(children.flatMap((c) => c.tagIds ?? []))];
-  if (tagIds.length > 0) {
-    const rows = await exec
+
+  const allTagIds = Array.from(new Set(children.flatMap((c) => c.tagIds ?? [])));
+  if (allTagIds.length > 0) {
+    const validTags = await exec
       .select({ id: tags.id })
       .from(tags)
-      .where(and(inArray(tags.id, tagIds), eq(tags.familyId, actor.familyId)));
-    if (rows.length !== tagIds.length) throw errors.validation("Unknown tag.");
+      .where(and(eq(tags.familyId, actor.familyId), inArray(tags.id, allTagIds)));
+    if (validTags.length !== allTagIds.length) {
+      throw errors.validation("One or more chosen tags do not belong to this family.");
+    }
   }
 
   await exec.transaction(async (tx) => {
-    for (const c of children) {
-      const [child] = await tx
+    for (const child of children) {
+      const [childEntry] = await tx
         .insert(entries)
         .values({
           accountId: parent.accountId,
           parentEntryId: parent.id,
           date: parent.date,
-          amountMinor: c.amountLedgerMinor,
+          amountMinor: child.amountLedgerMinor,
           currency: parent.currency,
-          name: c.name?.trim() || parent.name,
+          name: child.name?.trim() || parent.name,
           notes: parent.notes,
           entryableType: "transaction"
         })
         .returning({ id: entries.id });
-      const childId = child?.id;
-      if (!childId) throw errors.conflict("Failed to create split part.");
+
       const [childTxn] = await tx
         .insert(transactions)
         .values({
-          entryId: childId,
-          categoryId: c.categoryId ?? null,
+          entryId: childEntry!.id,
+          categoryId: child.categoryId ?? null,
           merchant: txn.merchant
         })
         .returning({ id: transactions.id });
-      const childTxnId = childTxn?.id;
-      if (!childTxnId) throw errors.conflict("Failed to create split transaction.");
-      const partTags = [...new Set(c.tagIds ?? [])];
-      if (partTags.length > 0) {
-        await tx.insert(transactionTags).values(partTags.map((tagId) => ({ transactionId: childTxnId, tagId })));
+
+      if (child.tagIds && child.tagIds.length > 0) {
+        await tx.insert(transactionTags).values(
+          child.tagIds.map((tagId) => ({
+            transactionId: childTxn!.id,
+            tagId
+          }))
+        );
       }
     }
   });
@@ -141,6 +152,7 @@ export async function splitEntry(
 export async function unsplitEntry(exec: Executor, actor: Actor, parentEntryId: string): Promise<void> {
   const [parent] = await exec.select().from(entries).where(eq(entries.id, parentEntryId)).limit(1);
   if (!parent || parent.entryableType !== "transaction") throw errors.notFound("Transaction");
+  await assertAccountOpen(exec, actor, parent.accountId, "manage");
   const level = await assertAccountAccessLevel(exec, actor, parent.accountId);
   if (!canEditCore(level)) throw errors.forbidden();
 
@@ -179,10 +191,14 @@ export async function listSplits(exec: Executor, actor: Actor, parentEntryId: st
       id: entries.id,
       name: entries.name,
       amountMinor: entries.amountMinor,
-      categoryId: transactions.categoryId
+      date: entries.date,
+      categoryId: transactions.categoryId,
+      categoryName: categories.name,
+      categoryColor: categories.color
     })
     .from(entries)
-    .leftJoin(transactions, eq(transactions.entryId, entries.id))
-    .where(and(eq(entries.parentEntryId, parentEntryId)))
+    .innerJoin(transactions, eq(transactions.entryId, entries.id))
+    .leftJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(eq(entries.parentEntryId, parentEntryId))
     .orderBy(asc(entries.createdAt));
 }

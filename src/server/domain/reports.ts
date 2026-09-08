@@ -3,16 +3,17 @@ import type { Executor } from "../db/client";
 import type { Family } from "../auth/context";
 import { getRate, convertMinor } from "./exchange-rates";
 import { captureDebugLog } from "../observability/debug-log";
-import { addMonths, endOfMonth, monthKeyIn, monthKeyOf, startOfMonth, todayIn } from "@/lib/datetime";
+import { addDays, addMonths, endOfMonth, monthKeyIn, monthKeyOf, startOfMonth, todayIn } from "@/lib/datetime";
 
 export type FxIssue = { base: string; quote: string; date: string };
 
 export type ConversionContext = {
   issues: Map<string, FxIssue>;
+  rateCache: Map<string, string | null>;
 };
 
 function newConversionContext(): ConversionContext {
-  return { issues: new Map() };
+  return { issues: new Map(), rateCache: new Map() };
 }
 
 async function convertTo(
@@ -24,7 +25,14 @@ async function convertTo(
   ctx: ConversionContext
 ): Promise<number> {
   if (from === to) return amountMinor;
-  const rate = await getRate(exec, from, to, onDate);
+  const cacheKey = `${from}:${to}:${onDate}`;
+  let rate: string | null;
+  if (ctx.rateCache.has(cacheKey)) {
+    rate = ctx.rateCache.get(cacheKey)!;
+  } else {
+    rate = await getRate(exec, from, to, onDate);
+    ctx.rateCache.set(cacheKey, rate);
+  }
   if (rate === null) {
     const key = `${from}:${to}`;
     if (!ctx.issues.has(key)) {
@@ -32,7 +40,7 @@ async function convertTo(
     }
     return 0;
   }
-  return convertMinor(amountMinor, rate);
+  return convertMinor(amountMinor, rate, from, to);
 }
 
 export type DashboardSummary = {
@@ -52,6 +60,8 @@ export type DashboardSummary = {
     transferId: string | null;
   }[];
   monthKey: string;
+  incompleteFx?: boolean;
+  fxIssues?: FxIssue[];
 };
 
 const ACCESS_SQL = (userId: string) => sql`(
@@ -121,7 +131,7 @@ export async function dashboardSummary(
       AND ${ACCESS_SQL(userId)}
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
-      AND e.parent_entry_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
       AND e.date BETWEEN ${from}::date AND ${to}::date
     GROUP BY e.currency
   `);
@@ -206,11 +216,15 @@ export async function dashboardSummary(
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
     WHERE a.family_id = ${family.id}
+      AND a.status = 'active'
       AND ${ACCESS_SQL(userId)}
       AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
     ORDER BY e.date DESC, e.created_at DESC
     LIMIT 8
   `);
+
+  const incompleteFx = ctx.issues.size > 0;
+  const fxIssues = incompleteFx ? Array.from(ctx.issues.values()) : undefined;
 
   await reportFxIssues(exec, ctx, family.id, "dashboard");
 
@@ -230,7 +244,9 @@ export async function dashboardSummary(
       accountName: r.account_name,
       transferId: r.transfer_id
     })),
-    monthKey: mk
+    monthKey: mk,
+    incompleteFx,
+    fxIssues
   };
 }
 
@@ -345,7 +361,7 @@ export async function incomeExpenseSeries(
       AND ${ACCESS_SQL(userId)}
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
-      AND e.parent_entry_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
       AND e.date BETWEEN ${fromDate}::date AND ${toDate}::date
     GROUP BY mk, e.currency
   `);
@@ -367,6 +383,8 @@ export async function incomeExpenseSeries(
   await reportFxIssues(exec, ctx, family.id, "income_expense_series");
   return [...byMonth.values()];
 }
+
+export { incomeExpenseSeries as monthlyIncomeExpenseSeries };
 
 export async function spendingByCategory(
   exec: Executor,
@@ -414,6 +432,48 @@ export async function spendingByCategory(
   return [...totals.values()]
     .map((v) => ({ ...v, share: grand > 0 ? v.totalMinor / grand : 0 }))
     .sort((a, b) => b.totalMinor - a.totalMinor);
+}
+
+export async function dailySpendingSeries(
+  exec: Executor,
+  family: Family,
+  userId: string,
+  days = 365
+): Promise<{ date: string; amountMinor: number }[]> {
+  const ctx = newConversionContext();
+  const today = todayIn(family.timezone);
+  const from = addDays(today, -(days - 1));
+  const res = await exec.execute<{ d: string; currency: string; outflow: string }>(sql`
+    SELECT e.date::text AS d, e.currency,
+           COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0)::text AS outflow
+    FROM entries e
+    JOIN accounts a ON a.id = e.account_id
+    JOIN transactions t ON t.entry_id = e.id
+    WHERE a.family_id = ${family.id}
+      AND a.included_in_reports = true
+      AND a.status = 'active'
+      AND ${ACCESS_SQL(userId)}
+      AND e.entryable_type = 'transaction'
+      AND t.transfer_id IS NULL
+      AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
+      AND e.date BETWEEN ${from}::date AND ${today}::date
+    GROUP BY e.date, e.currency
+  `);
+
+  const byDate = new Map<string, number>();
+  for (const r of res.rows ?? []) {
+    const d = r.d.slice(0, 10);
+    const converted = await convertTo(exec, Number(r.outflow), r.currency, family.currency, d, ctx);
+    byDate.set(d, (byDate.get(d) ?? 0) + converted);
+  }
+  await reportFxIssues(exec, ctx, family.id, "daily_spending");
+
+  const points: { date: string; amountMinor: number }[] = [];
+  for (let i = 0; i < days; i++) {
+    const date = addDays(from, i);
+    points.push({ date, amountMinor: byDate.get(date) ?? 0 });
+  }
+  return points;
 }
 
 export function currentMonthRange(timezone: string): { from: string; to: string } {

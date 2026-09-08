@@ -71,7 +71,7 @@ export type TestUser = {
 };
 
 export async function makeUser(
-  overrides: Partial<{ email: string; name: string; familyName: string }> = {}
+  overrides: Partial<{ email: string; name: string; familyName: string; currency: string; timezone: string }> = {}
 ): Promise<TestUser> {
   const unique = Math.random().toString(36).slice(2, 10);
   const email = overrides.email ?? `user-${unique}@test.local`;
@@ -79,7 +79,9 @@ export async function makeUser(
     email,
     password: "Sup3rSecure!Pass",
     name: overrides.name ?? `Test ${unique}`,
-    familyName: overrides.familyName ?? `Family ${unique}`
+    familyName: overrides.familyName ?? `Family ${unique}`,
+    currency: overrides.currency,
+    timezone: overrides.timezone
   });
   await db().execute(
     sql`UPDATE users SET email_verified_at = now() WHERE id = ${res.userId}::uuid`

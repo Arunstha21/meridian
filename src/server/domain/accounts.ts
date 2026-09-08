@@ -11,10 +11,12 @@ import {
   type AccountRow
 } from "../authorization/access";
 import { errors } from "@/lib/errors";
-import { isValidCurrency } from "@/lib/money";
+import { isValidCurrency, displayToLedgerBalance, isLiability } from "@/lib/money";
 import { isIsoDate, todayIn } from "@/lib/datetime";
 import { recordAudit } from "../observability/audit";
 import { recalculateAccount, latestBalancesFor } from "./balances";
+
+export { isLiability };
 
 export const ACCOUNT_TYPE_LABELS: Record<AccountRow["type"], string> = {
   depository: "Cash",
@@ -40,7 +42,7 @@ export async function createAccount(
   actor: Actor,
   input: CreateAccountInput
 ): Promise<{ accountId: string }> {
-  if (!ACCOUNT_TYPES.includes(input.type as AccountType)) {
+  if (!(ACCOUNT_TYPES as readonly string[]).includes(input.type as AccountType)) {
     throw errors.validation("Unsupported account type.");
   }
   const name = input.name.trim();
@@ -48,14 +50,14 @@ export async function createAccount(
   if (!isValidCurrency(input.currency)) throw errors.validation("Unknown currency code.");
   if (!isIsoDate(input.openedOn)) throw errors.validation("Opened-on date must be YYYY-MM-DD.");
 
-  const opening = input.openingBalanceDisplayMinor;
+  const opening = displayToLedgerBalance(input.openingBalanceDisplayMinor, input.type);
   const accountId = await exec.transaction(async (tx) => {
     const [account] = await tx
       .insert(accounts)
       .values({
         familyId: actor.familyId,
         ownerId: input.joint ? null : actor.userId,
-        type: input.type,
+        type: input.type as AccountType,
         subtype: input.subtype?.trim() || null,
         name,
         institution: input.institution?.trim() || null,
@@ -114,7 +116,7 @@ export async function updateAccount(
   if (patch.subtype !== undefined) updates.subtype = patch.subtype?.trim() || null;
   if (patch.includedInReports !== undefined) updates.includedInReports = patch.includedInReports;
   if (patch.openingBalanceDisplayMinor !== undefined) {
-    updates.openingBalanceMinor = patch.openingBalanceDisplayMinor;
+    updates.openingBalanceMinor = displayToLedgerBalance(patch.openingBalanceDisplayMinor, account.type);
     needsRecalc = true;
   }
   if (patch.openedOn !== undefined) {
@@ -223,18 +225,19 @@ export type AccountListItem = AccountRow & {
   isJoint: boolean;
 };
 
-export async function listAccountsForActor(exec: Executor, actor: Actor): Promise<AccountListItem[]> {
+export async function listAccountsForActor(
+  exec: Executor,
+  actor: Actor
+): Promise<AccountListItem[]> {
   const rows = await exec
-    .select({
-      account: accounts,
-      sharePermission: accountShares.permission
-    })
+    .select({ account: accounts, sharePermission: accountShares.permission })
     .from(accounts)
     .leftJoin(
       accountShares,
       and(eq(accountShares.accountId, accounts.id), eq(accountShares.userId, actor.userId))
     )
-    .where(eq(accounts.familyId, actor.familyId));
+    .where(eq(accounts.familyId, actor.familyId))
+    .orderBy(desc(accounts.createdAt));
 
   const visible = rows.filter(
     (r) => r.account.ownerId === null || r.account.ownerId === actor.userId || r.sharePermission !== null
@@ -249,26 +252,13 @@ export async function listAccountsForActor(exec: Executor, actor: Actor): Promis
     ...account,
     displayBalanceMinor:
       balanceMap.get(account.id)?.balanceMinor ??
-      computeFallbackBalance(account),
+      account.openingBalanceMinor,
     level:
       account.ownerId === null || account.ownerId === actor.userId
         ? ("full_control" as const)
         : (sharePermission as "full_control" | "read_write" | "read_only"),
     isJoint: account.ownerId === null
   }));
-}
-
-function computeFallbackBalance(account: AccountRow): number {
-  return account.openingBalanceMinor;
-}
-
-export function groupByAssets(items: AccountListItem[]): {
-  assets: AccountListItem[];
-  liabilities: AccountListItem[];
-} {
-  const assets = items.filter((a) => !a.type.includes("credit_card") && a.type !== "other_liability");
-  const liabilities = items.filter((a) => a.type === "credit_card" || a.type === "other_liability");
-  return { assets, liabilities };
 }
 
 export type AccountOverview = {
@@ -288,45 +278,36 @@ export type AccountOverview = {
   valuationDriven: boolean;
 };
 
-const LIABILITY_TYPES = new Set(["credit_card", "other_liability"]);
-
-export function isLiability(type: string): boolean {
-  return LIABILITY_TYPES.has(type);
-}
-
 export async function getAccountOverview(
   exec: Executor,
   actor: Actor,
   accountId: string,
-  opts: { seriesDays?: number; activityLimit?: number } = {}
+  opts: { days?: number; activityLimit?: number } = {}
 ): Promise<AccountOverview> {
   const access = await getAccountAccess(exec, actor, accountId);
   if (!access.granted) throw errors.notFound("Account");
   const { account, level } = access;
 
-  const seriesDays = opts.seriesDays ?? 60;
-  const [family] = await exec
-    .select({ timezone: families.timezone })
-    .from(families)
-    .where(eq(families.id, account.familyId))
-    .limit(1);
-  const today = todayIn(family?.timezone ?? "Etc/UTC");
-
+  const today = todayIn("UTC");
+  const days = opts.days ?? 60;
   const balanceRows = await exec.execute<{ as_of: string; balance_minor: string }>(sql`
     SELECT as_of::text AS as_of, balance_minor::text AS balance_minor
     FROM balances
     WHERE account_id = ${accountId}::uuid
-      AND as_of >= ${today}::date - ${String(seriesDays)}::int
+      AND as_of >= ${today}::date - ${String(days)}::int
       AND as_of <= ${today}::date
-    ORDER BY as_of
+    ORDER BY as_of ASC
   `);
 
-  const [latest] = await exec
-    .execute<{ balance_minor: string }>(sql`
-      SELECT balance_minor::text AS balance_minor FROM balances
-      WHERE account_id = ${accountId}::uuid ORDER BY as_of DESC LIMIT 1
+  const [latest] = (
+    await exec.execute<{ balance_minor: string }>(sql`
+      SELECT balance_minor::text AS balance_minor
+      FROM balances
+      WHERE account_id = ${accountId}::uuid
+      ORDER BY as_of DESC
+      LIMIT 1
     `)
-    .then((r) => r.rows ?? []);
+  ).rows ?? [];
 
   const activityRows = await exec
     .select({
@@ -377,8 +358,7 @@ export async function familyMemberOptions(exec: Executor, familyId: string) {
   return exec
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
-    .where(eq(users.familyId, familyId))
-    .orderBy(users.name);
+    .where(eq(users.familyId, familyId));
 }
 
 export async function accountsExistForFamily(exec: Executor, familyId: string, ids: string[]) {

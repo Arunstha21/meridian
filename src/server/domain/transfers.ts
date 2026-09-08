@@ -43,61 +43,66 @@ export async function createTransferFromTransactions(
   if (outRow.entry.parentEntryId || inRow.entry.parentEntryId) {
     throw errors.validation("Split parts cannot be linked as transfers. Split the whole transaction instead.");
   }
+
+  const [splitChildren] = await exec
+    .select({ count: sql<number>`count(*)::int` })
+    .from(entries)
+    .where(sql`${entries.parentEntryId} IN (${outflowEntryId}::uuid, ${inflowEntryId}::uuid)`);
+  if ((splitChildren?.count ?? 0) > 0) {
+    throw errors.validation("Split transactions cannot be linked as transfers.");
+  }
+
   if (outRow.account.id === inRow.account.id) {
     throw errors.validation("A transfer must move between two different accounts.");
   }
   if (outRow.account.currency !== inRow.account.currency) {
     throw errors.validation("Cross-currency transfers are not supported yet.");
   }
-  const [existingOut] = await exec
-    .select({ transferId: transactions.transferId })
-    .from(transactions)
-    .where(eq(transactions.entryId, outflowEntryId))
-    .limit(1);
-  const [existingIn] = await exec
-    .select({ transferId: transactions.transferId })
-    .from(transactions)
-    .where(eq(transactions.entryId, inflowEntryId))
-    .limit(1);
-  if (existingOut?.transferId && existingOut.transferId === existingIn?.transferId) {
-    return { transferId: existingOut.transferId, existing: true };
-  }
-  if (existingOut?.transferId || existingIn?.transferId) {
-    throw errors.conflict("One of these transactions is already part of a transfer.");
-  }
 
   const out = outRow.entry;
   const inn = inRow.entry;
   if (out.amountMinor <= 0 || inn.amountMinor >= 0) {
-    throw errors.validation("Pick the outgoing transaction and the incoming one — their amounts must oppose each other.");
+    throw errors.validation("A transfer must link one outflow (positive amount) and one inflow (negative amount).");
   }
+
+  const [existingTransfer] = await exec
+    .select({ id: transfers.id })
+    .from(transfers)
+    .where(sql`${transfers.outflowEntryId} = ${outflowEntryId}::uuid AND ${transfers.inflowEntryId} = ${inflowEntryId}::uuid`)
+    .limit(1);
+  if (existingTransfer) {
+    return { transferId: existingTransfer.id, existing: true };
+  }
+
   if (addMinor(out.amountMinor, inn.amountMinor) !== 0) {
     throw errors.validation("Transfer amounts must match exactly.");
   }
-  if (!isIsoDate(out.date) || !isIsoDate(inn.date)) {
-    throw errors.validation("Invalid entry date.");
-  }
-  if (Math.abs(diffDays(out.date, inn.date)) > TRANSFER_DATE_WINDOW_DAYS) {
+  const dateGap = Math.abs(diffDays(out.date, inn.date));
+  if (dateGap > TRANSFER_DATE_WINDOW_DAYS) {
     throw errors.validation(
-      `Transfer legs must be within ${TRANSFER_DATE_WINDOW_DAYS} days of each other.`
+      `Transactions are ${dateGap} days apart; transfers must fall within ${TRANSFER_DATE_WINDOW_DAYS} days.`
     );
   }
+
+  const [txOut] = await exec.select().from(transactions).where(eq(transactions.entryId, outflowEntryId)).limit(1);
+  const [txIn] = await exec.select().from(transactions).where(eq(transactions.entryId, inflowEntryId)).limit(1);
+  if (!txOut || !txIn) throw errors.notFound("Transaction");
 
   const transferId = await exec.transaction(async (tx) => {
     const [transfer] = await tx
       .insert(transfers)
-      .values({ outflowEntryId, inflowEntryId })
+      .values({ outflowEntryId, inflowEntryId, status: "confirmed" })
       .returning({ id: transfers.id });
-    const tid = transfer!.id;
-    await tx.update(transactions).set({ transferId: tid }).where(eq(transactions.entryId, outflowEntryId));
-    await tx.update(transactions).set({ transferId: tid }).where(eq(transactions.entryId, inflowEntryId));
-    return tid;
+    const id = transfer!.id;
+    await tx.update(transactions).set({ transferId: id }).where(eq(transactions.id, txOut.id));
+    await tx.update(transactions).set({ transferId: id }).where(eq(transactions.id, txIn.id));
+    return id;
   });
 
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
-    action: "transfer.created",
+    action: "transfer.linked",
     entityType: "transfer",
     entityId: transferId,
     metadata: { outflowEntryId, inflowEntryId }
@@ -109,8 +114,8 @@ export async function createTransferFromTransactions(
 export type CreateTransferInput = {
   fromAccountId: string;
   toAccountId: string;
-  date: string;
   amountDisplayMinor: number;
+  date: string;
   name?: string;
 };
 
@@ -118,58 +123,70 @@ export async function createTransferWithNewEntries(
   exec: Executor,
   actor: Actor,
   input: CreateTransferInput
-): Promise<{ transferId: string }> {
+): Promise<{ transferId: string; outflowEntryId: string; inflowEntryId: string }> {
   if (input.fromAccountId === input.toAccountId) {
-    throw errors.validation("Choose two different accounts.");
+    throw errors.validation("Transfers require two different accounts.");
   }
-  if (input.amountDisplayMinor <= 0) throw errors.validation("Transfer amount must be positive.");
-
-  const from = await assertAccountOpen(exec, actor, input.fromAccountId, "manage");
-  const to = await assertAccountOpen(exec, actor, input.toAccountId, "manage");
-  if (from.account.familyId !== to.account.familyId) throw errors.forbidden();
-  if (from.account.currency !== to.account.currency) {
-    throw errors.validation("Cross-currency transfers are not supported yet.");
+  if (input.amountDisplayMinor <= 0) {
+    throw errors.validation("Transfer amount must be greater than zero.");
   }
   if (!isIsoDate(input.date)) throw errors.validation("Date must be in YYYY-MM-DD format.");
 
-  const name = input.name?.trim() || `Transfer to ${to.account.name}`;
-  const amount = input.amountDisplayMinor;
+  const from = await assertAccountOpen(exec, actor, input.fromAccountId, "manage");
+  const to = await assertAccountOpen(exec, actor, input.toAccountId, "manage");
+  if (from.account.familyId !== to.account.familyId || from.account.familyId !== actor.familyId) {
+    throw errors.validation("Both accounts must belong to your family.");
+  }
+  if (from.account.currency !== to.account.currency) {
+    throw errors.validation("Cross-currency transfers are not supported yet.");
+  }
 
-  const transferId = await exec.transaction(async (tx) => {
-    const [out] = await tx
+  const currency = from.account.currency;
+  const amount = input.amountDisplayMinor;
+  const defaultDesc = `Transfer to ${to.account.name}`;
+  const defaultInDesc = `Transfer from ${from.account.name}`;
+  const outDesc = input.name?.trim() || defaultDesc;
+  const inDesc = input.name?.trim() || defaultInDesc;
+
+  const { transferId, outflowEntryId, inflowEntryId } = await exec.transaction(async (tx) => {
+    const [outEntry] = await tx
       .insert(entries)
       .values({
         accountId: from.account.id,
         date: input.date,
         amountMinor: amount,
-        currency: from.account.currency,
-        name,
+        currency,
+        name: outDesc,
         entryableType: "transaction"
       })
       .returning({ id: entries.id });
-    const [inn] = await tx
+
+    const [inEntry] = await tx
       .insert(entries)
       .values({
         accountId: to.account.id,
         date: input.date,
         amountMinor: negateMinor(amount),
-        currency: to.account.currency,
-        name: `Transfer from ${from.account.name}`,
+        currency,
+        name: inDesc,
         entryableType: "transaction"
       })
       .returning({ id: entries.id });
+
     const [txnOut] = await tx
       .insert(transactions)
-      .values({ entryId: out!.id })
+      .values({ entryId: outEntry!.id })
       .returning({ id: transactions.id });
     const [txnIn] = await tx
       .insert(transactions)
-      .values({ entryId: inn!.id })
+      .values({ entryId: inEntry!.id })
       .returning({ id: transactions.id });
+
     const [transfer] = await tx
       .insert(transfers)
-      .values({ outflowEntryId: out!.id, inflowEntryId: inn!.id })
+      .values({ outflowEntryId: outEntry!.id, inflowEntryId: inEntry!.id, status: "confirmed" })
       .returning({ id: transfers.id });
+
     await tx
       .update(transactions)
       .set({ transferId: transfer!.id })
@@ -178,7 +195,7 @@ export async function createTransferWithNewEntries(
       .update(transactions)
       .set({ transferId: transfer!.id })
       .where(eq(transactions.id, txnIn!.id));
-    return transfer!.id;
+    return { transferId: transfer!.id, outflowEntryId: outEntry!.id, inflowEntryId: inEntry!.id };
   });
 
   await recordAudit(exec, {
@@ -190,38 +207,43 @@ export async function createTransferWithNewEntries(
     metadata: { from: from.account.id, to: to.account.id, amountDisplayMinor: amount }
   });
 
-  return { transferId };
+  return { transferId, outflowEntryId, inflowEntryId };
 }
 
 export async function removeTransfer(exec: Executor, actor: Actor, transferId: string): Promise<void> {
-  const [transfer] = await exec.select().from(transfers).where(eq(transfers.id, transferId)).limit(1);
-  if (!transfer) throw errors.notFound("Transfer");
+  const [row] = await exec.select().from(transfers).where(eq(transfers.id, transferId)).limit(1);
+  if (!row) throw errors.notFound("Transfer");
 
   const legs = await exec
     .select({ accountId: entries.accountId })
     .from(entries)
-    .where(sql`${entries.id} IN (${transfer.outflowEntryId}::uuid, ${transfer.inflowEntryId}::uuid)`);
+    .where(sql`${entries.id} IN (${row.outflowEntryId}::uuid, ${row.inflowEntryId}::uuid)`);
 
   let familyId: string | null = null;
   for (const leg of legs) {
     const [acc] = await exec.select().from(accounts).where(eq(accounts.id, leg.accountId)).limit(1);
     if (!acc || acc.familyId !== actor.familyId) throw errors.forbidden();
-    await assertAccountAccess(exec, actor, acc.id, "manage");
+    await assertAccountOpen(exec, actor, acc.id, "manage");
     familyId = actor.familyId;
   }
 
   await exec.transaction(async (tx) => {
-    await tx.update(transactions).set({ transferId: null }).where(eq(transactions.transferId, transferId));
+    await tx
+      .update(transactions)
+      .set({ transferId: null })
+      .where(sql`${transactions.entryId} IN (${row.outflowEntryId}::uuid, ${row.inflowEntryId}::uuid)`);
     await tx.delete(transfers).where(eq(transfers.id, transferId));
   });
 
-  await recordAudit(exec, {
-    familyId,
-    actorUserId: actor.userId,
-    action: "transfer.removed",
-    entityType: "transfer",
-    entityId: transferId
-  });
+  if (familyId) {
+    await recordAudit(exec, {
+      familyId,
+      actorUserId: actor.userId,
+      action: "transfer.deleted",
+      entityType: "transfer",
+      entityId: transferId
+    });
+  }
 }
 
 export type TransferCandidate = {
@@ -229,63 +251,63 @@ export type TransferCandidate = {
   date: string;
   name: string;
   amountMinor: number;
+  currency: string;
   accountName: string;
+  daysApart: number;
 };
 
-export async function suggestTransferMatches(
+export async function findTransferCandidates(
   exec: Executor,
   actor: Actor,
-  entryId: string
+  sourceEntryId: string
 ): Promise<TransferCandidate[]> {
-  const [base] = await exec
+  const [source] = await exec
     .select({ entry: entries, account: accounts })
     .from(entries)
     .innerJoin(accounts, eq(accounts.id, entries.accountId))
-    .where(eq(entries.id, entryId))
+    .where(eq(entries.id, sourceEntryId))
     .limit(1);
-  if (!base || base.account.familyId !== actor.familyId) throw errors.notFound("Transaction");
-  if (base.entry.entryableType !== "transaction") return [];
-  const [baseTxn] = await exec
-    .select({ transferId: transactions.transferId })
-    .from(transactions)
-    .where(eq(transactions.entryId, entryId))
-    .limit(1);
-  if (baseTxn?.transferId) return [];
+  if (!source || source.account.familyId !== actor.familyId) throw errors.notFound("Transaction");
+  await assertAccountAccess(exec, actor, source.account.id, "annotate");
 
-  const sign = base.entry.amountMinor > 0 ? -1 : 1;
+  const targetAmount = negateMinor(source.entry.amountMinor);
+
   const res = await exec.execute<{
     id: string;
     date: string;
     name: string;
     amount_minor: string;
+    currency: string;
     account_name: string;
+    days_apart: number;
   }>(sql`
-    SELECT e.id, e.date::text AS date, e.name, e.amount_minor::text AS amount_minor, a.name AS account_name
+    SELECT e.id::text AS id, e.date::text AS date, e.name, e.amount_minor::text AS amount_minor,
+           e.currency, a.name AS account_name,
+           abs(e.date - ${source.entry.date}::date)::int AS days_apart
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
     WHERE a.family_id = ${actor.familyId}
+      AND e.account_id != ${source.entry.accountId}::uuid
       AND e.entryable_type = 'transaction'
-      AND e.id <> ${entryId}::uuid
-      AND e.parent_entry_id IS NULL
+      AND e.currency = ${source.entry.currency}
+      AND e.amount_minor = ${targetAmount}
       AND t.transfer_id IS NULL
-      AND sign(e.amount_minor) = ${sign}
-      AND e.date BETWEEN ${base.entry.date}::date - ${String(TRANSFER_DATE_WINDOW_DAYS)}::int
-                    AND ${base.entry.date}::date + ${String(TRANSFER_DATE_WINDOW_DAYS)}::int
-      AND (
-        a.owner_id IS NULL OR a.owner_id = ${actor.userId}
-        OR EXISTS (SELECT 1 FROM account_shares s WHERE s.account_id = a.id AND s.user_id = ${actor.userId})
-      )
-      AND abs(e.amount_minor) = ${Math.abs(base.entry.amountMinor)}
-    ORDER BY abs(e.date - ${base.entry.date}::date), abs(e.amount_minor - ${Math.abs(base.entry.amountMinor)})
-    LIMIT 10
+      AND e.parent_entry_id IS NULL
+      AND abs(e.date - ${source.entry.date}::date) <= ${TRANSFER_DATE_WINDOW_DAYS}
+    ORDER BY days_apart ASC, e.date DESC
+    LIMIT 6
   `);
 
   return (res.rows ?? []).map((r) => ({
     entryId: r.id,
     date: r.date.slice(0, 10),
     name: r.name,
-    amountMinor: Math.abs(Number(r.amount_minor)),
-    accountName: r.account_name
+    amountMinor: Number(r.amount_minor),
+    currency: r.currency,
+    accountName: r.account_name,
+    daysApart: Number(r.days_apart)
   }));
 }
+
+export { findTransferCandidates as suggestTransferMatches };

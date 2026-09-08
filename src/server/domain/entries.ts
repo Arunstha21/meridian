@@ -167,6 +167,10 @@ export async function updateTransactionEntry(
   const loaded = await loadTransactionEntry(exec, actor, entryId);
   const { entry, account, level } = loaded;
 
+  if (account.status !== "active") {
+    throw errors.conflict("This account is closed and can no longer be modified.");
+  }
+
   const touchesCore =
     patch.date !== undefined ||
     patch.name !== undefined ||
@@ -182,6 +186,44 @@ export async function updateTransactionEntry(
     patch.replaceTagIds != null;
   if (touchesAnnotations && level === "read_only") {
     throw errors.forbidden("Your access level does not allow annotating transactions.");
+  }
+
+  const [txn] = await exec
+    .select({ transferId: transactions.transferId })
+    .from(transactions)
+    .where(eq(transactions.entryId, entryId))
+    .limit(1);
+  if (txn?.transferId && (patch.amountLedgerMinor !== undefined || patch.date !== undefined)) {
+    throw errors.conflict("Cannot edit amount or date of a linked transfer leg. Unlink the transfer first.");
+  }
+
+  const [splitCount] = await exec
+    .select({ count: sql<number>`count(*)::int` })
+    .from(entries)
+    .where(eq(entries.parentEntryId, entryId));
+  const isSplitParent = (splitCount?.count ?? 0) > 0;
+
+  if (isSplitParent && patch.amountLedgerMinor !== undefined && patch.amountLedgerMinor !== entry.amountMinor) {
+    throw errors.conflict("Cannot edit amount of a split parent directly. Unsplit the transaction first.");
+  }
+
+  if (entry.parentEntryId) {
+    const [parent] = await exec.select().from(entries).where(eq(entries.id, entry.parentEntryId)).limit(1);
+    if (parent) {
+      if (patch.date !== undefined && patch.date !== parent.date) {
+        throw errors.validation("Split child date must match parent transaction date.");
+      }
+      if (patch.amountLedgerMinor !== undefined && patch.amountLedgerMinor !== entry.amountMinor) {
+        const otherChildren = await exec
+          .select({ amountMinor: entries.amountMinor })
+          .from(entries)
+          .where(and(eq(entries.parentEntryId, entry.parentEntryId), sql`${entries.id} != ${entryId}::uuid`));
+        const otherSum = otherChildren.reduce((acc, c) => acc + c.amountMinor, 0);
+        if (otherSum + patch.amountLedgerMinor !== parent.amountMinor) {
+          throw errors.validation("Split parts must sum exactly to the parent transaction amount.");
+        }
+      }
+    }
   }
 
   if (patch.amountLedgerMinor !== undefined) {
@@ -216,6 +258,13 @@ export async function updateTransactionEntry(
         updatedAt: new Date()
       })
       .where(eq(entries.id, entryId));
+
+    if (isSplitParent && patch.date !== undefined) {
+      await tx
+        .update(entries)
+        .set({ date: patch.date })
+        .where(eq(entries.parentEntryId, entryId));
+    }
 
     const txnSet: Partial<typeof transactions.$inferInsert> = {};
     if (patch.categoryId !== undefined) txnSet.categoryId = patch.categoryId;
@@ -289,25 +338,34 @@ export async function deleteEntry(exec: Executor, actor: Actor, entryId: string)
     .where(eq(entries.id, entryId))
     .limit(1);
   if (!row || row.account.familyId !== actor.familyId) throw errors.notFound("Transaction");
+
+  if (row.account.status !== "active") {
+    throw errors.conflict("This account is closed and its transactions cannot be deleted.");
+  }
+
   await assertAccountAccess(exec, actor, row.account.id, "manage");
+
+  if (row.entry.parentEntryId) {
+    throw errors.conflict("Cannot delete an individual split part directly. Unsplit the transaction instead.");
+  }
 
   const [txn] = await exec
     .select({ transferId: transactions.transferId })
     .from(transactions)
     .where(eq(transactions.entryId, entryId))
     .limit(1);
+  const linkedTransfer = txn?.transferId ?? null;
 
   const [childCount] = await exec
     .select({ count: sql<number>`count(*)::int` })
     .from(entries)
     .where(eq(entries.parentEntryId, entryId));
 
-  const linkedTransfer = txn?.transferId ?? null;
-
   await exec.transaction(async (tx) => {
     if (linkedTransfer) {
       await tx.execute(sql`DELETE FROM transfers WHERE id = ${linkedTransfer}`);
     }
+    await tx.delete(entries).where(eq(entries.parentEntryId, entryId));
     await tx.delete(entries).where(eq(entries.id, entryId));
   });
 
@@ -479,6 +537,8 @@ export async function listEntriesPage(
   };
 }
 
+export { listEntriesPage as listEntries };
+
 export type EntryDetail = Awaited<ReturnType<typeof getEntryDetail>>;
 
 export async function getEntryDetail(exec: Executor, actor: Actor, entryId: string) {
@@ -544,13 +604,21 @@ export async function getEntryDetail(exec: Executor, actor: Actor, entryId: stri
       amountMinor: entry.amountMinor,
       currency: entry.currency,
       externalSource: entry.externalSource,
-      externalId: entry.externalId
+      externalId: entry.externalId,
+      accountId: entry.accountId,
+      accountName: account.name,
+      merchant: txn?.merchant ?? null,
+      categoryId: txn?.categoryId ?? null,
+      tagIds: tagRows.map((t) => t.tagId),
+      transferId: txn?.transferId ?? null,
+      transferPartner,
+      parentId: entry.parentEntryId
     },
     account: { id: account.id, name: account.name, type: account.type, status: account.status },
     level,
     categoryId: txn?.categoryId ?? null,
     merchant: txn?.merchant ?? null,
-    tagIds: tagRows.map((r) => r.tagId),
+    tagIds: tagRows.map((t) => t.tagId),
     transferId: txn?.transferId ?? null,
     transferPartner,
     parentId: entry.parentEntryId,

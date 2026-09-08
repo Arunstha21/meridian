@@ -4,6 +4,7 @@ import { balances as balancesTable } from "../db/schema";
 import { isValuationDriven } from "../authorization/access";
 import { addDays, diffDays, isIsoDate, minDate, todayIn } from "@/lib/datetime";
 import { captureDebugLog } from "../observability/debug-log";
+import { errors } from "@/lib/errors";
 
 type AccountMeta = {
   id: string;
@@ -73,15 +74,11 @@ export async function recalculateAccount(
   }
 
   const dayCount = Math.max(1, diffDays(today, start) + 1);
-  if (dayCount > 4000) {
-    await captureDebugLog(exec, {
-      category: "balances",
-      level: "warn",
-      message: "Skipping full recalculation because the daily range exceeded 4000 days",
-      source: "balances",
-      metadata: { accountId, dayCount }
-    });
-    return;
+  const MAX_SUPPORTED_DAYS = 36500; // 100 years
+  if (dayCount > MAX_SUPPORTED_DAYS) {
+    throw errors.validation(
+      `Account history span of ${dayCount} days exceeds the maximum supported limit (${MAX_SUPPORTED_DAYS} days).`
+    );
   }
 
   const eventsByDate = new Map<string, number>();
@@ -140,19 +137,21 @@ export async function recalculateAccount(
     cursor = addDays(cursor, 1);
   }
 
-  await exec.execute(sql`DELETE FROM balances WHERE account_id = ${accountId}::uuid AND as_of >= ${start}::date`);
-  const chunkSize = 500;
-  for (let i = 0; i < rows.length; i += chunkSize) {
-    const chunk = rows.slice(i, i + chunkSize);
-    await exec.insert(balancesTable).values(
-      chunk.map((r) => ({
-        accountId: r.accountId,
-        asOf: r.asOf,
-        balanceMinor: r.balanceMinor,
-        currency: r.currency
-      }))
-    );
-  }
+  await exec.transaction(async (tx) => {
+    await tx.execute(sql`DELETE FROM balances WHERE account_id = ${accountId}::uuid AND as_of >= ${start}::date`);
+    const chunkSize = 500;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const chunk = rows.slice(i, i + chunkSize);
+      await tx.insert(balancesTable).values(
+        chunk.map((r) => ({
+          accountId: r.accountId,
+          asOf: r.asOf,
+          balanceMinor: r.balanceMinor,
+          currency: r.currency
+        }))
+      );
+    }
+  });
 }
 
 export async function latestBalancesFor(

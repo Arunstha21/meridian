@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { exchangeRates } from "../db/schema";
-import { isValidCurrency } from "@/lib/money";
+import { isValidCurrency, currencyExponent } from "@/lib/money";
 import { errors } from "@/lib/errors";
 import { isIsoDate } from "@/lib/datetime";
 
@@ -48,10 +48,23 @@ export async function getRate(
   return (res.rows ?? [])[0]?.rate ?? null;
 }
 
-export function convertMinor(amountMinor: number, rate: string | number): number {
+export function convertMinor(
+  amountMinor: number,
+  rate: string | number,
+  fromCurrency?: string,
+  toCurrency?: string
+): number {
   const r = Number(rate);
   if (!Number.isFinite(r) || r <= 0) throw errors.validation("Invalid exchange rate.");
-  const converted = amountMinor * r;
+
+  let scale = 1;
+  if (fromCurrency && toCurrency) {
+    const fromExp = currencyExponent(fromCurrency);
+    const toExp = currencyExponent(toCurrency);
+    scale = 10 ** (toExp - fromExp);
+  }
+
+  const converted = amountMinor * r * scale;
   if (Math.abs(converted) > Number.MAX_SAFE_INTEGER) {
     throw errors.money("Converted amount exceeds the supported range.");
   }

@@ -28,6 +28,41 @@ export function isValidCurrency(code: string): boolean {
   }
 }
 
+export const LIABILITY_TYPES = ["credit_card", "other_liability"] as const;
+
+export function isLiability(type: string): boolean {
+  return (LIABILITY_TYPES as readonly string[]).includes(type);
+}
+
+export function minorToDecimal(minor: number, currency: string): string {
+  const exp = currencyExponent(currency);
+  const factor = 10 ** exp;
+  const abs = Math.abs(minor);
+  const whole = Math.floor(abs / factor);
+  if (exp === 0) return `${minor < 0 ? "-" : ""}${whole}`;
+  const frac = (abs % factor).toString().padStart(exp, "0");
+  return `${minor < 0 ? "-" : ""}${whole}.${frac}`;
+}
+
+export function minorToMajor(minor: number, currency: string): number {
+  const exp = currencyExponent(currency);
+  return minor / 10 ** exp;
+}
+
+export function displayToLedgerBalance(displayMinor: number, accountType: string): number {
+  if (isLiability(accountType)) {
+    return -Math.abs(displayMinor);
+  }
+  return displayMinor;
+}
+
+export function ledgerToDisplayBalance(ledgerMinor: number, accountType: string): number {
+  if (isLiability(accountType)) {
+    return -ledgerMinor;
+  }
+  return ledgerMinor;
+}
+
 function assertSafe(minor: number): void {
   if (!Number.isInteger(minor)) {
     throw errors.money("Money amounts must be integers in minor units.");
