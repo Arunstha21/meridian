@@ -27,12 +27,12 @@
 | OPS | Ops | Concurrent migration advisory lock | P2 | Fixed & Tested | Step 4 | `1a0bfa6` |
 | OPS | Ops | Worker queue monitoring & health route | P2 | Fixed & Tested | Step 4 | `1a0bfa6` |
 | OPS | Ops | Operational backup & restore runbooks | P2 | Fixed & Tested | Step 4 | `1a0bfa6` |
-| S10 | Security | Provider credentials in client props | P2 | Fixed & Tested | Step 5 | Pending |
-| S11 | Security | Chat route CSRF and resource controls | P2 | Fixed & Tested | Step 5 | Pending |
-| S12 | Security | Identity lifecycle & session revocation | P2 | Fixed & Tested | Step 5 | Pending |
-| F10 | Finance | Sidebar net worth report inclusion filters | P2 | Fixed & Tested | Step 5 | Pending |
-| F11 | Finance | Bigint / safe integer math in balances | P2 | Fixed & Tested | Step 5 | Pending |
-| F12 | Finance | Currency change migration & budget limits | P2 | Fixed & Tested | Step 5 | Pending |
+| S10 | Security | Provider credentials in client props | P2 | Fixed & Tested | Step 5 | `1f80bfb` |
+| S11 | Security | Chat route CSRF and resource controls | P2 | Fixed & Tested | Step 5 | `1f80bfb` |
+| S12 | Security | Identity lifecycle & session revocation | P2 | Fixed & Tested | Step 5 | `1f80bfb` |
+| F10 | Finance | Sidebar net worth report inclusion filters | P2 | Fixed & Tested | Step 5 | `1f80bfb` |
+| F11 | Finance | Bigint / safe integer math in balances | P2 | Fixed & Tested | Step 5 | `1f80bfb` |
+| F12 | Finance | Currency change migration & budget limits | P2 | Fixed & Tested | Step 5 | `1f80bfb` |
 
 ---
 
@@ -69,7 +69,7 @@
 - **Commit**: `1a0bfa6`
 
 ### Step 5: Remaining Security & Financial Remediation (S10–S12, F10–F12)
-- **Status**: Fixed & Tested (Pending commit)
+- **Status**: Fixed & Tested (`1f80bfb`)
 - **Issues Addressed**:
   - **S10 (P2)**: Encrypted provider credentials in client props:
     - Hardened `listMeroShareConnections()` in `src/server/domain/meroshare.ts` to project a safe DTO containing only public connection metadata (`id`, `name`, `dpCode`, `dpName`, `lastSyncedAt`, `createdAt`).
@@ -87,6 +87,7 @@
     - In `src/server/domain/balances.ts` and `src/server/domain/reports.ts`, added `safeParseMinor`, `safeSubtract`, and `safeAdd` checking `Number.isSafeInteger()` to guard against floating-point precision loss and numeric overflows.
   - **F12 (P2)**: Currency change migration & budget limits conversion using FX rates:
     - In `src/server/domain/families.ts` (`updateFamilySettings`), looked up active budgets when family base currency is changed and converted their `amountMinor` using exchange rates (`getRate` and `convertMinor`).
+- **Commit**: `1f80bfb`
 - **Relevant Code Changes**:
   - [`src/server/domain/meroshare.ts`](file:///C:/Users/Arun/Development/meridian/src/server/domain/meroshare.ts)
   - [`src/app/api/chat/route.ts`](file:///C:/Users/Arun/Development/meridian/src/app/api/chat/route.ts)
@@ -104,3 +105,4 @@
   - `npm run typecheck`: 0 errors.
   - `npx vitest run tests/integration/step5-remediation.test.ts`: 8/8 tests passed.
   - `npm test`: 23 test files passed, 141/141 tests passed.
+  - `npm run build`: Next.js Turbopack production build succeeded cleanly.
