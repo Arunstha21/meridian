@@ -93,8 +93,9 @@ When a background job exceeds its maximum attempts (default 5), it enters the `d
 2. **Reverse Proxy Configuration**:
    - When running behind a reverse proxy (e.g. Caddy, Nginx), set `TRUST_PROXY=true` in environment variables so client IP addresses for rate limiting are parsed safely from `X-Forwarded-For`.
 3. **Mail Configuration**:
-   - Set `MAIL_TRANSPORT=smtp` and `SMTP_URL=smtp://user:pass@smtp.host:587` in production.
-   - Meridian will fail to start the mailer visibly if `MAIL_TRANSPORT=smtp` is set without `SMTP_URL`.
+   - Set `MAIL_TRANSPORT=smtp`, `SMTP_URL=smtp://user:pass@smtp.host:587`, and `MAIL_FROM=no-reply@yourdomain` in production, alongside `NODE_ENV=production` and an HTTPS `APP_URL`.
+   - The mailer fails closed: console transport is refused in production, and SMTP without `SMTP_URL` (or without `MAIL_FROM` in production) refuses to start. `/api/health` reports `mail.ready=false` and an overall `degraded` status when misconfigured.
+   - Before cutover, verify real delivery end-to-end: send sign-up verification, password reset, family invitation, and email-change messages to a real recipient inbox, and confirm SPF/DKIM/DMARC pass for the sending domain.
 
 ---
 

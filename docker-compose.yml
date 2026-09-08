@@ -27,8 +27,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-meridian}:${POSTGRES_PASSWORD:-meridian}@db:5432/${POSTGRES_DB:-meridian}
       APP_URL: ${APP_URL:-http://localhost:3000}
       NODE_ENV: production
-      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-console}
-      SMTP_URL: ${SMTP_URL:-}
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:?Set MAIL_TRANSPORT=smtp (console delivery is refused in production)}
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL, e.g. smtp://user:pass@smtp.host:587}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM, e.g. no-reply@yourdomain}
     depends_on:
       db:
         condition: service_healthy
@@ -41,8 +42,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-meridian}:${POSTGRES_PASSWORD:-meridian}@db:5432/${POSTGRES_DB:-meridian}
       APP_URL: ${APP_URL:-http://localhost:3000}
       NODE_ENV: production
-      MAIL_TRANSPORT: ${MAIL_TRANSPORT:-console}
-      SMTP_URL: ${SMTP_URL:-}
+      MAIL_TRANSPORT: ${MAIL_TRANSPORT:?Set MAIL_TRANSPORT=smtp (console delivery is refused in production)}
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL, e.g. smtp://user:pass@smtp.host:587}
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM, e.g. no-reply@yourdomain}
     depends_on:
       db:
         condition: service_healthy

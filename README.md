@@ -41,7 +41,7 @@ Or run the stack with Docker:
 docker compose up --build
 ```
 
-That starts Postgres, applies migrations, serves the web app on http://localhost:3000, and runs the worker. Set `MAIL_FROM` (and SMTP) in the compose environment before using real email.
+That starts Postgres, applies migrations, serves the web app on http://localhost:3000, and runs the worker. The stack runs with `NODE_ENV=production`, so real SMTP is required: set `MAIL_TRANSPORT=smtp`, `SMTP_URL`, and `MAIL_FROM` in the environment (for example via a `.env` file next to the compose file) before `docker compose up`.
 
 The demo seed creates `demo@meridian.local` with password `meridian-demo-2026`
 (override with `SEED_PASSWORD`).
