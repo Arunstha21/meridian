@@ -108,9 +108,18 @@ function ScoreGauge({ score }: { score: number }) {
         className="absolute top-0 h-[90px] w-[160px] rounded-full blur-3xl"
         style={{ background: `radial-gradient(ellipse, ${from}18 0%, transparent 70%)` }}
         animate={shouldReduceMotion ? { opacity: 0.4 } : { opacity: [0.3, 0.55, 0.3] }}
-        transition={shouldReduceMotion ? { duration: 0 } : { duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        transition={
+          shouldReduceMotion
+            ? { duration: 0 }
+            : { duration: 4, repeat: Infinity, ease: "easeInOut" }
+        }
       />
-      <svg width={GAUGE_W} height={GAUGE_H} viewBox={`0 0 ${GAUGE_W} ${GAUGE_H}`} className="overflow-visible">
+      <svg
+        width={GAUGE_W}
+        height={GAUGE_H}
+        viewBox={`0 0 ${GAUGE_W} ${GAUGE_H}`}
+        className="overflow-visible"
+      >
         <defs>
           <linearGradient id="health-gauge-grad" x1="0%" y1="50%" x2="100%" y2="50%">
             <stop offset="0%" stopColor={from} stopOpacity={0.25} />
@@ -135,14 +144,18 @@ function ScoreGauge({ score }: { score: number }) {
           strokeDasharray={`${HALF_CIRC}`}
           initial={{ strokeDashoffset: HALF_CIRC }}
           animate={{ strokeDashoffset: scoreGap }}
-          transition={shouldReduceMotion ? { duration: 0 } : { duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+          transition={
+            shouldReduceMotion ? { duration: 0 } : { duration: 1.4, ease: [0.16, 1, 0.3, 1] }
+          }
         />
       </svg>
       <div className="absolute bottom-0 flex flex-col items-center">
         <span className="text-3xl font-bold tabular-nums tracking-tight">
           <AnimatedCounter target={score} />
         </span>
-        <span className="text-[11px] font-medium text-muted-foreground">{getScoreLabel(score)}</span>
+        <span className="text-[11px] font-medium text-muted-foreground">
+          {getScoreLabel(score)}
+        </span>
       </div>
     </div>
   );
@@ -164,7 +177,9 @@ function FactorDetail({ factor, onClose }: { factor: HealthFactor; onClose: () =
     >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-2.5">
-          <div className={cn("flex size-9 items-center justify-center rounded-xl", cfg.bg, cfg.text)}>
+          <div
+            className={cn("flex size-9 items-center justify-center rounded-xl", cfg.bg, cfg.text)}
+          >
             {factorIcons[factor.id]}
           </div>
           <div>
@@ -185,7 +200,15 @@ function FactorDetail({ factor, onClose }: { factor: HealthFactor; onClose: () =
       </div>
       <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
         <svg width="54" height="54" viewBox="0 0 54 54" className="shrink-0">
-          <circle cx="27" cy="27" r={RING_R} fill="none" stroke="var(--color-muted)" strokeWidth="5" opacity={0.3} />
+          <circle
+            cx="27"
+            cy="27"
+            r={RING_R}
+            fill="none"
+            stroke="var(--color-muted)"
+            strokeWidth="5"
+            opacity={0.3}
+          />
           <motion.circle
             cx="27"
             cy="27"
@@ -257,7 +280,11 @@ export function HealthScore() {
                 : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
             )}
           >
-            {health.trend === "up" ? <TrendingUpIcon className="size-3" /> : <TrendingDownIcon className="size-3" />}
+            {health.trend === "up" ? (
+              <TrendingUpIcon className="size-3" />
+            ) : (
+              <TrendingDownIcon className="size-3" />
+            )}
             {health.trendDelta >= 0 ? "+" : ""}
             {health.trendDelta} pts
           </div>
@@ -275,7 +302,12 @@ export function HealthScore() {
                   onClose={() => setSelectedFactor(null)}
                 />
               ) : (
-                <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+                <motion.div
+                  key="list"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="space-y-1"
+                >
                   {health.factors.map((factor, i) => {
                     const cfg = statusColor[factor.status];
                     return (
@@ -288,11 +320,19 @@ export function HealthScore() {
                         onClick={() => setSelectedFactor(factor)}
                         className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted/50"
                       >
-                        <div className={cn("flex size-6 shrink-0 items-center justify-center rounded-md", cfg.bg, cfg.text)}>
+                        <div
+                          className={cn(
+                            "flex size-6 shrink-0 items-center justify-center rounded-md",
+                            cfg.bg,
+                            cfg.text
+                          )}
+                        >
                           {factorIcons[factor.id]}
                         </div>
                         <span className="flex-1 truncate text-xs font-medium">{factor.label}</span>
-                        <span className="w-6 text-right text-[11px] font-semibold tabular-nums">{factor.score}</span>
+                        <span className="w-6 text-right text-[11px] font-semibold tabular-nums">
+                          {factor.score}
+                        </span>
                         <ChevronRightIcon className="size-3 text-muted-foreground" />
                       </motion.button>
                     );

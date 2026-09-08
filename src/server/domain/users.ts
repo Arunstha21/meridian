@@ -274,7 +274,11 @@ export async function listSessionsForActor(exec: Executor, actor: Actor) {
     .orderBy(desc(sessions.lastUsedAt));
 }
 
-export async function revokeSessionOwned(exec: Executor, actor: Actor, sessionId: string): Promise<boolean> {
+export async function revokeSessionOwned(
+  exec: Executor,
+  actor: Actor,
+  sessionId: string
+): Promise<boolean> {
   const removed = await exec
     .delete(sessions)
     .where(and(eq(sessions.id, sessionId), eq(sessions.userId, actor.userId)))
@@ -355,7 +359,11 @@ export async function getUserPrivacyMode(exec: Executor, userId: string): Promis
   return (res.rows ?? [])[0]?.privacy_mode ?? false;
 }
 
-export async function getPreference<T>(prefs: Record<string, unknown>, key: string, fallback: T): Promise<T> {
+export async function getPreference<T>(
+  prefs: Record<string, unknown>,
+  key: string,
+  fallback: T
+): Promise<T> {
   const v = prefs?.[key];
   return (v === undefined || v === null ? fallback : v) as T;
 }
@@ -376,9 +384,15 @@ export async function listFamilyMembers(exec: Executor, familyId: string) {
     .orderBy(users.createdAt);
 }
 
-export async function removeMember(exec: Executor, actor: Actor, targetUserId: string): Promise<void> {
-  if (actor.familyRole !== "admin") throw errors.forbidden("Only family admins can remove members.");
-  if (targetUserId === actor.userId) throw errors.validation("You cannot remove yourself. Delete the family instead.");
+export async function removeMember(
+  exec: Executor,
+  actor: Actor,
+  targetUserId: string
+): Promise<void> {
+  if (actor.familyRole !== "admin")
+    throw errors.forbidden("Only family admins can remove members.");
+  if (targetUserId === actor.userId)
+    throw errors.validation("You cannot remove yourself. Delete the family instead.");
   const [target] = await exec.select().from(users).where(eq(users.id, targetUserId)).limit(1);
   if (!target || target.familyId !== actor.familyId) throw errors.notFound("Member");
   if (target.removedAt) throw errors.conflict("This member has already been removed.");
@@ -407,12 +421,14 @@ export async function removeMember(exec: Executor, actor: Actor, targetUserId: s
     await tx.delete(sessions).where(eq(sessions.userId, targetUserId));
     await tx.delete(authTokens).where(eq(authTokens.userId, targetUserId));
     await tx.delete(accountShares).where(eq(accountShares.userId, targetUserId));
-    await tx.delete(accountShares).where(
-      inArray(
-        accountShares.accountId,
-        tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.ownerId, targetUserId))
-      )
-    );
+    await tx
+      .delete(accountShares)
+      .where(
+        inArray(
+          accountShares.accountId,
+          tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.ownerId, targetUserId))
+        )
+      );
   });
 
   await recordAudit(exec, {
@@ -432,12 +448,16 @@ export async function setMemberRole(
 ): Promise<void> {
   if (actor.familyRole !== "admin") throw errors.forbidden("Only family admins can change roles.");
   const [target] = await exec.select().from(users).where(eq(users.id, targetUserId)).limit(1);
-  if (!target || target.familyId !== actor.familyId || target.removedAt) throw errors.notFound("Member");
+  if (!target || target.familyId !== actor.familyId || target.removedAt)
+    throw errors.notFound("Member");
   if (target.familyRole === "admin" && role === "member") {
     const admins = await countFamilyAdmins(exec, actor.familyId);
     if (admins <= 1) throw errors.conflict("Promote another admin before demoting the last admin.");
   }
-  await exec.update(users).set({ familyRole: role, updatedAt: new Date() }).where(eq(users.id, targetUserId));
+  await exec
+    .update(users)
+    .set({ familyRole: role, updatedAt: new Date() })
+    .where(eq(users.id, targetUserId));
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
@@ -452,6 +472,8 @@ async function countFamilyAdmins(exec: Executor, familyId: string): Promise<numb
   const [row] = await exec
     .select({ count: sql<number>`count(*)::int` })
     .from(users)
-    .where(and(eq(users.familyId, familyId), eq(users.familyRole, "admin"), isNull(users.removedAt)));
+    .where(
+      and(eq(users.familyId, familyId), eq(users.familyRole, "admin"), isNull(users.removedAt))
+    );
   return row?.count ?? 0;
 }

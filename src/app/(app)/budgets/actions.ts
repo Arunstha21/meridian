@@ -8,7 +8,10 @@ import { runAction, type ActionState } from "@/server/actions/runner";
 import { parseAmountToMinor } from "@/lib/money";
 import { errors } from "@/lib/errors";
 
-export async function setBudgetAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function setBudgetAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("budget.set", async () => {
     const actor = await requireVerifiedActor();
     const family = await currentFamily(actor);

@@ -48,27 +48,50 @@ export default async function DashboardPage({
   const savingsRate = income > 0 ? (income - expense) / income : 0;
   const savingsScore = income > 0 ? 50 + savingsRate * 100 : expense === 0 ? 70 : 30;
   const spendScore = income > 0 ? 100 - (expense / income) * 80 : expense === 0 ? 70 : 25;
-  const netWorthScore = summary.netWorthMinor >= 0 ? 70 + Math.min(30, summary.assetsMinor > 0 ? 20 : 0) : 25;
+  const netWorthScore =
+    summary.netWorthMinor >= 0 ? 70 + Math.min(30, summary.assetsMinor > 0 ? 20 : 0) : 25;
   const budgetScore = budget.overall ? 120 - budget.overall.pct * 100 : 55;
   const activeAccounts = accounts.filter((a) => a.status === "active");
-  const activityScore = Math.min(100, activeAccounts.length * 15 + summary.recentEntries.length * 8);
+  const activityScore = Math.min(
+    100,
+    activeAccounts.length * 15 + summary.recentEntries.length * 8
+  );
   const factors = [
     factor("savings", "Savings rate", savingsScore, "Income kept after this month's spending."),
     factor("spending", "Spending load", spendScore, "How heavy expenses are relative to income."),
-    factor("networth", "Net worth", netWorthScore, "Assets versus liabilities on reportable accounts."),
-    factor("budget", "Budget discipline", budgetScore, budget.overall ? "Progress against your overall monthly cap." : "Set an overall cap to score this factor."),
-    factor("activity", "Ledger activity", activityScore, "Active accounts and recent transactions keep the picture current.")
+    factor(
+      "networth",
+      "Net worth",
+      netWorthScore,
+      "Assets versus liabilities on reportable accounts."
+    ),
+    factor(
+      "budget",
+      "Budget discipline",
+      budgetScore,
+      budget.overall
+        ? "Progress against your overall monthly cap."
+        : "Set an overall cap to score this factor."
+    ),
+    factor(
+      "activity",
+      "Ledger activity",
+      activityScore,
+      "Active accounts and recent transactions keep the picture current."
+    )
   ];
   const overall = clamp(factors.reduce((sum, item) => sum + item.score, 0) / factors.length);
 
-  const hasHistory = activeAccounts.length > 0 && (summary.recentEntries.length > 0 || flows.length > 0);
+  const hasHistory =
+    activeAccounts.length > 0 && (summary.recentEntries.length > 0 || flows.length > 0);
   const insufficientData = !hasHistory;
 
   // Real historical trend comparing this month to prior month:
   const lastMonthFlow = flows.length >= 2 ? flows[flows.length - 2] : null;
   const lastMonthIncome = lastMonthFlow?.incomeMinor ?? 0;
   const lastMonthExpense = lastMonthFlow?.expenseMinor ?? 0;
-  const lastMonthSavingsRate = lastMonthIncome > 0 ? (lastMonthIncome - lastMonthExpense) / lastMonthIncome : 0;
+  const lastMonthSavingsRate =
+    lastMonthIncome > 0 ? (lastMonthIncome - lastMonthExpense) / lastMonthIncome : 0;
   const trendDiff = (savingsRate - lastMonthSavingsRate) * 100;
   const trend = trendDiff >= 0 ? "up" : "down";
   const trendDelta = Math.round(trendDiff);
@@ -89,7 +112,10 @@ export default async function DashboardPage({
     expenseThisMonthMinor: summary.expenseThisMonthMinor,
     series,
     flows,
-    topCategories: summary.topCategories.map((item) => ({ name: item.name, totalMinor: item.totalMinor })),
+    topCategories: summary.topCategories.map((item) => ({
+      name: item.name,
+      totalMinor: item.totalMinor
+    })),
     recent: summary.recentEntries,
     accounts: accounts.map((account) => ({
       id: account.id,

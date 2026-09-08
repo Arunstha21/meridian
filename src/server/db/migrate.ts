@@ -11,7 +11,9 @@ export async function appliedMigrations(exec: Executor): Promise<string[]> {
   await exec.execute(
     sql`CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`
   );
-  const res = await exec.execute<{ name: string }>(sql`SELECT name FROM schema_migrations ORDER BY name`);
+  const res = await exec.execute<{ name: string }>(
+    sql`SELECT name FROM schema_migrations ORDER BY name`
+  );
   return (res.rows ?? []).map((r) => r.name);
 }
 

@@ -27,9 +27,7 @@ export default async function AccountsPage() {
       <PageHeader
         title="Accounts"
         subtitle="Balances from your ledger, grouped the way you use them."
-        actions={
-          <Button render={<Link href="/accounts/new" />}>Add account</Button>
-        }
+        actions={<Button render={<Link href="/accounts/new" />}>Add account</Button>}
       />
       <AccountsView
         accounts={accounts.map((account) => ({

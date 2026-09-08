@@ -46,7 +46,12 @@ export type DashboardData = {
   topCategories: { name: string; totalMinor: number }[];
   recent: DashboardEntry[];
   accounts: DashboardAccount[];
-  budgetOverall: { limitMinor: number; spentMinor: number; remainingMinor: number; pct: number } | null;
+  budgetOverall: {
+    limitMinor: number;
+    spentMinor: number;
+    remainingMinor: number;
+    pct: number;
+  } | null;
   health: {
     overall: number;
     trend: "up" | "down";

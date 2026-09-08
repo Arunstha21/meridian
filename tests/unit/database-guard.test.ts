@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  assertSafeTestDatabase,
-  normalizeDbUrl,
-  quoteIdentifier
-} from "../setup/database-guard";
+import { assertSafeTestDatabase, normalizeDbUrl, quoteIdentifier } from "../setup/database-guard";
 
 describe("database-guard (S07 safety)", () => {
   it("rejects absent or empty TEST_DATABASE_URL", () => {
@@ -35,13 +31,11 @@ describe("database-guard (S07 safety)", () => {
       assertSafeTestDatabase("postgres://localhost:5432/test_db;DROP TABLE users;--")
     ).toThrow("is invalid");
 
-    expect(() =>
-      assertSafeTestDatabase('postgres://localhost:5432/test"db')
-    ).toThrow("is invalid");
+    expect(() => assertSafeTestDatabase('postgres://localhost:5432/test"db')).toThrow("is invalid");
 
-    expect(() =>
-      assertSafeTestDatabase("postgres://localhost:5432/test space")
-    ).toThrow("is invalid");
+    expect(() => assertSafeTestDatabase("postgres://localhost:5432/test space")).toThrow(
+      "is invalid"
+    );
   });
 
   it("rejects system or template database names", () => {
@@ -58,10 +52,10 @@ describe("database-guard (S07 safety)", () => {
       'must explicitly designate a test database (e.g. containing "test" or "review")'
     );
     expect(() => assertSafeTestDatabase("postgres://localhost:5432/production")).toThrow(
-      'must explicitly designate a test database'
+      "must explicitly designate a test database"
     );
     expect(() => assertSafeTestDatabase("postgres://localhost:5432/meridian")).toThrow(
-      'must explicitly designate a test database'
+      "must explicitly designate a test database"
     );
   });
 

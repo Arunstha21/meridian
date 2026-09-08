@@ -48,7 +48,11 @@ export async function appendAssistantMessage(
   await exec.insert(chatMessages).values({ familyId, userId, role: "assistant", content });
 }
 
-export async function clearHistory(exec: Executor, familyId: string, userId: string): Promise<void> {
+export async function clearHistory(
+  exec: Executor,
+  familyId: string,
+  userId: string
+): Promise<void> {
   await exec
     .delete(chatMessages)
     .where(and(eq(chatMessages.familyId, familyId), eq(chatMessages.userId, userId)));

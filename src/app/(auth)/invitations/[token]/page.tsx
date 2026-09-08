@@ -18,9 +18,13 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
       <Card>
         <h1 className="text-lg font-semibold">Invitation unavailable</h1>
         <p className="mt-2 text-sm text-muted">
-          This invitation link is invalid, already used, or expired. Ask the family admin for a new one.
+          This invitation link is invalid, already used, or expired. Ask the family admin for a new
+          one.
         </p>
-        <Link href="/sign-in" className="mt-4 inline-block text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/sign-in"
+          className="mt-4 inline-block text-primary underline-offset-4 hover:underline"
+        >
           Go to sign in
         </Link>
       </Card>
@@ -41,8 +45,8 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
           <AcceptExistingForm token={token} />
         ) : actor ? (
           <p className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
-            You are signed in as {actor.email}, but this invitation was sent to {invitation.email}. Sign
-            out and use that account, or open the link while signed out.
+            You are signed in as {actor.email}, but this invitation was sent to {invitation.email}.
+            Sign out and use that account, or open the link while signed out.
           </p>
         ) : (
           <>

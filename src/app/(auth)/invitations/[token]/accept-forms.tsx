@@ -28,8 +28,19 @@ export function AcceptNewAccountForm({ token, email }: { token: string; email: s
       <Field label="Email" htmlFor="emailDisplay">
         <Input id="emailDisplay" type="email" defaultValue={email} disabled />
       </Field>
-      <Field label="Password" htmlFor="password" hint="At least 10 characters with a letter and a digit.">
-        <Input id="password" name="password" type="password" required minLength={10} autoComplete="new-password" />
+      <Field
+        label="Password"
+        htmlFor="password"
+        hint="At least 10 characters with a letter and a digit."
+      >
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          required
+          minLength={10}
+          autoComplete="new-password"
+        />
       </Field>
       <SubmitButton className="w-full">Create account and join</SubmitButton>
     </form>

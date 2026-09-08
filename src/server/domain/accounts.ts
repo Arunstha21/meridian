@@ -109,14 +109,18 @@ export async function updateAccount(
 
   if (patch.name !== undefined) {
     const name = patch.name.trim();
-    if (!name || name.length > 120) throw errors.validation("Account name must be 1–120 characters.");
+    if (!name || name.length > 120)
+      throw errors.validation("Account name must be 1–120 characters.");
     updates.name = name;
   }
   if (patch.institution !== undefined) updates.institution = patch.institution?.trim() || null;
   if (patch.subtype !== undefined) updates.subtype = patch.subtype?.trim() || null;
   if (patch.includedInReports !== undefined) updates.includedInReports = patch.includedInReports;
   if (patch.openingBalanceDisplayMinor !== undefined) {
-    updates.openingBalanceMinor = displayToLedgerBalance(patch.openingBalanceDisplayMinor, account.type);
+    updates.openingBalanceMinor = displayToLedgerBalance(
+      patch.openingBalanceDisplayMinor,
+      account.type
+    );
     needsRecalc = true;
   }
   if (patch.openedOn !== undefined) {
@@ -146,7 +150,10 @@ export async function setAccountStatus(
   status: "active" | "draft" | "disabled"
 ): Promise<void> {
   await requireFullControl(exec, actor, accountId);
-  await exec.update(accounts).set({ status, updatedAt: new Date() }).where(eq(accounts.id, accountId));
+  await exec
+    .update(accounts)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(accounts.id, accountId));
   await recordAudit(exec, {
     familyId: actor.familyId,
     actorUserId: actor.userId,
@@ -157,7 +164,11 @@ export async function setAccountStatus(
   });
 }
 
-export async function deleteAccount(exec: Executor, actor: Actor, accountId: string): Promise<void> {
+export async function deleteAccount(
+  exec: Executor,
+  actor: Actor,
+  accountId: string
+): Promise<void> {
   await requireFullControl(exec, actor, accountId);
   await exec.delete(accounts).where(eq(accounts.id, accountId));
   await recordAudit(exec, {
@@ -177,7 +188,8 @@ export async function shareAccount(
   permission: "full_control" | "read_write" | "read_only"
 ): Promise<void> {
   const account = await requireFullControl(exec, actor, accountId);
-  if (targetUserId === actor.userId) throw errors.validation("You already have full access to this account.");
+  if (targetUserId === actor.userId)
+    throw errors.validation("You already have full access to this account.");
   const [target] = await exec.select().from(users).where(eq(users.id, targetUserId)).limit(1);
   if (!target || target.familyId !== account.familyId) {
     throw errors.validation("Shares can only be granted to members of the same family.");
@@ -230,8 +242,7 @@ export async function listAccountsForActor(
   actor: Actor
 ): Promise<AccountListItem[]> {
   const rows = await exec
-    .select({ account: accounts, sharePermission: accountShares.permission }
-    )
+    .select({ account: accounts, sharePermission: accountShares.permission })
     .from(accounts)
     .leftJoin(
       accountShares,
@@ -241,7 +252,8 @@ export async function listAccountsForActor(
     .orderBy(desc(accounts.createdAt));
 
   const visible = rows.filter(
-    (r) => r.account.ownerId === null || r.account.ownerId === actor.userId || r.sharePermission !== null
+    (r) =>
+      r.account.ownerId === null || r.account.ownerId === actor.userId || r.sharePermission !== null
   );
 
   const balanceMap = await latestBalancesFor(
@@ -251,9 +263,7 @@ export async function listAccountsForActor(
 
   return visible.map(({ account, sharePermission }) => ({
     ...account,
-    displayBalanceMinor:
-      balanceMap.get(account.id)?.balanceMinor ??
-      account.openingBalanceMinor,
+    displayBalanceMinor: balanceMap.get(account.id)?.balanceMinor ?? account.openingBalanceMinor,
     level:
       account.ownerId === null || account.ownerId === actor.userId
         ? ("full_control" as const)
@@ -300,15 +310,16 @@ export async function getAccountOverview(
     ORDER BY as_of ASC
   `);
 
-  const [latest] = (
-    await exec.execute<{ balance_minor: string }>(sql`
+  const [latest] =
+    (
+      await exec.execute<{ balance_minor: string }>(sql`
       SELECT balance_minor::text AS balance_minor
       FROM balances
       WHERE account_id = ${accountId}::uuid
       ORDER BY as_of DESC
       LIMIT 1
     `)
-  ).rows ?? [];
+    ).rows ?? [];
 
   const activityRows = await exec
     .select({

@@ -60,17 +60,25 @@ export async function runAgent(
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     if (Date.now() - startTime > AGENT_TIMEOUT_MS) {
-      throw errors.validation("The assistant timed out while processing your request. Please try a simpler query.");
+      throw errors.validation(
+        "The assistant timed out while processing your request. Please try a simpler query."
+      );
     }
 
     const { message } = await chatCompletion(messages, tools);
 
     if (message.tool_calls && message.tool_calls.length > 0) {
       if (toolCallsMade.length + message.tool_calls.length > MAX_TOTAL_TOOL_CALLS) {
-        throw errors.validation("The assistant exceeded its tool execution quota. Please try a simpler query.");
+        throw errors.validation(
+          "The assistant exceeded its tool execution quota. Please try a simpler query."
+        );
       }
 
-      messages.push({ role: "assistant", content: message.content ?? "", tool_calls: message.tool_calls });
+      messages.push({
+        role: "assistant",
+        content: message.content ?? "",
+        tool_calls: message.tool_calls
+      });
       for (const call of message.tool_calls) {
         const result = await executeTool(call.function.name, call.function.arguments, ctx);
         toolCallsMade.push({ name: call.function.name, args: call.function.arguments });

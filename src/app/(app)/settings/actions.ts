@@ -44,7 +44,12 @@ export async function setPreferenceAction(formData: FormData): Promise<void> {
   if (!actor) return;
   const { key, value } = parsed.data;
   if (key === "theme" && value !== "light" && value !== "dark" && value !== "system") return;
-  await usersSvc.setUserPreference(getDb(), actor.userId, key, key === "privacy_mode" ? value === "on" : value);
+  await usersSvc.setUserPreference(
+    getDb(),
+    actor.userId,
+    key,
+    key === "privacy_mode" ? value === "on" : value
+  );
   if (key === "theme") {
     const store = await cookies();
     store.set("theme", value, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
@@ -86,7 +91,10 @@ const emailChangeSchema = z.object({
   newEmail: z.string().email()
 });
 
-export async function changeEmailAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function changeEmailAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("profile.change_email", async () => {
     const actor = await assertActor();
     const input = emailChangeSchema.parse(formValues(formData));
@@ -119,7 +127,8 @@ export async function updateFamilySettingsAction(
   return runAction("family.update", async () => {
     const actor = await assertActor();
     const parsed = orgSchema.safeParse(formValues(formData));
-    if (!parsed.success) throw (await import("@/lib/errors")).errors.validation("Check organization fields.");
+    if (!parsed.success)
+      throw (await import("@/lib/errors")).errors.validation("Check organization fields.");
     const patch: Record<string, string> = {};
     for (const [k, v] of Object.entries(parsed.data)) {
       if (typeof v === "string") patch[k] = v;
@@ -133,7 +142,10 @@ export async function updateFamilySettingsAction(
 
 const deleteFamilySchema = z.object({ confirmName: z.string().min(1) });
 
-export async function deleteFamilyAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function deleteFamilyAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("family.delete", async () => {
     const actor = await assertActor();
     const input = deleteFamilySchema.parse(formValues(formData));
@@ -159,7 +171,9 @@ export async function createInvitationAction(
     const input = inviteSchema.parse(formValues(formData));
     const targetEmail = input.email.toLowerCase().trim();
     if (adminEmails().includes(targetEmail)) {
-      throw errors.forbidden("Platform administrator addresses cannot be invited to join a family.");
+      throw errors.forbidden(
+        "Platform administrator addresses cannot be invited to join a family."
+      );
     }
     let url = "";
     await withTransaction(async (tx) => {
@@ -204,7 +218,12 @@ export async function manageMemberAction(formData: FormData): Promise<void> {
     if (parsed.data.op === "remove") {
       await usersSvc.removeMember(db, actor, parsed.data.userId);
     } else {
-      await usersSvc.setMemberRole(db, actor, parsed.data.userId, parsed.data.op === "promote" ? "admin" : "member");
+      await usersSvc.setMemberRole(
+        db,
+        actor,
+        parsed.data.userId,
+        parsed.data.op === "promote" ? "admin" : "member"
+      );
     }
     revalidatePath("/settings/members");
     return undefined;

@@ -61,12 +61,17 @@ function NameForm({ name }: { name: string }) {
 
 function PrivacyToggle({ privacy }: { privacy: boolean }) {
   return (
-    <form action={setPreferenceAction} className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+    <form
+      action={setPreferenceAction}
+      className="flex items-center justify-between gap-4 rounded-lg border border-border p-3"
+    >
       <input type="hidden" name="key" value="privacy_mode" />
       <input type="hidden" name="value" value={privacy ? "off" : "on"} />
       <div>
         <p className="text-sm font-medium">Privacy mode</p>
-        <p className="text-xs text-muted">Hide every monetary amount on screen. Currently {privacy ? "on" : "off"}.</p>
+        <p className="text-xs text-muted">
+          Hide every monetary amount on screen. Currently {privacy ? "on" : "off"}.
+        </p>
       </div>
       <SubmitButton variant="secondary">{privacy ? "Turn off" : "Turn on"}</SubmitButton>
     </form>
@@ -97,7 +102,9 @@ function TimezoneForm({ timezone, timezones }: { timezone: string; timezones: st
       <Field label="Time zone" htmlFor="s-tz">
         <Select id="s-tz" name="timezone" defaultValue={timezone}>
           {timezones.map((tz) => (
-            <option key={tz} value={tz}>{tz}</option>
+            <option key={tz} value={tz}>
+              {tz}
+            </option>
           ))}
         </Select>
       </Field>
@@ -114,10 +121,23 @@ function ChangePasswordForm() {
       <h3 className="text-sm font-medium">Change password</h3>
       <FormError message={state?.ok === false ? state.error : undefined} />
       <Field label="Current password" htmlFor="cur-pw">
-        <Input id="cur-pw" name="currentPassword" type="password" autoComplete="current-password" required />
+        <Input
+          id="cur-pw"
+          name="currentPassword"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
       </Field>
       <Field label="New password" htmlFor="new-pw" hint="Other sessions will be signed out.">
-        <Input id="new-pw" name="newPassword" type="password" autoComplete="new-password" required minLength={10} />
+        <Input
+          id="new-pw"
+          name="newPassword"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={10}
+        />
       </Field>
       <SubmitButton variant="secondary">Update password</SubmitButton>
     </form>
@@ -129,10 +149,18 @@ function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   return (
     <form action={action} className="space-y-3 border-t border-border pt-4">
       <h3 className="text-sm font-medium">Change email</h3>
-      <p className="text-xs text-muted">Current: {currentEmail}. You will need to verify the new address.</p>
+      <p className="text-xs text-muted">
+        Current: {currentEmail}. You will need to verify the new address.
+      </p>
       <FormError message={state?.ok === false ? state.error : undefined} />
       <Field label="Confirm with current password" htmlFor="email-pw">
-        <Input id="email-pw" name="currentPassword" type="password" autoComplete="current-password" required />
+        <Input
+          id="email-pw"
+          name="currentPassword"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
       </Field>
       <Field label="New email" htmlFor="new-email">
         <Input id="new-email" name="newEmail" type="email" required />

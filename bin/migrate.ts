@@ -5,7 +5,8 @@ config({ quiet: true });
 const direction = process.argv[2] ?? "up";
 
 async function main() {
-  const { migrateDownStep, migrateStatusReport, migrateUp } = await import("../src/server/db/migrate");
+  const { migrateDownStep, migrateStatusReport, migrateUp } =
+    await import("../src/server/db/migrate");
   if (direction === "status") {
     const report = await migrateStatusReport();
     console.log(JSON.stringify(report, null, 2));
@@ -17,7 +18,9 @@ async function main() {
     return;
   }
   const ran = await migrateUp();
-  console.log(ran.length ? `Applied:\n${ran.map((m) => `  ${m}`).join("\n")}` : "Database is up to date");
+  console.log(
+    ran.length ? `Applied:\n${ran.map((m) => `  ${m}`).join("\n")}` : "Database is up to date"
+  );
 }
 
 main().then(

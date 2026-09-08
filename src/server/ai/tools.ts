@@ -84,7 +84,13 @@ const TOOLS: Tool[] = [
     z.object({
       from: isoDate.optional().describe("Inclusive start date (YYYY-MM-DD)"),
       to: isoDate.optional().describe("Inclusive end date (YYYY-MM-DD)"),
-      months: z.number().int().min(1).max(24).optional().describe("Last N months including the current one; overrides from/to")
+      months: z
+        .number()
+        .int()
+        .min(1)
+        .max(24)
+        .optional()
+        .describe("Last N months including the current one; overrides from/to")
     }),
     async (args, { exec, actor, family }) => {
       let from: string | undefined = args.from as string | undefined;
@@ -152,7 +158,9 @@ const TOOLS: Tool[] = [
       const date = args.date ? String(args.date) : monthKeyToday(ctx.family.timezone);
       if (!isIsoDate(date)) return { error: "Invalid date" };
 
-      const account = (await listAccountsForActor(ctx.exec, ctx.actor)).find((a) => a.id === accountId);
+      const account = (await listAccountsForActor(ctx.exec, ctx.actor)).find(
+        (a) => a.id === accountId
+      );
       if (!account) return { error: "Unknown account. Call list_accounts first." };
 
       const amountLedgerMinor = parseAmountToMinor(amount, account.currency);
@@ -203,7 +211,11 @@ export function toolDefinitions(): ToolDefinition[] {
   return TOOLS.map((t) => t.definition);
 }
 
-export async function executeTool(name: string, argsJson: string, ctx: ToolContext): Promise<unknown> {
+export async function executeTool(
+  name: string,
+  argsJson: string,
+  ctx: ToolContext
+): Promise<unknown> {
   const t = TOOL_MAP.get(name);
   if (!t) return { error: `Unknown tool: ${name}` };
   let rawArgs: unknown;

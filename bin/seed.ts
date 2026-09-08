@@ -48,7 +48,7 @@ async function main() {
   );
   if ((existing.rows ?? []).length > 0 && !process.argv.includes("--force")) {
     console.log("Demo data already present (use --force to wipe and reseed).");
-        return;
+    return;
   }
   if ((existing.rows ?? []).length > 0) {
     await db.execute(sql`
@@ -282,7 +282,7 @@ async function main() {
   console.log(`  sign-in: ${email}`);
   console.log(`  password: ${password}`);
   console.log("  platform admin: npm run admin:promote -- <your-email>");
-  }
+}
 
 main().then(
   () => process.exit(0),

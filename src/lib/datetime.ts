@@ -97,9 +97,11 @@ export function formatIsoDate(iso: string, locale = "en", tz?: string): string {
 }
 
 export function formatMonthKey(key: string, locale = "en"): string {
-  return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric", timeZone: "UTC" }).format(
-    new Date(`${key}-01T00:00:00Z`)
-  );
+  return new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(`${key}-01T00:00:00Z`));
 }
 
 function assertIso(value: string): void {

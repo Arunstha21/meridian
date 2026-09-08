@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { sql } from "drizzle-orm";
-import { db, makeUser, makeAccount, addTxn, truncateAll, actorOf, daysAgo, joinFamily } from "../helpers";
+import {
+  db,
+  makeUser,
+  makeAccount,
+  addTxn,
+  truncateAll,
+  actorOf,
+  daysAgo,
+  joinFamily
+} from "../helpers";
 import * as reportsSvc from "@/server/domain/reports";
 import * as accountsSvc from "@/server/domain/accounts";
 import * as orchestrate from "@/server/domain/orchestrate";
@@ -71,10 +80,20 @@ describe("reports", () => {
       SELECT count(*)::int AS c FROM exchange_rates WHERE base_currency='EUR' AND quote_currency='USD'
     `);
     if (Number((rates.rows ?? [])[0]!.c) === 0) {
-      await exchangeRatesSvc.upsertRate(db(), { base: "EUR", quote: "USD", rate: "1.1", quotedOn: daysAgo(1) });
+      await exchangeRatesSvc.upsertRate(db(), {
+        base: "EUR",
+        quote: "USD",
+        rate: "1.1",
+        quotedOn: daysAgo(1)
+      });
     }
 
-    const series = await reportsSvc.netWorthSeries(db(), { ...family, currency: "USD" }, user.userId, 30);
+    const series = await reportsSvc.netWorthSeries(
+      db(),
+      { ...family, currency: "USD" },
+      user.userId,
+      30
+    );
     const latest = series[series.length - 1]!.valueMinor;
     expect(latest).toBe(Math.round(100000 * 1.1));
   });
@@ -84,7 +103,10 @@ describe("reports", () => {
     const family = await currentFamily(actorOf(user));
 
     const open = await makeAccount(user, { openingBalanceDisplayMinor: 70000 });
-    const excluded = await makeAccount(user, { openingBalanceDisplayMinor: 999999999, includedInReports: false });
+    const excluded = await makeAccount(user, {
+      openingBalanceDisplayMinor: 999999999,
+      includedInReports: false
+    });
 
     const before = await reportsSvc.netWorthSeries(db(), family, user.userId, 10);
     const latestBefore = before[before.length - 1]?.valueMinor ?? 0;

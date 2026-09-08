@@ -134,7 +134,11 @@ export default async function AccountDetailPage({
       ) : null}
 
       {valuationDriven && level === "full_control" ? (
-        <ValuationForm accountId={account.id} currency={account.currency} today={todayIn(family.timezone)} />
+        <ValuationForm
+          accountId={account.id}
+          currency={account.currency}
+          today={todayIn(family.timezone)}
+        />
       ) : null}
 
       <Card>

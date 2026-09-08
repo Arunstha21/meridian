@@ -8,7 +8,12 @@ export type SharePermission = "full_control" | "read_write" | "read_only";
 export type AccessLevel = SharePermission;
 export type AccessNeed = "view" | "annotate" | "manage";
 
-export const ACCOUNT_TYPES = ["depository", "credit_card", "other_asset", "other_liability"] as const;
+export const ACCOUNT_TYPES = [
+  "depository",
+  "credit_card",
+  "other_asset",
+  "other_liability"
+] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
 export const VALUATION_DRIVEN_TYPES: AccountType[] = ["other_asset", "other_liability"];
@@ -27,8 +32,7 @@ function satisfies(level: AccessLevel, need: AccessNeed): boolean {
 }
 
 export type AccountAccess =
-  | { granted: false }
-  | { granted: true; account: AccountRow; level: AccessLevel };
+  { granted: false } | { granted: true; account: AccountRow; level: AccessLevel };
 
 export async function getAccountAccess(
   exec: Executor,

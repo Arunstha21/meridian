@@ -26,11 +26,7 @@ export function Amount({
   }
   const value = signed && minor > 0 ? `+${fmtMoney(minor, currency)}` : fmtMoney(minor, currency);
   const tone = amountTone(minor, colorize);
-  return (
-    <span className={`tabular ${tone} ${className}`.trim()}>
-      {value}
-    </span>
-  );
+  return <span className={`tabular ${tone} ${className}`.trim()}>{value}</span>;
 }
 
 /** Display amounts are already sign-flipped from the ledger: income is positive. */
@@ -57,8 +53,20 @@ export function Sparkline({
 
   if (points.length < 2 || isMasked) {
     return (
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-28 w-full" role="img" aria-label="No trend data">
-        <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="var(--border)" strokeWidth="1" />
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-28 w-full"
+        role="img"
+        aria-label="No trend data"
+      >
+        <line
+          x1="0"
+          y1={height / 2}
+          x2={width}
+          y2={height / 2}
+          stroke="var(--border)"
+          strokeWidth="1"
+        />
       </svg>
     );
   }
@@ -73,7 +81,12 @@ export function Sparkline({
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-28 w-full" role="img" aria-label="Net worth trend line">
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-28 w-full"
+      role="img"
+      aria-label="Net worth trend line"
+    >
       <polyline
         fill="none"
         stroke="var(--accent)"

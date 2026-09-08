@@ -4,7 +4,10 @@ import { cn } from "@/lib/utils";
 export function Card({ className = "", ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("rounded-xl bg-card p-4 text-card-foreground ring-1 ring-foreground/10", className)}
+      className={cn(
+        "rounded-xl bg-card p-4 text-card-foreground ring-1 ring-foreground/10",
+        className
+      )}
       {...props}
     />
   );
@@ -26,7 +29,9 @@ export function Badge({
   children: React.ReactNode;
 }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeTones[tone]}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeTones[tone]}`}
+    >
       {children}
     </span>
   );

@@ -41,7 +41,11 @@ export function QuickAddForm({
   }
 
   if (accounts.length === 0) {
-    return <p className="text-sm text-muted">Add an account first, then come back to record transactions.</p>;
+    return (
+      <p className="text-sm text-muted">
+        Add an account first, then come back to record transactions.
+      </p>
+    );
   }
 
   return (
@@ -54,7 +58,11 @@ export function QuickAddForm({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-inset p-1" role="group" aria-label="Transaction type">
+      <div
+        className="grid grid-cols-2 gap-1 rounded-lg bg-surface-inset p-1"
+        role="group"
+        aria-label="Transaction type"
+      >
         {(["expense", "income"] as const).map((k) => (
           <button
             key={k}
@@ -86,7 +94,14 @@ export function QuickAddForm({
 
       <label className="block space-y-1">
         <span className="text-sm font-medium">Description</span>
-        <Input name="name" required maxLength={240} placeholder="Coffee" autoComplete="off" className="py-3" />
+        <Input
+          name="name"
+          required
+          maxLength={240}
+          placeholder="Coffee"
+          autoComplete="off"
+          className="py-3"
+        />
       </label>
 
       <label className="block space-y-1">

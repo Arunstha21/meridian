@@ -22,7 +22,8 @@ export function SpendingLimit() {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            No overall cap yet. Spent {privacy ? "••••" : fmtMoney(expenseThisMonthMinor, currency)} this month.
+            No overall cap yet. Spent {privacy ? "••••" : fmtMoney(expenseThisMonthMinor, currency)}{" "}
+            this month.
           </p>
           <Button size="sm" variant="outline" render={<Link href="/budgets" />}>
             Set a budget

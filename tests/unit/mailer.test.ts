@@ -30,7 +30,9 @@ describe("createMailer", () => {
   it("throws error when MAIL_TRANSPORT is smtp but SMTP_URL is missing", () => {
     (env as Record<string, unknown>).MAIL_TRANSPORT = "smtp";
     (env as Record<string, unknown>).SMTP_URL = undefined;
-    expect(() => createMailer()).toThrowError(/MAIL_TRANSPORT is set to 'smtp' but SMTP_URL is not configured/);
+    expect(() => createMailer()).toThrowError(
+      /MAIL_TRANSPORT is set to 'smtp' but SMTP_URL is not configured/
+    );
   });
 
   it("refuses console transport in production", () => {

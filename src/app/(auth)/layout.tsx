@@ -26,7 +26,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </div>
         <div className="mt-8 w-full max-w-lg sm:mx-auto">{children}</div>
       </div>
-      <footer className="pt-8 text-center text-xs text-muted-foreground">Self-hosted personal finance</footer>
+      <footer className="pt-8 text-center text-xs text-muted-foreground">
+        Self-hosted personal finance
+      </footer>
     </main>
   );
 }

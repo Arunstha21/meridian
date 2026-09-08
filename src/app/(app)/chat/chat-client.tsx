@@ -55,7 +55,11 @@ export function ChatClient({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message })
       });
-      const data = (await res.json()) as { reply?: string; error?: string; proposal?: ChatProposal | null };
+      const data = (await res.json()) as {
+        reply?: string;
+        error?: string;
+        proposal?: ChatProposal | null;
+      };
       if (!res.ok || !data.reply) {
         setError(data.error ?? "The assistant could not respond.");
       } else {

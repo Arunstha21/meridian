@@ -4,7 +4,12 @@ import { useActionState } from "react";
 import { ConfirmDialog, Dialog, useDialogClose } from "@/components/ds/dialog";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
-import { updateAccountAction, setAccountStatusAction, deleteAccountAction, shareAccountAction } from "@/app/(app)/accounts/actions";
+import {
+  updateAccountAction,
+  setAccountStatusAction,
+  deleteAccountAction,
+  shareAccountAction
+} from "@/app/(app)/accounts/actions";
 
 type Member = { id: string; name: string; email: string };
 
@@ -25,7 +30,14 @@ export function AccountActions({
 }) {
   return (
     <>
-      <Dialog trigger={<span className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium">Edit</span>} title="Account settings">
+      <Dialog
+        trigger={
+          <span className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium">
+            Edit
+          </span>
+        }
+        title="Account settings"
+      >
         <EditSettings
           accountId={accountId}
           name={accountName}
@@ -34,7 +46,14 @@ export function AccountActions({
         />
       </Dialog>
 
-      <Dialog trigger={<span className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium">Share</span>} title="Share with family members">
+      <Dialog
+        trigger={
+          <span className="rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium">
+            Share
+          </span>
+        }
+        title="Share with family members"
+      >
         <SharePanel accountId={accountId} members={members} />
       </Dialog>
 
@@ -97,7 +116,12 @@ function EditSettings({
         <Input id="edit-name" name="name" required maxLength={120} defaultValue={name} />
       </Field>
       <Field label="Institution" htmlFor="edit-institution">
-        <Input id="edit-institution" name="institution" maxLength={120} defaultValue={institution ?? ""} />
+        <Input
+          id="edit-institution"
+          name="institution"
+          maxLength={120}
+          defaultValue={institution ?? ""}
+        />
       </Field>
       <label className="flex items-center gap-2 text-sm">
         <input type="hidden" name="includedInReports" value="off" />
@@ -145,8 +169,12 @@ function SharePanel({ accountId, members }: { accountId: string; members: Member
             </Select>
           </Field>
           <div className="flex gap-2">
-            <SubmitButton name="op" value="share">Grant / update</SubmitButton>
-            <SubmitButton name="op" value="unshare" variant="secondary">Remove access</SubmitButton>
+            <SubmitButton name="op" value="share">
+              Grant / update
+            </SubmitButton>
+            <SubmitButton name="op" value="unshare" variant="secondary">
+              Remove access
+            </SubmitButton>
           </div>
         </>
       )}

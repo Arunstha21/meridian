@@ -30,7 +30,10 @@ export async function buildFamilyExport(exec: Executor, actor: Actor): Promise<F
   const visibleAccounts = await listAccountsForActor(exec, actor);
   const visibleAccountIds = visibleAccounts.map((a) => a.id);
 
-  const categoryRows = await exec.select().from(categories).where(eq(categories.familyId, familyId));
+  const categoryRows = await exec
+    .select()
+    .from(categories)
+    .where(eq(categories.familyId, familyId));
   const tagRows = await exec.select().from(tags).where(eq(tags.familyId, familyId));
 
   const entryRows =
@@ -115,7 +118,12 @@ export async function buildFamilyExport(exec: Executor, actor: Actor): Promise<F
       openedOn: a.openedOn,
       ownerId: a.ownerId
     })),
-    categories: categoryRows.map((c) => ({ id: c.id, name: c.name, color: c.color, parentId: c.parentId })),
+    categories: categoryRows.map((c) => ({
+      id: c.id,
+      name: c.name,
+      color: c.color,
+      parentId: c.parentId
+    })),
     tags: tagRows.map((t) => ({ id: t.id, name: t.name, color: t.color })),
     entries: entryRows.map(
       ({ entry, txnCategoryId, txnMerchant, txnTransferId, valuationKind }) => ({

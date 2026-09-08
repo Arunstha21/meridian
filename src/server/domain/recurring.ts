@@ -1,8 +1,19 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { accounts, categories, entries, families, recurringSeries, transactions } from "../db/schema";
+import {
+  accounts,
+  categories,
+  entries,
+  families,
+  recurringSeries,
+  transactions
+} from "../db/schema";
 import type { Actor } from "../auth/context";
-import { accessibleAccountIds, assertAccountAccess, assertAccountOpen } from "../authorization/access";
+import {
+  accessibleAccountIds,
+  assertAccountAccess,
+  assertAccountOpen
+} from "../authorization/access";
 import { recalculateAccount } from "./balances";
 import { recordAudit } from "../observability/audit";
 import { captureDebugLog } from "../observability/debug-log";
@@ -61,7 +72,9 @@ export function nextOccurrence(frequency: Frequency, config: SeriesConfig, from:
       const anchorDay = config.dayOfMonth ?? Number(from.slice(8, 10));
       const nextMonth = addMonths(monthKeyOf(from), 1);
       const candidate = clampToMonth(`${nextMonth}-01`, anchorDay);
-      return candidate > from ? candidate : clampToMonth(`${addMonths(nextMonth, 1)}-01`, anchorDay);
+      return candidate > from
+        ? candidate
+        : clampToMonth(`${addMonths(nextMonth, 1)}-01`, anchorDay);
     }
   }
 }
@@ -80,7 +93,8 @@ function validateInput(input: RecurringSeriesInput): void {
   if (!name) throw errors.validation("A name is required.");
   if (name.length > MAX_NAME_LENGTH) throw errors.validation("Name is too long.");
   if (input.amountLedgerMinor === 0) throw errors.validation("Amount cannot be zero.");
-  if (!isIsoDate(input.nextDue)) throw errors.validation("Next due date must be in YYYY-MM-DD format.");
+  if (!isIsoDate(input.nextDue))
+    throw errors.validation("Next due date must be in YYYY-MM-DD format.");
 
   switch (input.frequency) {
     case "monthly":
@@ -89,7 +103,11 @@ function validateInput(input: RecurringSeriesInput): void {
       }
       break;
     case "weekly":
-      if (input.config.weekday === undefined || input.config.weekday < 0 || input.config.weekday > 6) {
+      if (
+        input.config.weekday === undefined ||
+        input.config.weekday < 0 ||
+        input.config.weekday > 6
+      ) {
         throw errors.validation("Weekly series require a weekday (0-6).");
       }
       break;
@@ -139,9 +157,18 @@ async function requireSeriesManage(exec: Executor, actor: Actor, seriesId: strin
   return existing;
 }
 
-export async function createSeries(exec: Executor, actor: Actor, input: RecurringSeriesInput): Promise<string> {
+export async function createSeries(
+  exec: Executor,
+  actor: Actor,
+  input: RecurringSeriesInput
+): Promise<string> {
   validateInput(input);
-  const account = await assertAccountAndCategory(exec, actor, input.accountId, input.categoryId ?? null);
+  const account = await assertAccountAndCategory(
+    exec,
+    actor,
+    input.accountId,
+    input.categoryId ?? null
+  );
 
   const [row] = await exec
     .insert(recurringSeries)
@@ -190,7 +217,9 @@ export async function updateSeries(
         patch.categoryId !== undefined ? patch.categoryId : existing.categoryId
       );
       if (targetAccount.currency !== existing.currency) {
-        throw errors.validation("Cannot move recurring series across accounts with different currencies.");
+        throw errors.validation(
+          "Cannot move recurring series across accounts with different currencies."
+        );
       }
     } else if (patch.categoryId !== undefined && patch.categoryId !== null) {
       await assertAccountAndCategory(tx, actor, existing.accountId, patch.categoryId);
@@ -272,7 +301,11 @@ export async function setSeriesActive(
   });
 }
 
-export async function skipNextOccurrence(exec: Executor, actor: Actor, seriesId: string): Promise<string> {
+export async function skipNextOccurrence(
+  exec: Executor,
+  actor: Actor,
+  seriesId: string
+): Promise<string> {
   const existing = await requireSeriesManage(exec, actor, seriesId);
   const skipped = nextOccurrence(
     existing.frequency as Frequency,
@@ -315,7 +348,12 @@ export async function listSeries(exec: Executor, actor: Actor) {
     })
     .from(recurringSeries)
     .innerJoin(accounts, eq(accounts.id, recurringSeries.accountId))
-    .where(and(eq(recurringSeries.familyId, actor.familyId), inArray(recurringSeries.accountId, accountIds)))
+    .where(
+      and(
+        eq(recurringSeries.familyId, actor.familyId),
+        inArray(recurringSeries.accountId, accountIds)
+      )
+    )
     .orderBy(asc(recurringSeries.nextDue));
 }
 
@@ -335,7 +373,9 @@ export async function postDueSeries(exec: Executor, now = new Date()): Promise<P
   const result: PostResult = { posted: 0, paused: 0, failed: 0 };
 
   // UTC date + 1 covers the furthest-ahead timezone (UTC+14) on any given run.
-  const utcToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Etc/UTC", ...DATE_FMT }).format(now);
+  const utcToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Etc/UTC", ...DATE_FMT }).format(
+    now
+  );
   const horizon = addDays(utcToday, 1);
 
   const due = await exec
@@ -351,7 +391,10 @@ export async function postDueSeries(exec: Executor, now = new Date()): Promise<P
     .orderBy(asc(recurringSeries.nextDue));
 
   for (const { series, account, familyTimezone } of due) {
-    const today = new Intl.DateTimeFormat("en-CA", { timeZone: familyTimezone, ...DATE_FMT }).format(now);
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: familyTimezone,
+      ...DATE_FMT
+    }).format(now);
 
     if (account.status !== "active") {
       await exec
@@ -434,7 +477,11 @@ export async function postDueSeries(exec: Executor, now = new Date()): Promise<P
         source: "worker",
         familyId: series.familyId,
         accountId: series.accountId,
-        metadata: { seriesId: series.id, seriesName: series.name, error: e instanceof Error ? e.message : String(e) }
+        metadata: {
+          seriesId: series.id,
+          seriesName: series.name,
+          error: e instanceof Error ? e.message : String(e)
+        }
       });
     }
   }

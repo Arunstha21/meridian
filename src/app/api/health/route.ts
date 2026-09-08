@@ -10,7 +10,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const dbOk = await checkDb();
   if (!dbOk) {
-    return NextResponse.json({ status: "error", db: false, migrations: "unknown" }, { status: 503 });
+    return NextResponse.json(
+      { status: "error", db: false, migrations: "unknown" },
+      { status: 503 }
+    );
   }
 
   try {

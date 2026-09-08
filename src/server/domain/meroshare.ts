@@ -583,7 +583,14 @@ export async function listMeroShareConnections(exec: Executor, actor: Actor) {
   const groups = new Map<
     string,
     {
-      connection: { id: string; name: string; dpCode: string; dpName: string; lastSyncedAt: Date | null; createdAt: Date };
+      connection: {
+        id: string;
+        name: string;
+        dpCode: string;
+        dpName: string;
+        lastSyncedAt: Date | null;
+        createdAt: Date;
+      };
       accounts: Array<{
         id: string;
         name: string;

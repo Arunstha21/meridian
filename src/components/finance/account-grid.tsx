@@ -69,7 +69,10 @@ export function AccountsView({
   const router = useRouter();
   const [selectedType, setSelectedType] = useState<(typeof filterTabs)[number]["value"]>("all");
   const filtered = useMemo(
-    () => (selectedType === "all" ? accounts : accounts.filter((account) => account.type === selectedType)),
+    () =>
+      selectedType === "all"
+        ? accounts
+        : accounts.filter((account) => account.type === selectedType),
     [accounts, selectedType]
   );
 
@@ -95,7 +98,10 @@ export function AccountsView({
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {summary.map((card) => (
-          <div key={card.label} className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-foreground/10">
+          <div
+            key={card.label}
+            className="flex items-center gap-3 rounded-xl bg-card p-3 ring-1 ring-foreground/10"
+          >
             <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted">
               <card.icon className="size-4 text-muted-foreground" />
             </div>
@@ -150,7 +156,12 @@ export function AccountsView({
                 href={`/accounts/${account.id}`}
                 className="group relative block overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 transition-shadow hover:shadow-md"
               >
-                <div className={cn("absolute inset-y-0 left-0 w-1", typeAccent[account.type] ?? "bg-primary")} />
+                <div
+                  className={cn(
+                    "absolute inset-y-0 left-0 w-1",
+                    typeAccent[account.type] ?? "bg-primary"
+                  )}
+                />
                 <div className="p-4 pl-5">
                   <div className="flex items-center gap-2">
                     <div className="flex size-8 items-center justify-center rounded-full bg-muted">
@@ -168,9 +179,13 @@ export function AccountsView({
                     {privacy ? "•••••" : fmtMoney(account.displayBalanceMinor, account.currency)}
                   </p>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                    {account.status !== "active" ? <Badge variant="outline">{account.status}</Badge> : null}
+                    {account.status !== "active" ? (
+                      <Badge variant="outline">{account.status}</Badge>
+                    ) : null}
                     {!account.isJoint ? <Badge variant="secondary">personal</Badge> : null}
-                    {account.level !== "full_control" ? <Badge variant="outline">{account.level}</Badge> : null}
+                    {account.level !== "full_control" ? (
+                      <Badge variant="outline">{account.level}</Badge>
+                    ) : null}
                     {!account.includedInReports ? <Badge variant="outline">excluded</Badge> : null}
                     <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
                       <ClockIcon className="size-3" />

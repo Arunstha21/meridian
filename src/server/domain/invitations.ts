@@ -16,7 +16,8 @@ export async function createInvitation(
   actor: Actor,
   input: { email: string; role: "admin" | "member" }
 ): Promise<{ token: string }> {
-  if (actor.familyRole !== "admin") throw errors.forbidden("Only family admins can invite members.");
+  if (actor.familyRole !== "admin")
+    throw errors.forbidden("Only family admins can invite members.");
   const email = input.email.trim().toLowerCase();
   if (!EMAIL_PATTERN.test(email)) throw errors.validation("Enter a valid email address.");
 
@@ -40,7 +41,13 @@ export async function createInvitation(
 
   await exec
     .delete(invitations)
-    .where(and(eq(invitations.familyId, actor.familyId), isNull(invitations.acceptedAt), sql`lower(email) = ${email}`));
+    .where(
+      and(
+        eq(invitations.familyId, actor.familyId),
+        isNull(invitations.acceptedAt),
+        sql`lower(email) = ${email}`
+      )
+    );
 
   const token = randomToken(32);
   await exec.insert(invitations).values({
@@ -184,7 +191,10 @@ async function joinFamily(
       .set({ familyId: invitation.familyId, familyRole: invitation.role as "admin" | "member" })
       .where(eq(users.id, userId));
   }
-  await exec.update(invitations).set({ acceptedAt: new Date() }).where(eq(invitations.id, invitation.id));
+  await exec
+    .update(invitations)
+    .set({ acceptedAt: new Date() })
+    .where(eq(invitations.id, invitation.id));
   await recordAudit(exec, {
     familyId: invitation.familyId,
     actorUserId: userId,
@@ -209,7 +219,11 @@ export async function listPendingInvitations(exec: Executor, actor: Actor) {
     .orderBy(desc(invitations.createdAt));
 }
 
-export async function revokeInvitation(exec: Executor, actor: Actor, invitationId: string): Promise<void> {
+export async function revokeInvitation(
+  exec: Executor,
+  actor: Actor,
+  invitationId: string
+): Promise<void> {
   if (actor.familyRole !== "admin") throw errors.forbidden();
   const removed = await exec
     .delete(invitations)

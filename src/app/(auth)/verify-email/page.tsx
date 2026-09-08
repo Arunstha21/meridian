@@ -14,11 +14,7 @@ export default async function VerifyEmailPage({
   return (
     <Card>
       <h1 className="mb-2 text-lg font-semibold">Verify your email address</h1>
-      {token ? (
-        <VerifyTokenForm token={token} />
-      ) : (
-        <ResendForm email={actor?.email} />
-      )}
+      {token ? <VerifyTokenForm token={token} /> : <ResendForm email={actor?.email} />}
     </Card>
   );
 }

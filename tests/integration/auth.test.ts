@@ -79,7 +79,11 @@ describe("authentication", () => {
   it("authenticates with correct credentials", async () => {
     const user = await makeUser({ email: "auth-ok@test.local" });
     await setPassword(user.userId, await hashPassword("Passw0rdLong!"));
-    const { token } = await authenticate(db(), { email: user.email, password: "Passw0rdLong!" }, { ip: "1.2.3.4" });
+    const { token } = await authenticate(
+      db(),
+      { email: user.email, password: "Passw0rdLong!" },
+      { ip: "1.2.3.4" }
+    );
     expect(token).toBeTruthy();
   });
 
@@ -88,7 +92,9 @@ describe("authentication", () => {
     await expect(
       authenticate(db(), { email: user.email, password: "WrongWrong12" }, {})
     ).rejects.toMatchObject({ code: "auth.required" });
-    await expect(authenticate(db(), { email: "ghost@nowhere.local", password: "Whatever123" }, {})).rejects.toMatchObject({
+    await expect(
+      authenticate(db(), { email: "ghost@nowhere.local", password: "Whatever123" }, {})
+    ).rejects.toMatchObject({
       code: "auth.required"
     });
   });
@@ -97,7 +103,11 @@ describe("authentication", () => {
     const user = await makeUser({ email: "lockout@test.local" });
     for (let i = 0; i < 5; i++) {
       try {
-        await authenticate(db(), { email: user.email, password: "BadBadBad123" }, { ip: "9.9.9.9" });
+        await authenticate(
+          db(),
+          { email: user.email, password: "BadBadBad123" },
+          { ip: "9.9.9.9" }
+        );
       } catch {
         /* expected */
       }
@@ -128,7 +138,9 @@ describe("authentication", () => {
     });
     await changePassword(db(), actor, "OldPassword99", "NewPassword77");
 
-    const remaining = await db().execute(sql`SELECT count(*)::int AS c FROM sessions WHERE user_id = ${user.userId}::uuid`);
+    const remaining = await db().execute(
+      sql`SELECT count(*)::int AS c FROM sessions WHERE user_id = ${user.userId}::uuid`
+    );
     expect(Number((remaining.rows ?? [])[0]!.c)).toBe(1);
 
     void s2;
@@ -152,7 +164,9 @@ describe("password reset", () => {
       code: "validation.failed"
     });
 
-    const sessions = await db().execute(sql`SELECT count(*)::int AS c FROM sessions WHERE user_id = ${user.userId}::uuid`);
+    const sessions = await db().execute(
+      sql`SELECT count(*)::int AS c FROM sessions WHERE user_id = ${user.userId}::uuid`
+    );
     expect(Number((sessions.rows ?? [])[0]!.c)).toBe(0);
 
     const updated = await findUserByEmail(db(), user.email);
@@ -163,7 +177,9 @@ describe("password reset", () => {
     const user = await makeUser({ email: "verify@test.local" });
     const verifyToken = await issueAuthToken(db(), user.userId, "email_verification");
     await expect(consumeAuthToken(db(), verifyToken!, "password_reset")).resolves.toBeNull();
-    expect((await consumeAuthToken(db(), verifyToken!, "email_verification"))!.userId).toBe(user.userId);
+    expect((await consumeAuthToken(db(), verifyToken!, "email_verification"))!.userId).toBe(
+      user.userId
+    );
     await expect(consumeAuthToken(db(), verifyToken!, "email_verification")).resolves.toBeNull();
   });
 });

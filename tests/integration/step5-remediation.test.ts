@@ -19,18 +19,16 @@ beforeAll(async () => {
 describe("S10: Safe MeroShare Connection DTO", () => {
   it("scrubs encrypted credentials from listMeroShareConnections client props", async () => {
     const user = await makeUser();
-    await db()
-      .insert(meroShareConnections)
-      .values({
-        familyId: user.familyId,
-        userId: user.userId,
-        name: "Test Portfolio",
-        clientId: 100,
-        dpCode: "13200",
-        dpName: "Test Capital Ltd",
-        usernameEncrypted: "sensitive_cipher_username",
-        passwordEncrypted: "sensitive_cipher_password"
-      });
+    await db().insert(meroShareConnections).values({
+      familyId: user.familyId,
+      userId: user.userId,
+      name: "Test Portfolio",
+      clientId: 100,
+      dpCode: "13200",
+      dpName: "Test Capital Ltd",
+      usernameEncrypted: "sensitive_cipher_username",
+      passwordEncrypted: "sensitive_cipher_password"
+    });
 
     const results = await meroshareSvc.listMeroShareConnections(db(), actorOf(user));
     expect(results).toHaveLength(1);

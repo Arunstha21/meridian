@@ -30,11 +30,13 @@ export async function updateFamilySettings(
   actor: Actor,
   patch: { name?: string; currency?: string; timezone?: string; locale?: string }
 ): Promise<void> {
-  if (actor.familyRole !== "admin") throw errors.forbidden("Only family admins can change organization settings.");
+  if (actor.familyRole !== "admin")
+    throw errors.forbidden("Only family admins can change organization settings.");
   const updates: Partial<typeof families.$inferInsert> = { updatedAt: new Date() };
   if (patch.name !== undefined) {
     const name = patch.name.trim();
-    if (!name || name.length > 120) throw errors.validation("Family name must be 1–120 characters.");
+    if (!name || name.length > 120)
+      throw errors.validation("Family name must be 1–120 characters.");
     updates.name = name;
   }
   if (patch.currency !== undefined) {
@@ -126,7 +128,11 @@ export async function countAdmins(exec: Executor, familyId: string): Promise<num
   return row?.count ?? 0;
 }
 
-export async function deleteFamily(exec: Executor, actor: Actor, confirmName: string): Promise<void> {
+export async function deleteFamily(
+  exec: Executor,
+  actor: Actor,
+  confirmName: string
+): Promise<void> {
   if (actor.familyRole !== "admin") {
     throw errors.forbidden("Only the family admin can delete this family.");
   }

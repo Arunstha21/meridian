@@ -98,32 +98,40 @@ export function RecurringManager({
                   </span>
                 </div>
                 {s.canManage ? (
-                <div className="flex gap-2">
-                  <form action={toggleRecurringAction}>
-                    <input type="hidden" name="id" value={s.id} />
-                    <input type="hidden" name="active" value={s.active ? "false" : "true"} />
-                    <SubmitButton variant="ghost">{s.active ? "Pause" : "Resume"}</SubmitButton>
-                  </form>
-                  <ConfirmDialog
-                    trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Skip next</span>}
-                    title={`Skip the next “${s.name}”?`}
-                    description={`The next posting on ${s.nextDue} will be skipped. Already posted transactions stay.`}
-                    confirmLabel="Skip next"
-                    variant="secondary"
-                    action={skipNextOccurrenceAction}
-                  >
-                    <input type="hidden" name="id" value={s.id} />
-                  </ConfirmDialog>
-                  <ConfirmDialog
-                    trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
-                    title={`Delete “${s.name}”?`}
-                    description="Posted transactions stay in the ledger. Future occurrences will not be created."
-                    confirmLabel="Delete series"
-                    action={deleteRecurringAction}
-                  >
-                    <input type="hidden" name="id" value={s.id} />
-                  </ConfirmDialog>
-                </div>
+                  <div className="flex gap-2">
+                    <form action={toggleRecurringAction}>
+                      <input type="hidden" name="id" value={s.id} />
+                      <input type="hidden" name="active" value={s.active ? "false" : "true"} />
+                      <SubmitButton variant="ghost">{s.active ? "Pause" : "Resume"}</SubmitButton>
+                    </form>
+                    <ConfirmDialog
+                      trigger={
+                        <span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">
+                          Skip next
+                        </span>
+                      }
+                      title={`Skip the next “${s.name}”?`}
+                      description={`The next posting on ${s.nextDue} will be skipped. Already posted transactions stay.`}
+                      confirmLabel="Skip next"
+                      variant="secondary"
+                      action={skipNextOccurrenceAction}
+                    >
+                      <input type="hidden" name="id" value={s.id} />
+                    </ConfirmDialog>
+                    <ConfirmDialog
+                      trigger={
+                        <span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">
+                          Delete
+                        </span>
+                      }
+                      title={`Delete “${s.name}”?`}
+                      description="Posted transactions stay in the ledger. Future occurrences will not be created."
+                      confirmLabel="Delete series"
+                      action={deleteRecurringAction}
+                    >
+                      <input type="hidden" name="id" value={s.id} />
+                    </ConfirmDialog>
+                  </div>
                 ) : null}
               </li>
             ))}
@@ -148,7 +156,11 @@ function CreateForm({
   return (
     <form action={action} className="space-y-4">
       <FormError message={state?.ok === false ? state.error : undefined} />
-      <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-inset p-1" role="group" aria-label="Series type">
+      <div
+        className="grid grid-cols-2 gap-1 rounded-lg bg-surface-inset p-1"
+        role="group"
+        aria-label="Series type"
+      >
         {(["expense", "income"] as const).map((k) => (
           <button
             key={k}
@@ -165,7 +177,13 @@ function CreateForm({
       </div>
       <input type="hidden" name="kind" value={kind} />
       <Field label="Name" htmlFor="recurring-name">
-        <Input id="recurring-name" name="name" required maxLength={240} placeholder={kind === "income" ? "Salary" : "Rent"} />
+        <Input
+          id="recurring-name"
+          name="name"
+          required
+          maxLength={240}
+          placeholder={kind === "income" ? "Salary" : "Rent"}
+        />
       </Field>
       <Field label="Account" htmlFor="recurring-account">
         <Select id="recurring-account" name="accountId" required>

@@ -6,10 +6,7 @@ import { getDb, withTransaction } from "@/server/db/client";
 import type { Executor } from "@/server/db/client";
 import { requireEmailVerification } from "@/lib/env";
 import { loadHistory, appendUserMessage, appendAssistantMessage } from "@/server/domain/chat";
-import {
-  claimProposalForConfirmation,
-  dismissProposal
-} from "@/server/domain/chat-proposals";
+import { claimProposalForConfirmation, dismissProposal } from "@/server/domain/chat-proposals";
 import { addTransaction } from "@/server/domain/orchestrate";
 import { runAgent } from "@/server/ai/agent";
 import { consumeRateLimit } from "@/server/security/rate-limit";
@@ -31,7 +28,10 @@ export async function POST(request: Request): Promise<NextResponse> {
   // S11: Verify Content-Type is application/json
   const contentType = request.headers.get("content-type");
   if (!contentType || !contentType.toLowerCase().includes("application/json")) {
-    return NextResponse.json({ error: "Unsupported Media Type: expected application/json." }, { status: 415 });
+    return NextResponse.json(
+      { error: "Unsupported Media Type: expected application/json." },
+      { status: 415 }
+    );
   }
 
   // S11: Verify Sec-Fetch-Site and Origin to prevent cross-site request forgery
@@ -143,7 +143,12 @@ async function confirmTransaction(
     });
 
     const note = `Recorded "${payload.name}" — ${fmtMoney(payload.amountLedgerMinor, payload.currency)} on ${payload.date} in ${payload.accountName}${duplicated ? " (matched an existing entry)" : ""}.`;
-    await appendUserMessage(tx, actor.familyId, actor.userId, "(confirmed the proposed transaction)");
+    await appendUserMessage(
+      tx,
+      actor.familyId,
+      actor.userId,
+      "(confirmed the proposed transaction)"
+    );
     await appendAssistantMessage(tx, actor.familyId, actor.userId, note);
     return { kind: "ok" as const, payload, entryId, duplicated, note };
   });
@@ -174,6 +179,11 @@ async function dismissTransaction(
   if (!dismissed) {
     return NextResponse.json({ error: PROPOSAL_TTL_NOTE }, { status: 410 });
   }
-  await appendAssistantMessage(db, actor.familyId, actor.userId, "Okay — I discarded that proposal.");
+  await appendAssistantMessage(
+    db,
+    actor.familyId,
+    actor.userId,
+    "Okay — I discarded that proposal."
+  );
   return NextResponse.json({ dismissed: true });
 }

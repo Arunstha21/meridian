@@ -73,8 +73,5 @@ export function passwordResetUrl(token: string): string {
 }
 
 export async function markEmailVerified(exec: Executor, userId: string): Promise<void> {
-  await exec
-    .update(users)
-    .set({ emailVerifiedAt: new Date() })
-    .where(eq(users.id, userId));
+  await exec.update(users).set({ emailVerifiedAt: new Date() }).where(eq(users.id, userId));
 }

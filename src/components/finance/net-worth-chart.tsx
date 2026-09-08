@@ -19,7 +19,15 @@ function formatDay(iso: string): string {
  * Interactive net worth line chart: hover (or touch) crosshair with a tooltip
  * showing the exact value at that date. Pure SVG, no chart library.
  */
-export function NetWorthChart({ points, currency, masked }: { points: ChartPoint[]; currency: string; masked: boolean }) {
+export function NetWorthChart({
+  points,
+  currency,
+  masked
+}: {
+  points: ChartPoint[];
+  currency: string;
+  masked: boolean;
+}) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const geometry = useMemo(() => {
@@ -44,8 +52,20 @@ export function NetWorthChart({ points, currency, masked }: { points: ChartPoint
 
   if (!geometry || masked) {
     return (
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="h-56 w-full" role="img" aria-label="No trend data">
-        <line x1={0} y1={HEIGHT / 2} x2={WIDTH} y2={HEIGHT / 2} stroke="var(--border)" strokeWidth="1" />
+      <svg
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        className="h-56 w-full"
+        role="img"
+        aria-label="No trend data"
+      >
+        <line
+          x1={0}
+          y1={HEIGHT / 2}
+          x2={WIDTH}
+          y2={HEIGHT / 2}
+          stroke="var(--border)"
+          strokeWidth="1"
+        />
       </svg>
     );
   }
@@ -80,7 +100,14 @@ export function NetWorthChart({ points, currency, masked }: { points: ChartPoint
         onPointerDown={handleMove}
         onPointerLeave={() => setHoverIndex(null)}
       >
-        <line x1={0} y1={geometry.zeroY} x2={WIDTH} y2={geometry.zeroY} stroke="var(--border)" strokeDasharray="3 3" />
+        <line
+          x1={0}
+          y1={geometry.zeroY}
+          x2={WIDTH}
+          y2={geometry.zeroY}
+          stroke="var(--border)"
+          strokeDasharray="3 3"
+        />
         <polygon points={geometry.area} fill="var(--primary)" opacity="0.08" />
         <polyline
           points={geometry.line}
@@ -93,13 +120,32 @@ export function NetWorthChart({ points, currency, masked }: { points: ChartPoint
         <text x={PAD.left} y={HEIGHT - 6} className="fill-current text-[10px] text-muted">
           {formatDay(first.date)}
         </text>
-        <text x={WIDTH - PAD.right} y={HEIGHT - 6} textAnchor="end" className="fill-current text-[10px] text-muted">
+        <text
+          x={WIDTH - PAD.right}
+          y={HEIGHT - 6}
+          textAnchor="end"
+          className="fill-current text-[10px] text-muted"
+        >
           {formatDay(last.date)}
         </text>
         {hovered ? (
           <g>
-            <line x1={hovered.x} y1={PAD.top} x2={hovered.x} y2={HEIGHT - PAD.bottom} stroke="var(--muted)" strokeWidth="1" />
-            <circle cx={hovered.x} cy={hovered.y} r="4" fill="var(--primary)" stroke="var(--surface)" strokeWidth="2" />
+            <line
+              x1={hovered.x}
+              y1={PAD.top}
+              x2={hovered.x}
+              y2={HEIGHT - PAD.bottom}
+              stroke="var(--muted)"
+              strokeWidth="1"
+            />
+            <circle
+              cx={hovered.x}
+              cy={hovered.y}
+              r="4"
+              fill="var(--primary)"
+              stroke="var(--surface)"
+              strokeWidth="2"
+            />
           </g>
         ) : null}
       </svg>
@@ -112,7 +158,9 @@ export function NetWorthChart({ points, currency, masked }: { points: ChartPoint
           }}
         >
           <span className="block text-muted">{formatDay(hovered.point.date)}</span>
-          <span className="tabular font-medium">{fmtMoney(hovered.point.valueMinor, currency)}</span>
+          <span className="tabular font-medium">
+            {fmtMoney(hovered.point.valueMinor, currency)}
+          </span>
         </div>
       ) : null}
     </div>

@@ -55,7 +55,13 @@ describe("S14: member removal preserves data and revokes access", () => {
       amountDisplayMinor: 12000,
       name: "Transfer before removal"
     });
-    await accountsSvc.shareAccount(db(), actorOf(member), privateAccount, admin.userId, "read_only");
+    await accountsSvc.shareAccount(
+      db(),
+      actorOf(member),
+      privateAccount,
+      admin.userId,
+      "read_only"
+    );
     const adminPrivateAccount = await makeAccount(admin, { joint: false, name: "Admin Private" });
     await accountsSvc.shareAccount(
       db(),
@@ -77,7 +83,10 @@ describe("S14: member removal preserves data and revokes access", () => {
     // Accounts and ledger data are preserved under the deactivated owner.
     const [accountRow] = await db().select().from(accounts).where(eq(accounts.id, privateAccount));
     expect(accountRow?.ownerId).toBe(member.userId);
-    const memberEntries = await db().select().from(entries).where(eq(entries.accountId, privateAccount));
+    const memberEntries = await db()
+      .select()
+      .from(entries)
+      .where(eq(entries.accountId, privateAccount));
     expect(memberEntries.length).toBeGreaterThan(0);
     const transferCount = await db().execute<{ count: string }>(sql`
       SELECT count(*)::text AS count FROM transfers t
@@ -109,7 +118,9 @@ describe("S14: member removal preserves data and revokes access", () => {
     const audits = await db()
       .select()
       .from(auditEvents)
-      .where(and(eq(auditEvents.action, "member.removed"), eq(auditEvents.entityId, member.userId)));
+      .where(
+        and(eq(auditEvents.action, "member.removed"), eq(auditEvents.entityId, member.userId))
+      );
     expect(audits.length).toBeGreaterThan(0);
   });
 

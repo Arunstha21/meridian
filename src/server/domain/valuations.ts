@@ -32,7 +32,11 @@ export async function recordValuation(
     throw errors.validation("Unknown valuation kind.");
   }
 
-  const [account] = await exec.select().from(accounts).where(eq(accounts.id, input.accountId)).limit(1);
+  const [account] = await exec
+    .select()
+    .from(accounts)
+    .where(eq(accounts.id, input.accountId))
+    .limit(1);
   if (!account) throw errors.notFound("Account");
 
   const name =

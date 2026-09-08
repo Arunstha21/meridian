@@ -41,7 +41,9 @@ export async function createTransferFromTransactions(
     throw errors.validation("Only transactions can be linked as a transfer.");
   }
   if (outRow.entry.parentEntryId || inRow.entry.parentEntryId) {
-    throw errors.validation("Split parts cannot be linked as transfers. Split the whole transaction instead.");
+    throw errors.validation(
+      "Split parts cannot be linked as transfers. Split the whole transaction instead."
+    );
   }
 
   const [splitChildren] = await exec
@@ -62,13 +64,17 @@ export async function createTransferFromTransactions(
   const out = outRow.entry;
   const inn = inRow.entry;
   if (out.amountMinor <= 0 || inn.amountMinor >= 0) {
-    throw errors.validation("A transfer must link one outflow (positive amount) and one inflow (negative amount).");
+    throw errors.validation(
+      "A transfer must link one outflow (positive amount) and one inflow (negative amount)."
+    );
   }
 
   const [existingTransfer] = await exec
     .select({ id: transfers.id })
     .from(transfers)
-    .where(sql`${transfers.outflowEntryId} = ${outflowEntryId}::uuid AND ${transfers.inflowEntryId} = ${inflowEntryId}::uuid`)
+    .where(
+      sql`${transfers.outflowEntryId} = ${outflowEntryId}::uuid AND ${transfers.inflowEntryId} = ${inflowEntryId}::uuid`
+    )
     .limit(1);
   if (existingTransfer) {
     return { transferId: existingTransfer.id, existing: true };
@@ -84,8 +90,16 @@ export async function createTransferFromTransactions(
     );
   }
 
-  const [txOut] = await exec.select().from(transactions).where(eq(transactions.entryId, outflowEntryId)).limit(1);
-  const [txIn] = await exec.select().from(transactions).where(eq(transactions.entryId, inflowEntryId)).limit(1);
+  const [txOut] = await exec
+    .select()
+    .from(transactions)
+    .where(eq(transactions.entryId, outflowEntryId))
+    .limit(1);
+  const [txIn] = await exec
+    .select()
+    .from(transactions)
+    .where(eq(transactions.entryId, inflowEntryId))
+    .limit(1);
   if (!txOut || !txIn) throw errors.notFound("Transaction");
 
   const transferId = await exec.transaction(async (tx) => {
@@ -210,7 +224,11 @@ export async function createTransferWithNewEntries(
   return { transferId, outflowEntryId, inflowEntryId };
 }
 
-export async function removeTransfer(exec: Executor, actor: Actor, transferId: string): Promise<void> {
+export async function removeTransfer(
+  exec: Executor,
+  actor: Actor,
+  transferId: string
+): Promise<void> {
   const [row] = await exec.select().from(transfers).where(eq(transfers.id, transferId)).limit(1);
   if (!row) throw errors.notFound("Transfer");
 
@@ -231,7 +249,9 @@ export async function removeTransfer(exec: Executor, actor: Actor, transferId: s
     await tx
       .update(transactions)
       .set({ transferId: null })
-      .where(sql`${transactions.entryId} IN (${row.outflowEntryId}::uuid, ${row.inflowEntryId}::uuid)`);
+      .where(
+        sql`${transactions.entryId} IN (${row.outflowEntryId}::uuid, ${row.inflowEntryId}::uuid)`
+      );
     await tx.delete(transfers).where(eq(transfers.id, transferId));
   });
 

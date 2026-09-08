@@ -149,7 +149,11 @@ export async function splitEntry(
   return { createdCount: children.length };
 }
 
-export async function unsplitEntry(exec: Executor, actor: Actor, parentEntryId: string): Promise<void> {
+export async function unsplitEntry(
+  exec: Executor,
+  actor: Actor,
+  parentEntryId: string
+): Promise<void> {
   const [parent] = await exec.select().from(entries).where(eq(entries.id, parentEntryId)).limit(1);
   if (!parent || parent.entryableType !== "transaction") throw errors.notFound("Transaction");
   await assertAccountOpen(exec, actor, parent.accountId, "manage");

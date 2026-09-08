@@ -5,30 +5,30 @@ implementation. Source baseline: Sure `c44408ff` (dev-upstream-sync), reviewed 2
 
 ## Scope (launch)
 
-| Module | Decision | Notes |
-| --- | --- | --- |
-| Identity/sessions | Keep | Email/password + verification; MFA/SSO deferred |
-| Families, sharing | Keep | Family tenancy from day one; 3-level share permissions |
-| Manual accounts | Keep | depository, credit_card, other_asset, other_liability only |
-| Ledger/transfers/splits/valuations | Keep | Full invariants; transfer fees deferred |
-| Categories/tags | Keep | Merchant is a plain string; normalization deferred |
-| Reports/dashboard | Keep | Net worth, income vs expense, spending by category |
-| Budgets/goals/rules/recurring | Remove/Defer | Re-add with dedicated design after ledger stabilizes |
-| Investments, crypto, providers, AI, shared expenses, imports | Remove/Defer | Per removal-catalog recommended cuts |
-| Export | Keep | JSON family export for portability (non-negotiable privacy item) |
-| Public API / mobile / desktop / PWA | Remove | No compatibility promises |
+| Module                                                       | Decision     | Notes                                                            |
+| ------------------------------------------------------------ | ------------ | ---------------------------------------------------------------- |
+| Identity/sessions                                            | Keep         | Email/password + verification; MFA/SSO deferred                  |
+| Families, sharing                                            | Keep         | Family tenancy from day one; 3-level share permissions           |
+| Manual accounts                                              | Keep         | depository, credit_card, other_asset, other_liability only       |
+| Ledger/transfers/splits/valuations                           | Keep         | Full invariants; transfer fees deferred                          |
+| Categories/tags                                              | Keep         | Merchant is a plain string; normalization deferred               |
+| Reports/dashboard                                            | Keep         | Net worth, income vs expense, spending by category               |
+| Budgets/goals/rules/recurring                                | Remove/Defer | Re-add with dedicated design after ledger stabilizes             |
+| Investments, crypto, providers, AI, shared expenses, imports | Remove/Defer | Per removal-catalog recommended cuts                             |
+| Export                                                       | Keep         | JSON family export for portability (non-negotiable privacy item) |
+| Public API / mobile / desktop / PWA                          | Remove       | No compatibility promises                                        |
 
 ## Technology
 
-| Concern | Choice | Rationale |
-| --- | --- | --- |
-| Money storage | bigint minor units + ISO currency | Exact fixed point; safe-integer bound documented |
-| Sign convention | Source convention preserved (outflow +) | Keeps upstream behavior ports mappable |
-| Migrations | Hand-reviewed SQL with paired down-scripts | Auditable schema evolution; rehearsed up/down in CI |
-| Auth | In-house scrypt/session layer | Small auditable surface over finance authorization |
-| Queue | Custom Postgres queue | Durable, retry/dead-letter/cron semantics without Redis; exit path to pg-boss/graphile if scale demands |
-| FX fallback | Exclude + diagnostic on missing rate | Never silently wrong totals |
-| Opening balances | Explicit columns (display-signed) instead of anchor valuations | Simpler model for the four launched account types; deviation recorded |
+| Concern          | Choice                                                         | Rationale                                                                                               |
+| ---------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Money storage    | bigint minor units + ISO currency                              | Exact fixed point; safe-integer bound documented                                                        |
+| Sign convention  | Source convention preserved (outflow +)                        | Keeps upstream behavior ports mappable                                                                  |
+| Migrations       | Hand-reviewed SQL with paired down-scripts                     | Auditable schema evolution; rehearsed up/down in CI                                                     |
+| Auth             | In-house scrypt/session layer                                  | Small auditable surface over finance authorization                                                      |
+| Queue            | Custom Postgres queue                                          | Durable, retry/dead-letter/cron semantics without Redis; exit path to pg-boss/graphile if scale demands |
+| FX fallback      | Exclude + diagnostic on missing rate                           | Never silently wrong totals                                                                             |
+| Opening balances | Explicit columns (display-signed) instead of anchor valuations | Simpler model for the four launched account types; deviation recorded                                   |
 
 ## Resolved ambiguities
 

@@ -71,7 +71,13 @@ export type TestUser = {
 };
 
 export async function makeUser(
-  overrides: Partial<{ email: string; name: string; familyName: string; currency: string; timezone: string }> = {}
+  overrides: Partial<{
+    email: string;
+    name: string;
+    familyName: string;
+    currency: string;
+    timezone: string;
+  }> = {}
 ): Promise<TestUser> {
   const unique = Math.random().toString(36).slice(2, 10);
   const email = overrides.email ?? `user-${unique}@test.local`;
@@ -170,7 +176,9 @@ export async function setPassword(userId: string, hash: string): Promise<void> {
 }
 
 export async function joinFamily(user: TestUser, familyId: string): Promise<void> {
-  await db().execute(sql`UPDATE users SET family_id = ${familyId}::uuid WHERE id = ${user.userId}::uuid`);
+  await db().execute(
+    sql`UPDATE users SET family_id = ${familyId}::uuid WHERE id = ${user.userId}::uuid`
+  );
   user.familyId = familyId;
 }
 

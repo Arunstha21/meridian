@@ -34,7 +34,11 @@ export async function listFlags(exec: Executor) {
   return exec.select().from(featureFlags).orderBy(featureFlags.key);
 }
 
-export async function setFlagEnabled(exec: Executor, key: string, enabled: boolean): Promise<boolean> {
+export async function setFlagEnabled(
+  exec: Executor,
+  key: string,
+  enabled: boolean
+): Promise<boolean> {
   if (!(FLAG_KEYS as readonly string[]).includes(key)) {
     throw new Error(`Unknown feature flag: ${key}`);
   }

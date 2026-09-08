@@ -7,9 +7,24 @@ import { ArrowLeftRightIcon, MessageCircleIcon, PlusIcon, WalletIcon } from "luc
 
 const actions = [
   { href: "/quick-add", label: "Quick add", hint: "Capture a transaction fast", icon: PlusIcon },
-  { href: "/transactions/new", label: "Ledger entry", hint: "Income, expense, or transfer", icon: ArrowLeftRightIcon },
-  { href: "/accounts/new", label: "New account", hint: "Cash, credit, or other asset", icon: WalletIcon },
-  { href: "/chat", label: "Ask assistant", hint: "Review spending in plain language", icon: MessageCircleIcon }
+  {
+    href: "/transactions/new",
+    label: "Ledger entry",
+    hint: "Income, expense, or transfer",
+    icon: ArrowLeftRightIcon
+  },
+  {
+    href: "/accounts/new",
+    label: "New account",
+    hint: "Cash, credit, or other asset",
+    icon: WalletIcon
+  },
+  {
+    href: "/chat",
+    label: "Ask assistant",
+    hint: "Review spending in plain language",
+    icon: MessageCircleIcon
+  }
 ];
 
 export function QuickActions() {
@@ -29,7 +44,9 @@ export function QuickActions() {
             <action.icon className="size-4 text-muted-foreground" />
             <span className="min-w-0 text-left">
               <span className="block text-sm font-medium">{action.label}</span>
-              <span className="block text-[11px] font-normal text-muted-foreground">{action.hint}</span>
+              <span className="block text-[11px] font-normal text-muted-foreground">
+                {action.hint}
+              </span>
             </span>
           </Button>
         ))}

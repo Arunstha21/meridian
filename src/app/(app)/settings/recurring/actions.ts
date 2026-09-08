@@ -46,7 +46,10 @@ function configFor(frequency: Frequency, nextDue: string, form: FormData): Serie
   }
 }
 
-export async function createRecurringAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function createRecurringAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("recurring.create", async () => {
     const input = seriesSchema.parse(Object.fromEntries(formData));
     const actor = await requireVerifiedActor();

@@ -16,12 +16,18 @@ describe("Step 6: AI Tool Runtime Schema Enforcement", () => {
 
     // tool 'query_spending' expects optional months as number (1-24)
     // If invalid types/ranges are supplied:
-    const res = await executeTool("query_spending", JSON.stringify({ months: "not-a-number" }), ctx);
+    const res = await executeTool(
+      "query_spending",
+      JSON.stringify({ months: "not-a-number" }),
+      ctx
+    );
     expect(res).toBeDefined();
     expect((res as { error: string }).error).toContain("Invalid tool arguments for query_spending");
 
     const outOfRange = await executeTool("query_spending", JSON.stringify({ months: 999 }), ctx);
-    expect((outOfRange as { error: string }).error).toContain("Invalid tool arguments for query_spending");
+    expect((outOfRange as { error: string }).error).toContain(
+      "Invalid tool arguments for query_spending"
+    );
   });
 
   it("executes tool calls when arguments match the schema", async () => {

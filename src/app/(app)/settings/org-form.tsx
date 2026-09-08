@@ -22,10 +22,31 @@ export function OrgForm({
         <Input id="org-name" name="name" defaultValue={familyName} maxLength={120} required />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Reporting currency" htmlFor="org-currency" hint="Reports convert into this currency.">
+        <Field
+          label="Reporting currency"
+          htmlFor="org-currency"
+          hint="Reports convert into this currency."
+        >
           <Select id="org-currency" name="currency" defaultValue={currency}>
-            {["USD", "EUR", "GBP", "CAD", "AUD", "NZD", "JPY", "CHF", "SEK", "NOK", "DKK", "INR", "NPR", "SGD"].map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {[
+              "USD",
+              "EUR",
+              "GBP",
+              "CAD",
+              "AUD",
+              "NZD",
+              "JPY",
+              "CHF",
+              "SEK",
+              "NOK",
+              "DKK",
+              "INR",
+              "NPR",
+              "SGD"
+            ].map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </Select>
         </Field>

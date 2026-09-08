@@ -50,7 +50,10 @@ export async function connectMeroShareAction(
   });
 }
 
-export async function syncMeroShareAction(_previous: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function syncMeroShareAction(
+  _previous: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("meroshare.sync", async () => {
     const actor = await assertActor();
     await consumeRateLimit(getDb(), `meroshare.sync:${actor.userId}`, 30, 3600);
@@ -63,7 +66,10 @@ export async function syncMeroShareAction(_previous: ActionState | undefined, fo
   });
 }
 
-export async function disconnectMeroShareAction(_previous: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function disconnectMeroShareAction(
+  _previous: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("meroshare.disconnect", async () => {
     const actor = await assertActor();
     const connectionId = z.string().uuid().parse(formData.get("connectionId"));

@@ -6,7 +6,12 @@ import { applyTheme } from "@/lib/theme";
 import { setThemePreferenceAction } from "@/server/actions/session-actions";
 
 const emptySubscribe = () => () => {};
-const useIsMounted = () => useSyncExternalStore(emptySubscribe, () => true, () => false);
+const useIsMounted = () =>
+  useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
 function ContrastIcon({ className }: { className?: string }) {
   return (

@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { hashPassword, verifyPassword, passwordPolicyError, hashToken, randomToken } from "@/lib/crypto";
+import {
+  hashPassword,
+  verifyPassword,
+  passwordPolicyError,
+  hashToken,
+  randomToken
+} from "@/lib/crypto";
 import { redactDeep } from "@/lib/logger";
 
 describe("password crypto", () => {

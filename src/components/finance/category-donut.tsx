@@ -3,7 +3,12 @@
 import { useMemo } from "react";
 import { Pie, PieChart, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig
+} from "@/components/ui/chart";
 import { fmtMoney } from "@/lib/format";
 
 const COLORS = [
@@ -47,7 +52,9 @@ export function CategoryDonut({
       </CardHeader>
       <CardContent>
         {items.length === 0 ? (
-          <p className="py-10 text-center text-sm text-muted-foreground">No spending recorded for this period.</p>
+          <p className="py-10 text-center text-sm text-muted-foreground">
+            No spending recorded for this period.
+          </p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-[180px_1fr] sm:items-center">
             <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[180px]">
@@ -55,13 +62,18 @@ export function CategoryDonut({
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value) =>
-                        privacy ? "••••" : fmtMoney(Number(value), currency)
-                      }
+                      formatter={(value) => (privacy ? "••••" : fmtMoney(Number(value), currency))}
                     />
                   }
                 />
-                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={74} paddingAngle={2}>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={48}
+                  outerRadius={74}
+                  paddingAngle={2}
+                >
                   {pieData.map((entry) => (
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}

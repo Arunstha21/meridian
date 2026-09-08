@@ -65,7 +65,10 @@ export function Shell({
         <header className="no-print flex h-16 shrink-0 items-center gap-2">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 data-vertical:h-4 data-vertical:self-auto" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-vertical:h-4 data-vertical:self-auto"
+            />
             <DynamicBreadcrumb />
           </div>
           <div className="ml-auto flex items-center gap-1 pr-4">

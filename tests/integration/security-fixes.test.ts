@@ -71,10 +71,7 @@ describe("S02: Platform Admin Escalation Guards", () => {
       password: "TestPassword123!Secure"
     });
 
-    const [user] = await db()
-      .select()
-      .from(users)
-      .where(eq(users.id, accepted.userId));
+    const [user] = await db().select().from(users).where(eq(users.id, accepted.userId));
 
     // Must be "user", NOT "super_admin"
     expect(user?.platformRole).toBe("user");
@@ -121,13 +118,15 @@ describe("S13: Operator-only platform admin promotion", () => {
     expect(stillUser?.platformRole).toBe("user");
 
     // Simulate the account owner clicking the emailed link: a consumed token.
-    await db().insert(authTokens).values({
-      userId: owner.userId,
-      purpose: "email_verification",
-      tokenHash: hashToken("consumed-s13-verification-token"),
-      expiresAt: new Date(Date.now() + 3_600_000),
-      usedAt: new Date()
-    });
+    await db()
+      .insert(authTokens)
+      .values({
+        userId: owner.userId,
+        purpose: "email_verification",
+        tokenHash: hashToken("consumed-s13-verification-token"),
+        expiresAt: new Date(Date.now() + 3_600_000),
+        usedAt: new Date()
+      });
 
     expect((await usersSvc.grantPlatformAdmin(db(), owner.email)).status).toBe("promoted");
     const [admin] = await db().select().from(users).where(eq(users.id, owner.userId));
@@ -142,13 +141,15 @@ describe("S13: Operator-only platform admin promotion", () => {
 
   it("accepts a consumed password-reset token as inbox ownership proof", async () => {
     const owner = await makeUser();
-    await db().insert(authTokens).values({
-      userId: owner.userId,
-      purpose: "password_reset",
-      tokenHash: hashToken("consumed-s13-reset-token"),
-      expiresAt: new Date(Date.now() + 3_600_000),
-      usedAt: new Date()
-    });
+    await db()
+      .insert(authTokens)
+      .values({
+        userId: owner.userId,
+        purpose: "password_reset",
+        tokenHash: hashToken("consumed-s13-reset-token"),
+        expiresAt: new Date(Date.now() + 3_600_000),
+        usedAt: new Date()
+      });
     expect((await usersSvc.grantPlatformAdmin(db(), owner.email)).status).toBe("promoted");
   });
 

@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { motion } from "motion/react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { motion } from "motion/react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 type EmptyStateVariant =
   | "accounts"
@@ -16,16 +16,16 @@ type EmptyStateVariant =
   | "notifications"
   | "search"
   | "filter"
-  | "generic"
+  | "generic";
 
 type EmptyStateProps = {
-  variant?: EmptyStateVariant
-  title?: string
-  description?: string
-  actionLabel?: string
-  onAction?: () => void
-  className?: string
-}
+  variant?: EmptyStateVariant;
+  title?: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  className?: string;
+};
 
 // ── SVG Illustrations ────────────────────────────────────────────────────────
 
@@ -33,7 +33,11 @@ function WalletIllustration() {
   return (
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
       <motion.rect
-        x="10" y="22" width="60" height="40" rx="8"
+        x="10"
+        y="22"
+        width="60"
+        height="40"
+        rx="8"
         className="fill-primary/10 stroke-primary/40"
         strokeWidth="1.5"
         initial={{ pathLength: 0 }}
@@ -41,7 +45,11 @@ function WalletIllustration() {
         transition={{ duration: 1.2, ease: "easeOut" }}
       />
       <motion.rect
-        x="48" y="34" width="22" height="16" rx="4"
+        x="48"
+        y="34"
+        width="22"
+        height="16"
+        rx="4"
         className="fill-primary/20 stroke-primary/50"
         strokeWidth="1.5"
         initial={{ x: 70, opacity: 0 }}
@@ -49,19 +57,51 @@ function WalletIllustration() {
         transition={{ delay: 0.6, duration: 0.5 }}
       />
       <motion.circle
-        cx="59" cy="42" r="3"
+        cx="59"
+        cy="42"
+        r="3"
         className="fill-primary"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 1, type: "spring", stiffness: 300 }}
       />
       {/* Floating coins */}
-      <motion.circle cx="25" cy="14" r="6" className="fill-amber-400/30 stroke-amber-500/50" strokeWidth="1" animate={{ y: [0, -4, 0] }} transition={{ duration: 2.5, repeat: Infinity }} />
-      <motion.text x="25" y="17" textAnchor="middle" className="fill-amber-600/60 text-[7px] font-bold">$</motion.text>
-      <motion.circle cx="55" cy="12" r="4.5" className="fill-emerald-400/30 stroke-emerald-500/50" strokeWidth="1" animate={{ y: [0, -3, 0] }} transition={{ duration: 3, delay: 0.5, repeat: Infinity }} />
-      <motion.text x="55" y="14.5" textAnchor="middle" className="fill-emerald-600/60 text-[6px] font-bold">$</motion.text>
+      <motion.circle
+        cx="25"
+        cy="14"
+        r="6"
+        className="fill-amber-400/30 stroke-amber-500/50"
+        strokeWidth="1"
+        animate={{ y: [0, -4, 0] }}
+        transition={{ duration: 2.5, repeat: Infinity }}
+      />
+      <motion.text
+        x="25"
+        y="17"
+        textAnchor="middle"
+        className="fill-amber-600/60 text-[7px] font-bold"
+      >
+        $
+      </motion.text>
+      <motion.circle
+        cx="55"
+        cy="12"
+        r="4.5"
+        className="fill-emerald-400/30 stroke-emerald-500/50"
+        strokeWidth="1"
+        animate={{ y: [0, -3, 0] }}
+        transition={{ duration: 3, delay: 0.5, repeat: Infinity }}
+      />
+      <motion.text
+        x="55"
+        y="14.5"
+        textAnchor="middle"
+        className="fill-emerald-600/60 text-[6px] font-bold"
+      >
+        $
+      </motion.text>
     </svg>
-  )
+  );
 }
 
 function TransactionIllustration() {
@@ -69,7 +109,11 @@ function TransactionIllustration() {
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
       {/* Document */}
       <motion.rect
-        x="18" y="10" width="44" height="56" rx="6"
+        x="18"
+        y="10"
+        width="44"
+        height="56"
+        rx="6"
         className="fill-muted/50 stroke-border"
         strokeWidth="1.5"
         initial={{ y: 20, opacity: 0 }}
@@ -80,7 +124,11 @@ function TransactionIllustration() {
       {[26, 34, 42, 50].map((y, i) => (
         <motion.rect
           key={y}
-          x="26" y={y} width={i === 3 ? 20 : 28} height="3" rx="1.5"
+          x="26"
+          y={y}
+          width={i === 3 ? 20 : 28}
+          height="3"
+          rx="1.5"
           className="fill-muted-foreground/15"
           initial={{ width: 0 }}
           animate={{ width: i === 3 ? 20 : 28 }}
@@ -112,7 +160,7 @@ function TransactionIllustration() {
         transition={{ opacity: { delay: 1 }, x: { duration: 2, repeat: Infinity } }}
       />
     </svg>
-  )
+  );
 }
 
 function CardIllustration() {
@@ -120,7 +168,11 @@ function CardIllustration() {
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
       {/* Back card */}
       <motion.rect
-        x="14" y="20" width="52" height="34" rx="6"
+        x="14"
+        y="20"
+        width="52"
+        height="34"
+        rx="6"
         className="fill-muted stroke-border"
         strokeWidth="1"
         initial={{ rotate: -8, opacity: 0 }}
@@ -130,7 +182,11 @@ function CardIllustration() {
       />
       {/* Front card */}
       <motion.rect
-        x="14" y="24" width="52" height="34" rx="6"
+        x="14"
+        y="24"
+        width="52"
+        height="34"
+        rx="6"
         className="fill-primary/10 stroke-primary/40"
         strokeWidth="1.5"
         initial={{ y: 34, opacity: 0 }}
@@ -139,7 +195,11 @@ function CardIllustration() {
       />
       {/* Chip */}
       <motion.rect
-        x="22" y="32" width="10" height="7" rx="1.5"
+        x="22"
+        y="32"
+        width="10"
+        height="7"
+        rx="1.5"
         className="fill-amber-400/50 stroke-amber-500/60"
         strokeWidth="0.5"
         initial={{ scale: 0 }}
@@ -150,7 +210,9 @@ function CardIllustration() {
       {[22, 27, 32, 40, 45, 50].map((x, i) => (
         <motion.circle
           key={x}
-          cx={x} cy="46" r="1.5"
+          cx={x}
+          cy="46"
+          r="1.5"
           className="fill-primary/25"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
@@ -166,7 +228,7 @@ function CardIllustration() {
         style={{ transformOrigin: "60px 20px" }}
       />
     </svg>
-  )
+  );
 }
 
 function ChartIllustration() {
@@ -187,11 +249,15 @@ function ChartIllustration() {
         { x: 22, h: 30, color: "fill-primary/20" },
         { x: 33, h: 42, color: "fill-primary/30" },
         { x: 44, h: 25, color: "fill-primary/20" },
-        { x: 55, h: 48, color: "fill-primary/40" },
+        { x: 55, h: 48, color: "fill-primary/40" }
       ].map((bar, i) => (
         <motion.rect
           key={bar.x}
-          x={bar.x} y={65 - bar.h} width="8" height={bar.h} rx="2"
+          x={bar.x}
+          y={65 - bar.h}
+          width="8"
+          height={bar.h}
+          rx="2"
           className={bar.color}
           initial={{ height: 0, y: 65 }}
           animate={{ height: bar.h, y: 65 - bar.h }}
@@ -210,9 +276,17 @@ function ChartIllustration() {
         animate={{ pathLength: 1 }}
         transition={{ delay: 1, duration: 0.8 }}
       />
-      <motion.circle cx="59" cy="22" r="3" className="fill-primary/40" initial={{ scale: 0 }} animate={{ scale: [0, 1.3, 1] }} transition={{ delay: 1.6 }} />
+      <motion.circle
+        cx="59"
+        cy="22"
+        r="3"
+        className="fill-primary/40"
+        initial={{ scale: 0 }}
+        animate={{ scale: [0, 1.3, 1] }}
+        transition={{ delay: 1.6 }}
+      />
     </svg>
-  )
+  );
 }
 
 function BellIllustration() {
@@ -226,10 +300,17 @@ function BellIllustration() {
         transition={{ duration: 2, delay: 0.5, repeat: Infinity, repeatDelay: 3 }}
         style={{ transformOrigin: "40px 16px" }}
       />
-      <motion.path d="M 34 54 C 34 58 36 62 40 62 C 44 62 46 58 46 54" className="stroke-muted-foreground/30" strokeWidth="1.5" fill="none" />
+      <motion.path
+        d="M 34 54 C 34 58 36 62 40 62 C 44 62 46 58 46 54"
+        className="stroke-muted-foreground/30"
+        strokeWidth="1.5"
+        fill="none"
+      />
       {/* Notification dot */}
       <motion.circle
-        cx="52" cy="24" r="6"
+        cx="52"
+        cy="24"
+        r="6"
         className="fill-primary/20 stroke-primary/50"
         strokeWidth="1"
         animate={{ scale: [1, 1.2, 1] }}
@@ -249,14 +330,16 @@ function BellIllustration() {
         transition={{ delay: 0.8, duration: 0.5 }}
       />
     </svg>
-  )
+  );
 }
 
 function SearchIllustration() {
   return (
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
       <motion.circle
-        cx="36" cy="36" r="20"
+        cx="36"
+        cy="36"
+        r="20"
         className="fill-muted/40 stroke-border"
         strokeWidth="1.5"
         initial={{ scale: 0.8, opacity: 0 }}
@@ -264,7 +347,10 @@ function SearchIllustration() {
         transition={{ duration: 0.4 }}
       />
       <motion.line
-        x1="50" y1="50" x2="66" y2="66"
+        x1="50"
+        y1="50"
+        x2="66"
+        y2="66"
         className="stroke-muted-foreground/40"
         strokeWidth="4"
         strokeLinecap="round"
@@ -283,10 +369,26 @@ function SearchIllustration() {
         transition={{ delay: 0.6, duration: 0.4 }}
       />
       {/* Floating question marks */}
-      <motion.text x="14" y="22" className="fill-muted-foreground/15 text-[14px] font-bold" animate={{ y: [22, 18, 22] }} transition={{ duration: 3, repeat: Infinity }}>?</motion.text>
-      <motion.text x="60" y="20" className="fill-muted-foreground/15 text-[10px] font-bold" animate={{ y: [20, 16, 20] }} transition={{ duration: 2.5, delay: 0.4, repeat: Infinity }}>?</motion.text>
+      <motion.text
+        x="14"
+        y="22"
+        className="fill-muted-foreground/15 text-[14px] font-bold"
+        animate={{ y: [22, 18, 22] }}
+        transition={{ duration: 3, repeat: Infinity }}
+      >
+        ?
+      </motion.text>
+      <motion.text
+        x="60"
+        y="20"
+        className="fill-muted-foreground/15 text-[10px] font-bold"
+        animate={{ y: [20, 16, 20] }}
+        transition={{ duration: 2.5, delay: 0.4, repeat: Infinity }}
+      >
+        ?
+      </motion.text>
     </svg>
-  )
+  );
 }
 
 function GenericIllustration() {
@@ -294,7 +396,11 @@ function GenericIllustration() {
     <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
       {/* Box */}
       <motion.rect
-        x="16" y="28" width="48" height="36" rx="4"
+        x="16"
+        y="28"
+        width="48"
+        height="36"
+        rx="4"
         className="fill-muted/40 stroke-border"
         strokeWidth="1.5"
         initial={{ y: 38, opacity: 0 }}
@@ -315,88 +421,102 @@ function GenericIllustration() {
       {[
         { cx: 30, cy: 22, r: 1.5, delay: 0 },
         { cx: 50, cy: 20, r: 1, delay: 0.3 },
-        { cx: 58, cy: 26, r: 1.5, delay: 0.6 },
+        { cx: 58, cy: 26, r: 1.5, delay: 0.6 }
       ].map((p, i) => (
         <motion.circle
           key={i}
-          cx={p.cx} cy={p.cy} r={p.r}
+          cx={p.cx}
+          cy={p.cy}
+          r={p.r}
           className="fill-primary/30"
           animate={{ y: [0, -6, 0], opacity: [0.3, 0.8, 0.3] }}
           transition={{ duration: 2, delay: p.delay, repeat: Infinity }}
         />
       ))}
     </svg>
-  )
+  );
 }
 
 // ── Variant config ───────────────────────────────────────────────────────────
 
-const variants: Record<EmptyStateVariant, {
-  illustration: React.ReactNode
-  title: string
-  description: string
-}> = {
+const variants: Record<
+  EmptyStateVariant,
+  {
+    illustration: React.ReactNode;
+    title: string;
+    description: string;
+  }
+> = {
   accounts: {
     illustration: <WalletIllustration />,
     title: "No accounts linked",
-    description: "Connect your bank accounts to see balances, track spending, and manage everything in one place.",
+    description:
+      "Connect your bank accounts to see balances, track spending, and manage everything in one place."
   },
   transactions: {
     illustration: <TransactionIllustration />,
     title: "No transactions yet",
-    description: "Your transactions will appear here once you link an account or make your first transfer.",
+    description:
+      "Your transactions will appear here once you link an account or make your first transfer."
   },
   cards: {
     illustration: <CardIllustration />,
     title: "No cards added",
-    description: "Add a physical or virtual card to manage spending limits, freeze cards, and track payments.",
+    description:
+      "Add a physical or virtual card to manage spending limits, freeze cards, and track payments."
   },
   transfers: {
     illustration: <TransactionIllustration />,
     title: "No transfers yet",
-    description: "Send money to friends, family, or businesses. Your transfer history will show up here.",
+    description:
+      "Send money to friends, family, or businesses. Your transfer history will show up here."
   },
   investments: {
     illustration: <ChartIllustration />,
     title: "No investments",
-    description: "Start building your portfolio by connecting a brokerage account or making your first investment.",
+    description:
+      "Start building your portfolio by connecting a brokerage account or making your first investment."
   },
   crypto: {
     illustration: <ChartIllustration />,
     title: "No crypto assets",
-    description: "Buy, sell, or transfer cryptocurrency to get started. Real-time prices update every 3 seconds.",
+    description:
+      "Buy, sell, or transfer cryptocurrency to get started. Real-time prices update every 3 seconds."
   },
   analytics: {
     illustration: <ChartIllustration />,
     title: "Not enough data",
-    description: "Analytics will become available once you have at least one month of transaction history.",
+    description:
+      "Analytics will become available once you have at least one month of transaction history."
   },
   budgets: {
     illustration: <ChartIllustration />,
     title: "No budgets set",
-    description: "Create your first budget to track spending by category and get alerts when you're close to limits.",
+    description:
+      "Create your first budget to track spending by category and get alerts when you're close to limits."
   },
   notifications: {
     illustration: <BellIllustration />,
     title: "All caught up!",
-    description: "You have no notifications right now. We'll let you know when something needs your attention.",
+    description:
+      "You have no notifications right now. We'll let you know when something needs your attention."
   },
   search: {
     illustration: <SearchIllustration />,
     title: "No results found",
-    description: "Try adjusting your search terms or check for typos.",
+    description: "Try adjusting your search terms or check for typos."
   },
   filter: {
     illustration: <SearchIllustration />,
     title: "No matching results",
-    description: "No items match your current filters. Try adjusting or clearing your filters.",
+    description: "No items match your current filters. Try adjusting or clearing your filters."
   },
   generic: {
     illustration: <GenericIllustration />,
     title: "Nothing here yet",
-    description: "This section is empty. Content will appear here when data becomes available.",
-  },
-}
+    description: "This section is empty. Content will appear here when data becomes available."
+  }
+};
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -406,19 +526,16 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
-  className,
+  className
 }: EmptyStateProps) {
-  const config = variants[variant]
+  const config = variants[variant];
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className={cn(
-        "flex flex-col items-center justify-center gap-4 py-16 text-center",
-        className
-      )}
+      className={cn("flex flex-col items-center justify-center gap-4 py-16 text-center", className)}
     >
       {/* Illustration */}
       <motion.div
@@ -462,5 +579,5 @@ export function EmptyState({
         </motion.div>
       )}
     </motion.div>
-  )
+  );
 }

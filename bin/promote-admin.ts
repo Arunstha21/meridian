@@ -7,7 +7,10 @@ import { verificationUrl } from "../src/server/security/auth-tokens";
 async function main() {
   const argv = process.argv.slice(2);
   const demote = argv.includes("--demote");
-  const email = argv.find((a) => !a.startsWith("--"))?.trim().toLowerCase();
+  const email = argv
+    .find((a) => !a.startsWith("--"))
+    ?.trim()
+    .toLowerCase();
 
   if (!email) {
     console.log("Usage: npm run admin:promote -- <email> [--demote]");
@@ -23,7 +26,9 @@ async function main() {
 
   if (demote) {
     const revoked = await revokePlatformAdmin(db, email);
-    console.log(revoked ? `Revoked platform admin from ${email}.` : `${email} is not a platform admin.`);
+    console.log(
+      revoked ? `Revoked platform admin from ${email}.` : `${email} is not a platform admin.`
+    );
     return;
   }
 

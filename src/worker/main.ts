@@ -66,7 +66,10 @@ async function main() {
     try {
       await tick();
     } catch (e) {
-      log.error({ err: e instanceof Error ? { name: e.name, message: e.message } : e }, "worker.tick_failed");
+      log.error(
+        { err: e instanceof Error ? { name: e.name, message: e.message } : e },
+        "worker.tick_failed"
+      );
     }
     if (!running) break;
     await sleep(env.WORKER_POLL_MS);

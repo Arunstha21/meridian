@@ -82,9 +82,21 @@ describe("durable queue", () => {
   });
 
   it("prunes old completed and dead jobs but keeps recent dead letters", async () => {
-    const oldCompleted = await enqueue(db(), "email", { to: "old@test.local", subject: "x", text: "y" });
-    const oldDead = await enqueue(db(), "email", { to: "dead@test.local", subject: "x", text: "y" });
-    const recentDead = await enqueue(db(), "email", { to: "new@test.local", subject: "x", text: "y" });
+    const oldCompleted = await enqueue(db(), "email", {
+      to: "old@test.local",
+      subject: "x",
+      text: "y"
+    });
+    const oldDead = await enqueue(db(), "email", {
+      to: "dead@test.local",
+      subject: "x",
+      text: "y"
+    });
+    const recentDead = await enqueue(db(), "email", {
+      to: "new@test.local",
+      subject: "x",
+      text: "y"
+    });
     await db().execute(sql`
       UPDATE jobs SET status = 'completed', updated_at = now() - interval '20 days' WHERE id = ${oldCompleted}::uuid
     `);
@@ -104,7 +116,9 @@ describe("durable queue", () => {
 
   it("worker bootstrap registers maintenance crons", async () => {
     await registerWorkerBootstraps(db());
-    const rows = await db().execute<{ c: string }>(sql`SELECT count(*)::text AS c FROM cron_schedules`);
+    const rows = await db().execute<{ c: string }>(
+      sql`SELECT count(*)::text AS c FROM cron_schedules`
+    );
     expect(Number(rows.rows![0]!.c)).toBeGreaterThanOrEqual(2);
   });
 });

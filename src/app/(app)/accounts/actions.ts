@@ -29,7 +29,8 @@ export async function createAccountAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = createSchema.safeParse(formValues(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("account.create", async () => {
     const actor = await assertActor();
@@ -70,7 +71,8 @@ export async function updateAccountAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = updateSchema.safeParse(formValues(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("account.update", async () => {
     const actor = await assertActor();
@@ -115,7 +117,10 @@ const deleteSchema = z.object({
   confirmName: z.string().min(1)
 });
 
-export async function deleteAccountAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function deleteAccountAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("account.delete", async () => {
     const input = deleteSchema.parse(formValues(formData));
     const actor = await assertActor();

@@ -14,7 +14,14 @@ export default async function ChatPage() {
   const history = enabled ? await loadHistory(db, actor.familyId, actor.userId) : [];
   const pending = enabled ? await pendingProposal(db, actor) : null;
   const payload = pending?.payload as
-    | { name: string; accountName: string; amountLedgerMinor: number; currency: string; date: string; merchant: string | null }
+    | {
+        name: string;
+        accountName: string;
+        amountLedgerMinor: number;
+        currency: string;
+        date: string;
+        merchant: string | null;
+      }
     | undefined;
 
   return (

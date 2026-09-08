@@ -28,12 +28,15 @@ export async function createSavedFilter(
   const trimmed = name.trim();
   if (!trimmed) throw errors.validation("A name is required.");
   if (trimmed.length > MAX_NAME_LENGTH) throw errors.validation("Name is too long.");
-  if (Object.keys(params).length === 0) throw errors.validation("Nothing to save — set some filters first.");
+  if (Object.keys(params).length === 0)
+    throw errors.validation("Nothing to save — set some filters first.");
 
   const [existing] = await exec
     .select({ id: savedFilters.id })
     .from(savedFilters)
-    .where(and(eq(savedFilters.userId, userId), sql`lower(${savedFilters.name}) = lower(${trimmed})`))
+    .where(
+      and(eq(savedFilters.userId, userId), sql`lower(${savedFilters.name}) = lower(${trimmed})`)
+    )
     .limit(1);
 
   if (existing) {
@@ -56,7 +59,9 @@ export async function createSavedFilter(
       const [existing] = await exec
         .select({ id: savedFilters.id })
         .from(savedFilters)
-        .where(and(eq(savedFilters.userId, userId), sql`lower(${savedFilters.name}) = lower(${trimmed})`))
+        .where(
+          and(eq(savedFilters.userId, userId), sql`lower(${savedFilters.name}) = lower(${trimmed})`)
+        )
         .limit(1);
       if (existing) {
         await exec.update(savedFilters).set({ params }).where(eq(savedFilters.id, existing.id));

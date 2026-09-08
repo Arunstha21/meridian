@@ -3,8 +3,7 @@ import { DomainError, isRedirectSignal } from "@/lib/errors";
 import { log, redactDeep } from "@/lib/logger";
 
 export type ActionState<T = void> =
-  | { ok: true; data?: T }
-  | { ok: false; error: string; code?: string };
+  { ok: true; data?: T } | { ok: false; error: string; code?: string };
 
 export async function runAction<T>(
   name: string,
@@ -24,7 +23,11 @@ export async function runAction<T>(
       const first = e.issues[0];
       const field = first?.path?.join(".");
       log.warn({ action: name }, "action.invalid_input");
-      return { ok: false, error: field ? `${field}: ${first!.message}` : "Invalid input.", code: "validation.failed" };
+      return {
+        ok: false,
+        error: field ? `${field}: ${first!.message}` : "Invalid input.",
+        code: "validation.failed"
+      };
     }
     log.error({ action: name, err: redactDeep(e) }, "action.failed");
     return { ok: false, error: "Something went wrong. Please try again." };

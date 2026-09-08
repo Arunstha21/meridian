@@ -22,7 +22,11 @@ async function currencyFor(accountId: string): Promise<string> {
   return row.currency;
 }
 
-function toLedgerAmount(displayAmount: string, currency: string, kind: "expense" | "income"): number {
+function toLedgerAmount(
+  displayAmount: string,
+  currency: string,
+  kind: "expense" | "income"
+): number {
   const display = parseAmountToMinor(displayAmount, currency);
   return kind === "expense" ? Math.abs(display) : -Math.abs(display);
 }
@@ -43,7 +47,8 @@ export async function createTransactionAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = createTxnSchema.safeParse(formValues(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("txn.create", async () => {
     const actor = await assertActor();
@@ -83,7 +88,8 @@ export async function updateTransactionAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = updateTxnSchema.safeParse(formValues(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("txn.update", async () => {
     const actor = await assertActor();
@@ -152,7 +158,9 @@ export async function splitEntryAction(
     const json = String(formData.get("payload") ?? "");
     const input = splitPayloadSchema.parse(JSON.parse(json));
     const actor = await assertActor();
-    await withTransaction((tx) => orchestrate.splitTransaction(tx, actor, input.parentEntryId, input.parts));
+    await withTransaction((tx) =>
+      orchestrate.splitTransaction(tx, actor, input.parentEntryId, input.parts)
+    );
     revalidatePath("/transactions");
     revalidatePath(`/transactions/${input.parentEntryId}`);
     return undefined;
@@ -217,7 +225,8 @@ export async function createTransferAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = transferFormSchema.safeParse(formValues(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("transfer.create", async () => {
     const actor = await assertActor();
@@ -249,7 +258,8 @@ export async function recordValuationAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = valuationSchema.safeParse(formValues(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("valuation.record", async () => {
     const actor = await assertActor();

@@ -11,14 +11,21 @@ export async function upsertRate(
 ): Promise<void> {
   const base = input.base.toUpperCase();
   const quote = input.quote.toUpperCase();
-  if (!isValidCurrency(base) || !isValidCurrency(quote)) throw errors.validation("Unknown currency code.");
+  if (!isValidCurrency(base) || !isValidCurrency(quote))
+    throw errors.validation("Unknown currency code.");
   if (base === quote) throw errors.validation("Base and quote currencies must differ.");
   const rate = Number(input.rate);
-  if (!Number.isFinite(rate) || rate <= 0) throw errors.validation("Rate must be a positive number.");
+  if (!Number.isFinite(rate) || rate <= 0)
+    throw errors.validation("Rate must be a positive number.");
   if (!isIsoDate(input.quotedOn)) throw errors.validation("Quoted-on date must be YYYY-MM-DD.");
   await exec
     .insert(exchangeRates)
-    .values({ baseCurrency: base, quoteCurrency: quote, rate: input.rate, quotedOn: input.quotedOn })
+    .values({
+      baseCurrency: base,
+      quoteCurrency: quote,
+      rate: input.rate,
+      quotedOn: input.quotedOn
+    })
     .onConflictDoUpdate({
       target: [exchangeRates.baseCurrency, exchangeRates.quoteCurrency, exchangeRates.quotedOn],
       set: { rate: input.rate }

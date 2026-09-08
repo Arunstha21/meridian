@@ -22,7 +22,8 @@ type Connection = {
     dpName: string;
     lastSyncedAt: Date | null;
   };
-  accounts: Array<{    id: string;
+  accounts: Array<{
+    id: string;
     name: string;
     boid: string;
     totalValueMinor: number;
@@ -82,7 +83,11 @@ function ConnectionCard({ item, privacy }: { item: Connection; privacy: boolean 
             <SubmitButton variant="secondary">Sync now</SubmitButton>
           </form>
           <ConfirmDialog
-            trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Disconnect</span>}
+            trigger={
+              <span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">
+                Disconnect
+              </span>
+            }
             title={`Disconnect ${item.connection.name}?`}
             description="Meridian keeps the investment account and its latest valuation. Credentials are removed."
             confirmLabel="Disconnect"
@@ -96,10 +101,7 @@ function ConnectionCard({ item, privacy }: { item: Connection; privacy: boolean 
         {item.accounts.map((account) => (
           <li key={account.id} className="px-3 py-3 text-sm">
             <div className="flex items-center justify-between gap-3">
-              <Link
-                className="font-medium hover:underline"
-                href={`/accounts/${account.id}`}
-              >
+              <Link className="font-medium hover:underline" href={`/accounts/${account.id}`}>
                 {account.name}
               </Link>
               <span className="text-muted">
@@ -141,8 +143,8 @@ function ConnectionCard({ item, privacy }: { item: Connection; privacy: boolean 
         ))}
       </ul>
       <p className="mt-3 text-xs text-muted">
-        Disconnecting deletes stored MeroShare credentials and portfolio sync data, but
-        retains the Meridian investment account and its latest valuation.
+        Disconnecting deletes stored MeroShare credentials and portfolio sync data, but retains the
+        Meridian investment account and its latest valuation.
       </p>
     </article>
   );

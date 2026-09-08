@@ -72,7 +72,11 @@ function CreateForm({ categories }: { categories: Category[] }) {
 function DeleteButton({ categoryId, categoryName }: { categoryId: string; categoryName?: string }) {
   return (
     <ConfirmDialog
-      trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
+      trigger={
+        <span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">
+          Delete
+        </span>
+      }
       title={`Delete ${categoryName ?? "this category"}?`}
       description="Transactions keep their amounts; this category is removed from them."
       confirmLabel="Delete category"

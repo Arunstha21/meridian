@@ -8,7 +8,9 @@ export async function consumeRateLimit(
   limit: number,
   windowSeconds: number
 ): Promise<{ remaining: number }> {
-  const windowStartedAt = new Date(Math.floor(Date.now() / (windowSeconds * 1000)) * windowSeconds * 1000);
+  const windowStartedAt = new Date(
+    Math.floor(Date.now() / (windowSeconds * 1000)) * windowSeconds * 1000
+  );
   const res = await exec.execute<{ count: number }>(sql`
     INSERT INTO rate_limit_counters (bucket_key, window_started_at, count)
     VALUES (${key}, ${windowStartedAt.toISOString()}, 1)

@@ -11,8 +11,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from "@/components/ui/sidebar";
-import { BadgeCheckIcon, ChevronsUpDownIcon, EyeIcon, EyeOffIcon, LogOutIcon, ShieldIcon } from "lucide-react";
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar
+} from "@/components/ui/sidebar";
+import {
+  BadgeCheckIcon,
+  ChevronsUpDownIcon,
+  EyeIcon,
+  EyeOffIcon,
+  LogOutIcon,
+  ShieldIcon
+} from "lucide-react";
 
 function initials(name: string) {
   return (
@@ -49,7 +61,9 @@ export function NavUser({
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger render={<SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />}>
+          <DropdownMenuTrigger
+            render={<SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />}
+          >
             <Avatar>
               <AvatarFallback>{initials(user)}</AvatarFallback>
             </Avatar>

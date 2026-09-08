@@ -2,13 +2,24 @@
 
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig
+} from "@/components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, type DotProps } from "recharts";
 import { useDashboardData } from "@/components/finance/dashboard-data";
 import { fmtMoney } from "@/lib/format";
 import { minorToMajor } from "@/lib/money";
 
-function SquareDot({ cx, cy, fill, opacity = 1, size = 6 }: DotProps & { size?: number; opacity?: number | string }) {
+function SquareDot({
+  cx,
+  cy,
+  fill,
+  opacity = 1,
+  size = 6
+}: DotProps & { size?: number; opacity?: number | string }) {
   if (cx == null || cy == null) return null;
   return (
     <rect
@@ -97,13 +108,7 @@ export function FinancialOverview() {
                 strokeWidth={2}
                 fill="url(#nwFill)"
                 dot={false}
-                activeDot={(props) => (
-                  <SquareDot
-                    {...props}
-                    fill="var(--color-primary)"
-                    size={7}
-                  />
-                )}
+                activeDot={(props) => <SquareDot {...props} fill="var(--color-primary)" size={7} />}
               />
             </AreaChart>
           </ChartContainer>

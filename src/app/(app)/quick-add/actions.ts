@@ -25,11 +25,16 @@ export async function quickAddAction(
   formData: FormData
 ): Promise<ActionState<{ saved: boolean }>> {
   const parsed = quickSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
+  if (!parsed.success)
+    return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("txn.quick_add", async () => {
     const actor = await assertActor();
-    const [account] = await getDb().select().from(accounts).where(eq(accounts.id, input.accountId)).limit(1);
+    const [account] = await getDb()
+      .select()
+      .from(accounts)
+      .where(eq(accounts.id, input.accountId))
+      .limit(1);
     if (!account || account.familyId !== actor.familyId) throw new Error("Unknown account.");
 
     const display = parseAmountToMinor(input.amount, account.currency);

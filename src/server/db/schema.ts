@@ -448,10 +448,7 @@ export const budgets = pgTable(
   (t) => [
     check("budgets_amount_minor_check", sql`${t.amountMinor} > 0`),
     uniqueIndex("budgets_family_category_unique")
-      .on(
-        t.familyId,
-        sql`coalesce(${t.categoryId}, '00000000-0000-0000-0000-000000000000'::uuid)`
-      )
+      .on(t.familyId, sql`coalesce(${t.categoryId}, '00000000-0000-0000-0000-000000000000'::uuid)`)
       .where(sql`${t.active}`)
   ]
 );

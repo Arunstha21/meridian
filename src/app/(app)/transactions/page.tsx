@@ -117,7 +117,10 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <PageHeader
         title="Transactions"
         actions={
-          <Link href="/transactions/new" className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
+          <Link
+            href="/transactions/new"
+            className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground"
+          >
             New transaction
           </Link>
         }
@@ -137,38 +140,59 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <Card className="no-print overflow-hidden space-y-3">
         <form method="get" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div className="sm:col-span-2">
-            <label htmlFor="q" className="sr-only">Search</label>
-            <Input id="q" name="q" defaultValue={filters.search} placeholder="Search description, merchant, notes…" />
+            <label htmlFor="q" className="sr-only">
+              Search
+            </label>
+            <Input
+              id="q"
+              name="q"
+              defaultValue={filters.search}
+              placeholder="Search description, merchant, notes…"
+            />
           </div>
           <div>
-            <label htmlFor="account" className="sr-only">Account</label>
+            <label htmlFor="account" className="sr-only">
+              Account
+            </label>
             <Select id="account" name="account" defaultValue={filters.accountId ?? ""}>
               <option value="">All accounts</option>
               {accounts.map((a) => (
-                <option key={a.id} value={a.id}>{a.name}</option>
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
               ))}
             </Select>
           </div>
           <div>
-            <label htmlFor="category" className="sr-only">Category</label>
+            <label htmlFor="category" className="sr-only">
+              Category
+            </label>
             <Select id="category" name="category" defaultValue={filters.categoryId ?? ""}>
               <option value="">All categories</option>
               {categories.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
               ))}
             </Select>
           </div>
           <div>
-            <label htmlFor="tag" className="sr-only">Tag</label>
+            <label htmlFor="tag" className="sr-only">
+              Tag
+            </label>
             <Select id="tag" name="tag" defaultValue={filters.tagId ?? ""}>
               <option value="">Any tag</option>
               {tags.map((t) => (
-                <option key={t.id} value={t.id}>#{t.name}</option>
+                <option key={t.id} value={t.id}>
+                  #{t.name}
+                </option>
               ))}
             </Select>
           </div>
           <div>
-            <label htmlFor="kind" className="sr-only">Type</label>
+            <label htmlFor="kind" className="sr-only">
+              Type
+            </label>
             <Select id="kind" name="kind" defaultValue={filters.kind ?? ""}>
               <option value="">Everything</option>
               <option value="expense">Expenses</option>
@@ -177,11 +201,21 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             </Select>
           </div>
           <div>
-            <label htmlFor="from" className="sr-only">From date</label>
-            <Input id="from" name="from" type="date" defaultValue={filters.from} aria-label="From date" />
+            <label htmlFor="from" className="sr-only">
+              From date
+            </label>
+            <Input
+              id="from"
+              name="from"
+              type="date"
+              defaultValue={filters.from}
+              aria-label="From date"
+            />
           </div>
           <div>
-            <label htmlFor="to" className="sr-only">To date</label>
+            <label htmlFor="to" className="sr-only">
+              To date
+            </label>
             <Input id="to" name="to" type="date" defaultValue={filters.to} aria-label="To date" />
           </div>
           <SubmitButton>Apply filters</SubmitButton>
@@ -196,43 +230,89 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             {currentParams.q ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 Search: &ldquo;{currentParams.q}&rdquo;
-                <Link href={removeParamUrl("q")} className="text-muted hover:text-foreground" aria-label="Remove search filter">✕</Link>
+                <Link
+                  href={removeParamUrl("q")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove search filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             {currentParams.account ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                Account: {accounts.find((a) => a.id === currentParams.account)?.name ?? currentParams.account}
-                <Link href={removeParamUrl("account")} className="text-muted hover:text-foreground" aria-label="Remove account filter">✕</Link>
+                Account:{" "}
+                {accounts.find((a) => a.id === currentParams.account)?.name ??
+                  currentParams.account}
+                <Link
+                  href={removeParamUrl("account")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove account filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             {currentParams.category ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
-                Category: {categories.find((c) => c.id === currentParams.category)?.name ?? currentParams.category}
-                <Link href={removeParamUrl("category")} className="text-muted hover:text-foreground" aria-label="Remove category filter">✕</Link>
+                Category:{" "}
+                {categories.find((c) => c.id === currentParams.category)?.name ??
+                  currentParams.category}
+                <Link
+                  href={removeParamUrl("category")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove category filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             {currentParams.tag ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 Tag: #{tags.find((t) => t.id === currentParams.tag)?.name ?? currentParams.tag}
-                <Link href={removeParamUrl("tag")} className="text-muted hover:text-foreground" aria-label="Remove tag filter">✕</Link>
+                <Link
+                  href={removeParamUrl("tag")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove tag filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             {currentParams.kind ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 Type: {currentParams.kind}
-                <Link href={removeParamUrl("kind")} className="text-muted hover:text-foreground" aria-label="Remove type filter">✕</Link>
+                <Link
+                  href={removeParamUrl("kind")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove type filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             {currentParams.from ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 From: {currentParams.from}
-                <Link href={removeParamUrl("from")} className="text-muted hover:text-foreground" aria-label="Remove from filter">✕</Link>
+                <Link
+                  href={removeParamUrl("from")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove from filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             {currentParams.to ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 To: {currentParams.to}
-                <Link href={removeParamUrl("to")} className="text-muted hover:text-foreground" aria-label="Remove to filter">✕</Link>
+                <Link
+                  href={removeParamUrl("to")}
+                  className="text-muted hover:text-foreground"
+                  aria-label="Remove to filter"
+                >
+                  ✕
+                </Link>
               </span>
             ) : null}
             <Link href="/transactions" className="ml-1 text-xs text-primary hover:underline">
@@ -243,22 +323,35 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       </Card>
 
       {page.items.length === 0 ? (
-        <EmptyState title="No transactions found" hint="Try clearing the filters or record a new transaction." />
+        <EmptyState
+          title="No transactions found"
+          hint="Try clearing the filters or record a new transaction."
+        />
       ) : (
         <Card className="overflow-x-auto p-0 ring-1 ring-foreground/10">
           <table className="w-full min-w-160 text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th scope="col" className="px-4 py-3 font-medium">Date</th>
-                <th scope="col" className="px-4 py-3 font-medium">Description</th>
-                <th scope="col" className="px-4 py-3 font-medium">Account</th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">Amount</th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Date
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Description
+                </th>
+                <th scope="col" className="px-4 py-3 font-medium">
+                  Account
+                </th>
+                <th scope="col" className="px-4 py-3 text-right font-medium">
+                  Amount
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {page.items.map((e: EntryListItem) => (
                 <tr key={e.id} className="transition-colors hover:bg-muted/50">
-                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{fmtDate(e.date)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                    {fmtDate(e.date)}
+                  </td>
                   <td className="px-4 py-3">
                     <Link href={`/transactions/${e.id}`} className="font-medium hover:underline">
                       {e.transferId ? <span aria-hidden>⇄ </span> : null}
@@ -274,7 +367,13 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                   </td>
                   <td className="px-4 py-3 text-muted">{e.accountName}</td>
                   <td className="px-4 py-3 text-right">
-                    <Amount minor={-e.amountMinor} currency={e.currency} masked={privacy} signed colorize />
+                    <Amount
+                      minor={-e.amountMinor}
+                      currency={e.currency}
+                      masked={privacy}
+                      signed
+                      colorize
+                    />
                   </td>
                 </tr>
               ))}
@@ -282,12 +381,20 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
           </table>
           <div className="flex items-center justify-between px-4 py-3 text-sm">
             {page.hasPrevious && page.items[0] ? (
-              <Link href={`/transactions${listQuery({ date: page.items[0].date, id: page.items[0].id }, "prev")}`} className="text-primary hover:underline">← Previous</Link>
+              <Link
+                href={`/transactions${listQuery({ date: page.items[0].date, id: page.items[0].id }, "prev")}`}
+                className="text-primary hover:underline"
+              >
+                ← Previous
+              </Link>
             ) : (
               <span />
             )}
             {page.nextCursor ? (
-              <Link href={`/transactions${listQuery(page.nextCursor)}`} className="text-primary hover:underline">
+              <Link
+                href={`/transactions${listQuery(page.nextCursor)}`}
+                className="text-primary hover:underline"
+              >
                 Next →
               </Link>
             ) : (

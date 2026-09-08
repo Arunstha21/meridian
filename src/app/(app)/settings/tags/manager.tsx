@@ -26,7 +26,11 @@ export function TagManager({ tags }: { tags: Tag[] }) {
               <li key={t.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <span>#{t.name}</span>
                 <ConfirmDialog
-                  trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Delete</span>}
+                  trigger={
+                    <span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">
+                      Delete
+                    </span>
+                  }
                   title={`Delete #${t.name}?`}
                   description="The tag is removed from every transaction that used it."
                   confirmLabel="Delete tag"

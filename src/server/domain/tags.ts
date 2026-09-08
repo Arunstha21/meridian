@@ -21,7 +21,8 @@ export async function createTag(
     if (!tagId) throw errors.conflict("Failed to create tag.");
     return { tagId };
   } catch (e) {
-    if ((e as { code?: string }).code === "23505") throw errors.conflict(`Tag "${name}" already exists.`);
+    if ((e as { code?: string }).code === "23505")
+      throw errors.conflict(`Tag "${name}" already exists.`);
     throw e;
   }
 }
@@ -39,7 +40,8 @@ export async function updateTag(
   try {
     await exec.update(tags).set(updates).where(eq(tags.id, tagId));
   } catch (e) {
-    if ((e as { code?: string }).code === "23505") throw errors.conflict(`Tag "${updates.name}" already exists.`);
+    if ((e as { code?: string }).code === "23505")
+      throw errors.conflict(`Tag "${updates.name}" already exists.`);
     throw e;
   }
 }
@@ -66,6 +68,7 @@ async function requireFamilyTag(exec: Executor, familyId: string, tagId: string)
 
 function normalizeName(name: string): string {
   const trimmed = name.trim();
-  if (!trimmed || trimmed.length > 60) throw errors.validation("Tag names must be 1–60 characters.");
+  if (!trimmed || trimmed.length > 60)
+    throw errors.validation("Tag names must be 1–60 characters.");
   return trimmed;
 }

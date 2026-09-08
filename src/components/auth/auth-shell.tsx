@@ -58,7 +58,8 @@ export function AuthShell({
         <div className="relative z-20 mt-auto p-8">
           <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
             <blockquote className="text-sm leading-relaxed text-white/80">
-              &ldquo;The best time to start tracking was yesterday. The second best time is now.&rdquo;
+              &ldquo;The best time to start tracking was yesterday. The second best time is
+              now.&rdquo;
             </blockquote>
             <p className="mt-3 text-xs text-white/50">&mdash; Meridian</p>
           </div>

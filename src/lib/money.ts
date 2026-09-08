@@ -21,7 +21,10 @@ export function currencyExponent(currency: string): number {
 
 export function isValidCurrency(code: string): boolean {
   try {
-    const resolved = Intl.NumberFormat("en", { style: "currency", currency: code }).resolvedOptions();
+    const resolved = Intl.NumberFormat("en", {
+      style: "currency",
+      currency: code
+    }).resolvedOptions();
     return /^[A-Z]{3}$/.test(code.toUpperCase()) && !!resolved.currency;
   } catch {
     return false;
@@ -145,7 +148,8 @@ export function formatMoneySignedImpact(
 
 export function splitEvenly(minorTotal: number, parts: number): number[] {
   assertSafe(minorTotal);
-  if (parts < 1 || !Number.isInteger(parts)) throw errors.money("Parts must be a positive integer.");
+  if (parts < 1 || !Number.isInteger(parts))
+    throw errors.money("Parts must be a positive integer.");
   const sign = minorTotal < 0 ? -1 : 1;
   const abs = Math.abs(minorTotal);
   const base = Math.floor(abs / parts);

@@ -19,7 +19,12 @@ export function RecentTransactions() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-base font-semibold">Recent transactions</CardTitle>
-        <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" render={<Link href="/transactions" />}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1 text-xs"
+          render={<Link href="/transactions" />}
+        >
           See all
           <ChevronRightIcon className="size-3" />
         </Button>
@@ -58,16 +63,23 @@ export function RecentTransactions() {
                         {entry.name}
                       </p>
                       {entry.transferId ? (
-                        <Badge variant="secondary" className="mt-0.5 h-5 rounded-md px-1.5 text-[10px]">
+                        <Badge
+                          variant="secondary"
+                          className="mt-0.5 h-5 rounded-md px-1.5 text-[10px]"
+                        >
                           Transfer
                         </Badge>
                       ) : null}
                     </div>
-                    <span className="truncate text-xs text-muted-foreground">{entry.accountName}</span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {entry.accountName}
+                    </span>
                     <span
                       className={cn(
                         "text-right text-sm font-semibold tabular-nums",
-                        displayMinor > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
+                        displayMinor > 0
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-foreground"
                       )}
                     >
                       {privacy

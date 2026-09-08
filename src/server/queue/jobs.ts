@@ -15,7 +15,10 @@ export type JobPayloads = {
 
 export async function createJobRegistry() {
   const mailer = createMailer();
-  const registry = new Map<string, (payload: Record<string, unknown>, exec: Executor) => Promise<void>>();
+  const registry = new Map<
+    string,
+    (payload: Record<string, unknown>, exec: Executor) => Promise<void>
+  >();
 
   registry.set("email", async (payload, exec) => {
     await mailer.send({

@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/server/db/client";
 import { loadActor, requestMeta, SESSION_COOKIE } from "@/server/auth/context";
-import { acceptInvitationForExistingUser, acceptInvitationWithNewAccount } from "@/server/domain/invitations";
+import {
+  acceptInvitationForExistingUser,
+  acceptInvitationWithNewAccount
+} from "@/server/domain/invitations";
 import { createSession } from "@/server/security/session";
 import { isProd } from "@/lib/env";
 import { errors } from "@/lib/errors";

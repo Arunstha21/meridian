@@ -5,8 +5,18 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/server/db/client";
 import { loadActor, requestMeta, SESSION_COOKIE } from "@/server/auth/context";
-import { authenticate, performPasswordReset, registerUserWithFamily, requestPasswordReset } from "@/server/domain/users";
-import { issueAuthToken, verificationUrl, consumeAuthToken, markEmailVerified } from "@/server/security/auth-tokens";
+import {
+  authenticate,
+  performPasswordReset,
+  registerUserWithFamily,
+  requestPasswordReset
+} from "@/server/domain/users";
+import {
+  issueAuthToken,
+  verificationUrl,
+  consumeAuthToken,
+  markEmailVerified
+} from "@/server/security/auth-tokens";
 import { revokeSession } from "@/server/security/session";
 import { consumeRateLimit } from "@/server/security/rate-limit";
 import { enqueue } from "@/server/queue";
@@ -19,7 +29,10 @@ const signInSchema = z.object({
   password: z.string().min(1)
 });
 
-export async function signInAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function signInAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("auth.sign_in", async () => {
     const input = signInSchema.parse(Object.fromEntries(formData));
     const db = getDb();
@@ -46,7 +59,10 @@ const signUpSchema = z.object({
   timezone: z.string().min(1).optional()
 });
 
-export async function signUpAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function signUpAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("auth.sign_up", async () => {
     const input = signUpSchema.parse(Object.fromEntries(formData));
     const db = getDb();
@@ -115,7 +131,12 @@ export async function forgotPasswordAction(
     const input = forgotSchema.parse(Object.fromEntries(formData));
     const db = getDb();
     const meta = await requestMeta();
-    await consumeRateLimit(db, `reset:${meta.ip ?? "unknown"}:${input.email.toLowerCase()}`, 5, 3600);
+    await consumeRateLimit(
+      db,
+      `reset:${meta.ip ?? "unknown"}:${input.email.toLowerCase()}`,
+      5,
+      3600
+    );
 
     const token = await requestPasswordReset(db, input.email);
     if (token) {
@@ -151,7 +172,10 @@ export async function resetPasswordAction(
 
 const verifySchema = z.object({ token: z.string().min(10) });
 
-export async function verifyEmailAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function verifyEmailAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("auth.verify_email", async () => {
     const input = verifySchema.parse(Object.fromEntries(formData));
     const db = getDb();

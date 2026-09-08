@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { db, makeUser, makeAccount, addTxn, truncateAll, actorOf, latestBalance, daysAgo } from "../helpers";
+import {
+  db,
+  makeUser,
+  makeAccount,
+  addTxn,
+  truncateAll,
+  actorOf,
+  latestBalance,
+  daysAgo
+} from "../helpers";
 import * as entriesSvc from "@/server/domain/entries";
 import * as transfersSvc from "@/server/domain/transfers";
 import * as orchestrate from "@/server/domain/orchestrate";
@@ -40,7 +49,10 @@ describe("transfers", () => {
     ).rejects.toMatchObject({ code: "validation.failed" });
 
     const out = await addTxn(user, a, { amountLedgerMinor: 900, date: daysAgo(2) });
-    const inForeign = await addTxn(outsider, foreign, { amountLedgerMinor: -900, date: daysAgo(2) });
+    const inForeign = await addTxn(outsider, foreign, {
+      amountLedgerMinor: -900,
+      date: daysAgo(2)
+    });
     await expect(
       transfersSvc.createTransferFromTransactions(db(), actorOf(user), out, inForeign)
     ).rejects.toBeTruthy();
@@ -112,7 +124,10 @@ describe("transfers", () => {
 describe("balances", () => {
   it("handles backdated inserts by recalculating forward history", async () => {
     const user = await makeUser();
-    const accountId = await makeAccount(user, { openingBalanceDisplayMinor: 10000, openedOn: daysAgo(20) });
+    const accountId = await makeAccount(user, {
+      openingBalanceDisplayMinor: 10000,
+      openedOn: daysAgo(20)
+    });
 
     await addTxn(user, accountId, { amountLedgerMinor: 5000, date: daysAgo(3) });
     let bal = await latestBalance(accountId);
@@ -156,12 +171,31 @@ describe("balances", () => {
 describe("exchange rates", () => {
   it("converts using dated rates with inverse fallback", async () => {
     const exec = db();
-    await exchangeRatesSvc.upsertRate(exec, { base: "USD", quote: "EUR", rate: "0.8", quotedOn: daysAgo(5) });
-    await exchangeRatesSvc.upsertRate(exec, { base: "USD", quote: "EUR", rate: "0.9", quotedOn: daysAgo(1) });
+    await exchangeRatesSvc.upsertRate(exec, {
+      base: "USD",
+      quote: "EUR",
+      rate: "0.8",
+      quotedOn: daysAgo(5)
+    });
+    await exchangeRatesSvc.upsertRate(exec, {
+      base: "USD",
+      quote: "EUR",
+      rate: "0.9",
+      quotedOn: daysAgo(1)
+    });
 
-    expect(Number(await exchangeRatesSvc.getRate(exec, "USD", "EUR", daysAgo(0)))).toBeCloseTo(0.9, 8);
-    expect(Number(await exchangeRatesSvc.getRate(exec, "USD", "EUR", daysAgo(3)))).toBeCloseTo(0.8, 8);
-    expect(Number(await exchangeRatesSvc.getRate(exec, "EUR", "USD", daysAgo(0)))).toBeCloseTo(1 / 0.9, 6);
+    expect(Number(await exchangeRatesSvc.getRate(exec, "USD", "EUR", daysAgo(0)))).toBeCloseTo(
+      0.9,
+      8
+    );
+    expect(Number(await exchangeRatesSvc.getRate(exec, "USD", "EUR", daysAgo(3)))).toBeCloseTo(
+      0.8,
+      8
+    );
+    expect(Number(await exchangeRatesSvc.getRate(exec, "EUR", "USD", daysAgo(0)))).toBeCloseTo(
+      1 / 0.9,
+      6
+    );
     expect(await exchangeRatesSvc.getRate(exec, "GBP", "USD", daysAgo(0))).toBeNull();
 
     expect(exchangeRatesSvc.convertMinor(1000, "0.9")).toBe(900);

@@ -76,7 +76,11 @@ export async function updateCategory(
   void existing;
 }
 
-export async function deleteCategory(exec: Executor, actor: Actor, categoryId: string): Promise<void> {
+export async function deleteCategory(
+  exec: Executor,
+  actor: Actor,
+  categoryId: string
+): Promise<void> {
   await requireFamilyCategory(exec, actor.familyId, categoryId);
   const [usage] = await exec
     .select({ count: sql<number>`count(*)::int` })
@@ -94,7 +98,12 @@ export async function deleteCategory(exec: Executor, actor: Actor, categoryId: s
 
 export async function listCategories(exec: Executor, familyId: string): Promise<CategoryNode[]> {
   const rows = await exec
-    .select({ id: categories.id, name: categories.name, color: categories.color, parentId: categories.parentId })
+    .select({
+      id: categories.id,
+      name: categories.name,
+      color: categories.color,
+      parentId: categories.parentId
+    })
     .from(categories)
     .where(eq(categories.familyId, familyId))
     .orderBy(asc(categories.name));
@@ -113,7 +122,8 @@ async function requireFamilyCategory(exec: Executor, familyId: string, categoryI
 
 function normalizeName(name: string): string {
   const trimmed = name.trim();
-  if (!trimmed || trimmed.length > 80) throw errors.validation("Category names must be 1–80 characters.");
+  if (!trimmed || trimmed.length > 80)
+    throw errors.validation("Category names must be 1–80 characters.");
   return trimmed;
 }
 

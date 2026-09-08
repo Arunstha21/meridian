@@ -65,7 +65,15 @@ export function BudgetsView({
 
   const rings = [
     ...(overall
-      ? [{ id: "overall", name: "Overall", spentMinor: overall.spentMinor, limitMinor: overall.limitMinor, pct: overall.pct }]
+      ? [
+          {
+            id: "overall",
+            name: "Overall",
+            spentMinor: overall.spentMinor,
+            limitMinor: overall.limitMinor,
+            pct: overall.pct
+          }
+        ]
       : []),
     ...perCategory.map((item) => ({
       id: item.categoryId ?? item.categoryName,
@@ -78,7 +86,12 @@ export function BudgetsView({
 
   return (
     <div className="space-y-4">
-      <BudgetRings items={rings} currency={currency} privacy={effectivePrivacy} monthLabel={monthLabel} />
+      <BudgetRings
+        items={rings}
+        currency={currency}
+        privacy={effectivePrivacy}
+        monthLabel={monthLabel}
+      />
       <Card className="overflow-hidden">
         <div className="flex items-baseline justify-between">
           <h2 className="text-base font-medium text-primary">Overall monthly cap — {monthLabel}</h2>
@@ -89,12 +102,8 @@ export function BudgetsView({
         {overall ? (
           <div className="mt-3 space-y-2">
             <div className="flex items-baseline justify-between text-sm">
-              <span className="tabular font-medium">
-                {fmt(overall.spentMinor)} spent
-              </span>
-              <span className="tabular text-muted">
-                of {fmt(overall.limitMinor)}
-              </span>
+              <span className="tabular font-medium">{fmt(overall.spentMinor)} spent</span>
+              <span className="tabular text-muted">of {fmt(overall.limitMinor)}</span>
             </div>
             <ProgressBar pct={overall.pct} />
             <p className="text-xs text-muted">
@@ -107,7 +116,11 @@ export function BudgetsView({
           <p className="mt-2 text-sm text-muted">No overall cap set.</p>
         )}
         <div className="mt-4 border-t border-border pt-4">
-          <OverallCapForm current={overall?.limitMinor ?? null} currency={currency} privacy={effectivePrivacy} />
+          <OverallCapForm
+            current={overall?.limitMinor ?? null}
+            currency={currency}
+            privacy={effectivePrivacy}
+          />
         </div>
       </Card>
 
@@ -163,11 +176,12 @@ function CategoryBudgetItem({
           <Badge tone={pctTone(budget.pct)}>{Math.round(budget.pct * 100)}%</Badge>
         </span>
         <span className="tabular shrink-0 text-muted">
-          {effectivePrivacy ? "••••••" : fmt(budget.spentMinor)} / {effectivePrivacy ? "••••••" : fmt(budget.limitMinor)}
+          {effectivePrivacy ? "••••••" : fmt(budget.spentMinor)} /{" "}
+          {effectivePrivacy ? "••••••" : fmt(budget.limitMinor)}
         </span>
       </div>
       <ProgressBar pct={budget.pct} />
-      
+
       {editing ? (
         <form
           action={async (fd) => {
@@ -207,7 +221,9 @@ function CategoryBudgetItem({
           </button>
           <form action={removeAction}>
             <input type="hidden" name="categoryId" value={budget.categoryId ?? ""} />
-            <SubmitButton variant="ghost" className="px-2 py-1 text-xs">Remove budget</SubmitButton>
+            <SubmitButton variant="ghost" className="px-2 py-1 text-xs">
+              Remove budget
+            </SubmitButton>
             <FormError message={removeState?.ok === false ? removeState.error : undefined} />
           </form>
         </div>
@@ -258,7 +274,8 @@ function SetBudgetForm({
     return (
       <div className="space-y-2 py-2">
         <p className="text-sm text-muted">
-          All existing categories have monthly budgets set. You can adjust limits by clicking &ldquo;Edit limit&rdquo; on any budget on the left.
+          All existing categories have monthly budgets set. You can adjust limits by clicking
+          &ldquo;Edit limit&rdquo; on any budget on the left.
         </p>
       </div>
     );

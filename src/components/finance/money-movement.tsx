@@ -2,8 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig
+} from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useDashboardData } from "@/components/finance/dashboard-data";
 import { fmtMoney, fmtMonth } from "@/lib/format";
@@ -38,7 +49,10 @@ export function MoneyMovement() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-base font-semibold">Money movement</CardTitle>
-        <Select value={months} onValueChange={(value) => value && setMonths(value as "3" | "6" | "12")}>
+        <Select
+          value={months}
+          onValueChange={(value) => value && setMonths(value as "3" | "6" | "12")}
+        >
           <SelectTrigger className="h-8 w-[110px] text-xs">
             <SelectValue />
           </SelectTrigger>
@@ -56,7 +70,9 @@ export function MoneyMovement() {
               <ArrowDownLeftIcon className="size-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-[10px] font-medium text-emerald-600/70 dark:text-emerald-400/70">Money in</p>
+              <p className="text-[10px] font-medium text-emerald-600/70 dark:text-emerald-400/70">
+                Money in
+              </p>
               <p className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
                 {privacy ? "••••" : fmtMoney(totals.in, currency)}
               </p>
@@ -67,7 +83,9 @@ export function MoneyMovement() {
               <ArrowUpRightIcon className="size-4 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <p className="text-[10px] font-medium text-rose-600/70 dark:text-rose-400/70">Money out</p>
+              <p className="text-[10px] font-medium text-rose-600/70 dark:text-rose-400/70">
+                Money out
+              </p>
               <p className="text-sm font-bold tabular-nums text-rose-700 dark:text-rose-300">
                 {privacy ? "••••" : fmtMoney(totals.out, currency)}
               </p>
@@ -112,12 +130,21 @@ export function MoneyMovement() {
               content={
                 <ChartTooltipContent
                   formatter={(value) =>
-                    privacy ? "••••" : typeof value === "number" ? value.toLocaleString(locale, { style: "currency", currency }) : String(value)
+                    privacy
+                      ? "••••"
+                      : typeof value === "number"
+                        ? value.toLocaleString(locale, { style: "currency", currency })
+                        : String(value)
                   }
                 />
               }
             />
-            <Bar dataKey="moneyIn" fill="var(--color-primary)" radius={[6, 6, 0, 0]} maxBarSize={24} />
+            <Bar
+              dataKey="moneyIn"
+              fill="var(--color-primary)"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={24}
+            />
             <Bar
               dataKey="moneyOut"
               fill="var(--color-muted-foreground)"

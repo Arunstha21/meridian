@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireVerifiedActor } from "@/server/auth/context";
 import { getDb } from "@/server/db/client";
-import { createSavedFilter, deleteSavedFilter, sanitizeParams } from "@/server/domain/saved-filters";
+import {
+  createSavedFilter,
+  deleteSavedFilter,
+  sanitizeParams
+} from "@/server/domain/saved-filters";
 import { runAction, type ActionState } from "@/server/actions/runner";
 
 const saveSchema = z.object({
@@ -12,7 +16,10 @@ const saveSchema = z.object({
   params: z.record(z.string(), z.string())
 });
 
-export async function saveFilterAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function saveFilterAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("filters.save", async () => {
     const input = saveSchema.parse({
       name: formData.get("name") ?? "",

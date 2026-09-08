@@ -267,9 +267,13 @@ async function importRecords(
   let transferCount = 0;
   for (const record of transferRecords) {
     const inflowSourceId =
-      typeof record.data.inflow_transaction_id === "string" ? record.data.inflow_transaction_id.trim() : "";
+      typeof record.data.inflow_transaction_id === "string"
+        ? record.data.inflow_transaction_id.trim()
+        : "";
     const outflowSourceId =
-      typeof record.data.outflow_transaction_id === "string" ? record.data.outflow_transaction_id.trim() : "";
+      typeof record.data.outflow_transaction_id === "string"
+        ? record.data.outflow_transaction_id.trim()
+        : "";
     const inflowEntryId = inflowSourceId ? transactionMap.get(inflowSourceId) : undefined;
     const outflowEntryId = outflowSourceId ? transactionMap.get(outflowSourceId) : undefined;
     const pending = String(record.data.status ?? "confirmed") === "pending";

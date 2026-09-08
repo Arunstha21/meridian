@@ -35,7 +35,7 @@ export function redactDeep(value: unknown, depth = 0): Json | undefined {
   if (typeof value === "object") {
     const out: Record<string, Json> = {};
     for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
-      out[k] = SENSITIVE_KEYS.has(k.toLowerCase()) ? REDACTED : redactDeep(v, depth + 1) ?? null;
+      out[k] = SENSITIVE_KEYS.has(k.toLowerCase()) ? REDACTED : (redactDeep(v, depth + 1) ?? null);
     }
     return out;
   }

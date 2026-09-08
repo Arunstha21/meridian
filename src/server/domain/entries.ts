@@ -110,7 +110,9 @@ export async function createTransactionEntry(
         .where(eq(transactions.entryId, eid))
         .limit(1);
       if (!txn) throw errors.conflict("Failed to create transaction for tags.");
-      await tx.insert(transactionTags).values(tagIds.map((tagId) => ({ transactionId: txn.id, tagId })));
+      await tx
+        .insert(transactionTags)
+        .values(tagIds.map((tagId) => ({ transactionId: txn.id, tagId })));
     }
     return eid;
   });
@@ -138,7 +140,9 @@ async function findByExternalId(
       and(
         eq(entries.accountId, input.accountId),
         eq(entries.externalId, input.externalId),
-        input.externalSource ? eq(entries.externalSource, input.externalSource) : sql`external_source IS NULL`
+        input.externalSource
+          ? eq(entries.externalSource, input.externalSource)
+          : sql`external_source IS NULL`
       )
     )
     .limit(1);
@@ -177,9 +181,7 @@ export async function updateTransactionEntry(
   }
 
   const touchesCore =
-    patch.date !== undefined ||
-    patch.name !== undefined ||
-    patch.amountLedgerMinor !== undefined;
+    patch.date !== undefined || patch.name !== undefined || patch.amountLedgerMinor !== undefined;
   if (touchesCore && !canEditCore(level)) {
     throw errors.forbidden("Your access level does not allow editing amounts or dates.");
   }
@@ -199,7 +201,9 @@ export async function updateTransactionEntry(
     .where(eq(transactions.entryId, entryId))
     .limit(1);
   if (txn?.transferId && (patch.amountLedgerMinor !== undefined || patch.date !== undefined)) {
-    throw errors.conflict("Cannot edit amount or date of a linked transfer leg. Unlink the transfer first.");
+    throw errors.conflict(
+      "Cannot edit amount or date of a linked transfer leg. Unlink the transfer first."
+    );
   }
 
   const [splitCount] = await exec
@@ -208,12 +212,22 @@ export async function updateTransactionEntry(
     .where(eq(entries.parentEntryId, entryId));
   const isSplitParent = (splitCount?.count ?? 0) > 0;
 
-  if (isSplitParent && patch.amountLedgerMinor !== undefined && patch.amountLedgerMinor !== entry.amountMinor) {
-    throw errors.conflict("Cannot edit amount of a split parent directly. Unsplit the transaction first.");
+  if (
+    isSplitParent &&
+    patch.amountLedgerMinor !== undefined &&
+    patch.amountLedgerMinor !== entry.amountMinor
+  ) {
+    throw errors.conflict(
+      "Cannot edit amount of a split parent directly. Unsplit the transaction first."
+    );
   }
 
   if (entry.parentEntryId) {
-    const [parent] = await exec.select().from(entries).where(eq(entries.id, entry.parentEntryId)).limit(1);
+    const [parent] = await exec
+      .select()
+      .from(entries)
+      .where(eq(entries.id, entry.parentEntryId))
+      .limit(1);
     if (parent) {
       if (patch.date !== undefined && patch.date !== parent.date) {
         throw errors.validation("Split child date must match parent transaction date.");
@@ -222,7 +236,12 @@ export async function updateTransactionEntry(
         const otherChildren = await exec
           .select({ amountMinor: entries.amountMinor })
           .from(entries)
-          .where(and(eq(entries.parentEntryId, entry.parentEntryId), sql`${entries.id} != ${entryId}::uuid`));
+          .where(
+            and(
+              eq(entries.parentEntryId, entry.parentEntryId),
+              sql`${entries.id} != ${entryId}::uuid`
+            )
+          );
         const otherSum = otherChildren.reduce((acc, c) => acc + c.amountMinor, 0);
         if (otherSum + patch.amountLedgerMinor !== parent.amountMinor) {
           throw errors.validation("Split parts must sum exactly to the parent transaction amount.");
@@ -259,16 +278,15 @@ export async function updateTransactionEntry(
         ...(patch.date !== undefined ? { date: patch.date } : {}),
         ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
         ...(patch.amountLedgerMinor !== undefined ? { amountMinor: patch.amountLedgerMinor } : {}),
-        ...(patch.notes !== undefined ? { notes: sanitizeOptionalText(patch.notes, MAX_NOTES_LENGTH) } : {}),
+        ...(patch.notes !== undefined
+          ? { notes: sanitizeOptionalText(patch.notes, MAX_NOTES_LENGTH) }
+          : {}),
         updatedAt: new Date()
       })
       .where(eq(entries.id, entryId));
 
     if (isSplitParent && patch.date !== undefined) {
-      await tx
-        .update(entries)
-        .set({ date: patch.date })
-        .where(eq(entries.parentEntryId, entryId));
+      await tx.update(entries).set({ date: patch.date }).where(eq(entries.parentEntryId, entryId));
     }
 
     const txnSet: Partial<typeof transactions.$inferInsert> = {};
@@ -283,9 +301,7 @@ export async function updateTransactionEntry(
     if (tagIds) {
       await tx
         .delete(transactionTags)
-        .where(
-          sql`transaction_id IN (SELECT id FROM transactions WHERE entry_id = ${entryId})`
-        );
+        .where(sql`transaction_id IN (SELECT id FROM transactions WHERE entry_id = ${entryId})`);
       if (tagIds.length > 0) {
         const [txn] = await tx
           .select({ id: transactions.id })
@@ -351,7 +367,9 @@ export async function deleteEntry(exec: Executor, actor: Actor, entryId: string)
   await assertAccountAccess(exec, actor, row.account.id, "manage");
 
   if (row.entry.parentEntryId) {
-    throw errors.conflict("Cannot delete an individual split part directly. Unsplit the transaction instead.");
+    throw errors.conflict(
+      "Cannot delete an individual split part directly. Unsplit the transaction instead."
+    );
   }
 
   const [txn] = await exec
@@ -442,8 +460,10 @@ export async function listEntriesPage(
     )`
   ];
 
-  if (filters.accountId && isValidUuid(filters.accountId)) conditions.push(eq(entries.accountId, filters.accountId));
-  if (filters.categoryId && isValidUuid(filters.categoryId)) conditions.push(eq(transactions.categoryId, filters.categoryId));
+  if (filters.accountId && isValidUuid(filters.accountId))
+    conditions.push(eq(entries.accountId, filters.accountId));
+  if (filters.categoryId && isValidUuid(filters.categoryId))
+    conditions.push(eq(transactions.categoryId, filters.categoryId));
   if (filters.tagId && isValidUuid(filters.tagId)) {
     conditions.push(
       exists(
@@ -453,7 +473,13 @@ export async function listEntriesPage(
   }
   if (filters.search) {
     const pattern = `%${filters.search}%`;
-    conditions.push(or(ilike(entries.name, pattern), ilike(entries.notes, pattern), ilike(transactions.merchant, pattern))!);
+    conditions.push(
+      or(
+        ilike(entries.name, pattern),
+        ilike(entries.notes, pattern),
+        ilike(transactions.merchant, pattern)
+      )!
+    );
   }
   if (filters.kind === "expense") {
     conditions.push(sql`${transactions.transferId} IS NULL`, sql`${entries.amountMinor} > 0`, LEAF);
@@ -523,7 +549,10 @@ export async function listEntriesPage(
         FROM entries e
         JOIN transactions t ON t.entry_id = e.id
         LEFT JOIN transaction_tags tt ON tt.transaction_id = t.id
-        WHERE e.id IN (${sql.join(page.map((p) => sql`${p.id}::uuid`), sql`, `)})
+        WHERE e.id IN (${sql.join(
+          page.map((p) => sql`${p.id}::uuid`),
+          sql`, `
+        )})
         GROUP BY e.id
       `)
     : { rows: [] as { entry_id: string; tag_ids: string[] }[] };
@@ -578,8 +607,11 @@ export async function getEntryDetail(exec: Executor, actor: Actor, entryId: stri
     .where(eq(entries.parentEntryId, entryId))
     .orderBy(asc(entries.createdAt));
 
-  let transferPartner: { direction: "outflow" | "inflow"; accountName: string; amountMinor: number } | null =
-    null;
+  let transferPartner: {
+    direction: "outflow" | "inflow";
+    accountName: string;
+    amountMinor: number;
+  } | null = null;
   if (txn?.transferId) {
     const isOutflow = entry.amountMinor > 0;
     const partnerCol = isOutflow ? "inflow_entry_id" : "outflow_entry_id";
@@ -632,6 +664,10 @@ export async function getEntryDetail(exec: Executor, actor: Actor, entryId: stri
 }
 
 export async function entryExists(exec: Executor, entryId: string): Promise<boolean> {
-  const [row] = await exec.select({ id: entries.id }).from(entries).where(eq(entries.id, entryId)).limit(1);
+  const [row] = await exec
+    .select({ id: entries.id })
+    .from(entries)
+    .where(eq(entries.id, entryId))
+    .limit(1);
   return !!row;
 }

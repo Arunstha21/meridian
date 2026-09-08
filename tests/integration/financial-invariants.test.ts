@@ -253,9 +253,9 @@ describe("F03: Closed Account Mutation Rules", () => {
     ).rejects.toMatchObject({ code: "conflict" });
 
     // Deletions rejected
-    await expect(
-      entriesSvc.deleteEntry(db(), actorOf(user), entryId)
-    ).rejects.toMatchObject({ code: "conflict" });
+    await expect(entriesSvc.deleteEntry(db(), actorOf(user), entryId)).rejects.toMatchObject({
+      code: "conflict"
+    });
 
     // Splitting rejected
     await expect(

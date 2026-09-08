@@ -93,7 +93,10 @@ describe("transaction entries", () => {
     expect(p1.items).toHaveLength(4);
     expect(p1.nextCursor).toBeTruthy();
     expect(p1.hasPrevious).toBe(false);
-    const p2 = await entriesSvc.listEntriesPage(db(), actorOf(user), { limit: 4, cursor: p1.nextCursor });
+    const p2 = await entriesSvc.listEntriesPage(db(), actorOf(user), {
+      limit: 4,
+      cursor: p1.nextCursor
+    });
     expect(p2.items.length + p1.items.length).toBe(8);
     expect(p2.hasPrevious).toBe(true);
     const back = await entriesSvc.listEntriesPage(db(), actorOf(user), {
@@ -123,7 +126,10 @@ describe("splits", () => {
   it("enforces sum invariant and leaf-only balance counting", async () => {
     const user = await makeUser();
     const accountId = await makeAccount(user, { openingBalanceDisplayMinor: 20000 });
-    const parentId = await addTxn(user, accountId, { amountLedgerMinor: 6000, name: "Grocery mega-run" });
+    const parentId = await addTxn(user, accountId, {
+      amountLedgerMinor: 6000,
+      name: "Grocery mega-run"
+    });
 
     await expect(
       orchestrate.splitTransaction(db(), actorOf(user), parentId, [
@@ -132,11 +138,9 @@ describe("splits", () => {
       ])
     ).rejects.toMatchObject({ code: "validation.failed" });
 
-    const food = await (await import("@/server/domain/categories")).createCategory(
-      db(),
-      actorOf(user),
-      { name: "Food" }
-    );
+    const food = await (
+      await import("@/server/domain/categories")
+    ).createCategory(db(), actorOf(user), { name: "Food" });
     await orchestrate.splitTransaction(db(), actorOf(user), parentId, [
       { amountLedgerMinor: 4000, name: "Food part", categoryId: food.categoryId },
       { amountLedgerMinor: 2000, name: "Supplies part" }

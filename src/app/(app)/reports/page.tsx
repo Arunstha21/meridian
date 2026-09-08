@@ -71,7 +71,11 @@ export default async function ReportsPage({
       />
 
       <div className="flex items-center justify-between gap-4 overflow-x-auto">
-        <div className="flex max-w-fit gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Report period">
+        <div
+          className="flex max-w-fit gap-1 rounded-lg bg-muted p-1"
+          role="tablist"
+          aria-label="Report period"
+        >
           {PERIODS.map((item) => (
             <a
               key={item.key}
@@ -80,7 +84,9 @@ export default async function ReportsPage({
               aria-selected={period === item.key}
               className={cn(
                 "whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                period === item.key ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-accent"
+                period === item.key
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent"
               )}
             >
               {item.label}
@@ -107,7 +113,9 @@ export default async function ReportsPage({
         </Card>
         <Card>
           <p className="text-sm text-muted-foreground">Net savings</p>
-          <p className={`tabular mt-2 text-2xl font-semibold ${latestNet >= 0 ? "text-income" : "text-destructive"}`}>
+          <p
+            className={`tabular mt-2 text-2xl font-semibold ${latestNet >= 0 ? "text-income" : "text-destructive"}`}
+          >
             <Amount minor={latestNet} currency={family.currency} masked={privacy} signed />
           </p>
         </Card>
@@ -159,10 +167,18 @@ export default async function ReportsPage({
                     <tr key={flow.monthKey}>
                       <td className="py-2">{fmtMonth(flow.monthKey)}</td>
                       <td className="py-2 text-right tabular">
-                        <Amount minor={flow.incomeMinor} currency={family.currency} masked={privacy} />
+                        <Amount
+                          minor={flow.incomeMinor}
+                          currency={family.currency}
+                          masked={privacy}
+                        />
                       </td>
                       <td className="py-2 text-right tabular">
-                        <Amount minor={flow.expenseMinor} currency={family.currency} masked={privacy} />
+                        <Amount
+                          minor={flow.expenseMinor}
+                          currency={family.currency}
+                          masked={privacy}
+                        />
                       </td>
                       <td className="py-2 text-right tabular font-medium">
                         <Amount

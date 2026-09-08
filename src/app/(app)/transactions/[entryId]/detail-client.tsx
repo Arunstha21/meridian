@@ -199,7 +199,9 @@ export function TransactionDetailClient(p: DetailProps) {
                     <Link href={`/transactions/${c.id}`} className="hover:underline">
                       {c.name}
                     </Link>
-                    <span className="tabular">{privacy ? "•••••" : displayAmount(c.amountMinor, p.entry.currency)}</span>
+                    <span className="tabular">
+                      {privacy ? "•••••" : displayAmount(c.amountMinor, p.entry.currency)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -305,8 +307,16 @@ function SuggestTransfer({
                 <span className="block text-xs text-muted">{s.accountName}</span>
               </span>
               <form action={linkAction} className="shrink-0">
-                <input type="hidden" name="outflowEntryId" value={currentIsOutflow ? entryId : s.entryId} />
-                <input type="hidden" name="inflowEntryId" value={currentIsOutflow ? s.entryId : entryId} />
+                <input
+                  type="hidden"
+                  name="outflowEntryId"
+                  value={currentIsOutflow ? entryId : s.entryId}
+                />
+                <input
+                  type="hidden"
+                  name="inflowEntryId"
+                  value={currentIsOutflow ? s.entryId : entryId}
+                />
                 <SubmitButton variant="secondary">Link</SubmitButton>
               </form>
             </li>
@@ -330,7 +340,10 @@ function SplitForm({
 }) {
   const privacy = usePrivacy();
   const [state, action] = useActionState(splitEntryAction, undefined);
-  const [rows, setRows] = useState([{ amount: 0, name: "", categoryId: "" }, { amount: 0, name: "", categoryId: "" }]);
+  const [rows, setRows] = useState([
+    { amount: 0, name: "", categoryId: "" },
+    { amount: 0, name: "", categoryId: "" }
+  ]);
 
   const sign = totalMinor < 0 ? -1 : 1;
   const parts = rows.map((row) => Math.round(row.amount) * sign);
@@ -354,7 +367,9 @@ function SplitForm({
       <FormError message={state?.ok === false ? state.error : undefined} />
       <p className="text-sm text-muted">
         Parts must add up to the full original amount. Remaining:{" "}
-        <strong className="tabular">{privacy ? "•••••" : minorToDecimal(Math.abs(remaining), currency)}</strong>
+        <strong className="tabular">
+          {privacy ? "•••••" : minorToDecimal(Math.abs(remaining), currency)}
+        </strong>
       </p>
       {rows.map((row, i) => (
         <div key={i} className="grid gap-2 sm:grid-cols-3">
@@ -366,7 +381,9 @@ function SplitForm({
               required
               onChange={(e) => {
                 const v = parseAmountToMinor(e.target.value, currency);
-                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, amount: v } : old)));
+                setRows((prev) =>
+                  prev.map((old, idx) => (idx === i ? { ...old, amount: v } : old))
+                );
               }}
             />
           </Field>
@@ -387,7 +404,9 @@ function SplitForm({
               value={row.categoryId}
               onChange={(e) => {
                 const cat = e.target.value;
-                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, categoryId: cat } : old)));
+                setRows((prev) =>
+                  prev.map((old, idx) => (idx === i ? { ...old, categoryId: cat } : old))
+                );
               }}
             >
               <option value="">Uncategorized</option>

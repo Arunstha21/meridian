@@ -12,7 +12,13 @@ const TYPES = [
   { value: "other_liability", label: "Other liability", hint: "A debt you track manually" }
 ];
 
-export function NewAccountForm({ defaultCurrency, today }: { defaultCurrency: string; today: string }) {
+export function NewAccountForm({
+  defaultCurrency,
+  today
+}: {
+  defaultCurrency: string;
+  today: string;
+}) {
   const [state, action] = useActionState(createAccountAction, undefined);
   const [type, setType] = useState("depository");
 
@@ -27,7 +33,9 @@ export function NewAccountForm({ defaultCurrency, today }: { defaultCurrency: st
             <label
               key={t.value}
               className={`cursor-pointer rounded-xl border p-4 ${
-                type === t.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
+                type === t.value
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/40"
               }`}
             >
               <input
@@ -62,7 +70,11 @@ export function NewAccountForm({ defaultCurrency, today }: { defaultCurrency: st
           </Select>
         </Field>
         <Field
-          label={type === "credit_card" || type === "other_liability" ? "Opening balance owed" : "Opening balance"}
+          label={
+            type === "credit_card" || type === "other_liability"
+              ? "Opening balance owed"
+              : "Opening balance"
+          }
           htmlFor="openingBalance"
           hint={
             type === "credit_card" || type === "other_liability"
@@ -80,7 +92,13 @@ export function NewAccountForm({ defaultCurrency, today }: { defaultCurrency: st
       <div className="space-y-2 text-sm">
         <label className="flex items-center gap-2">
           <input type="hidden" name="includedInReports" value="off" />
-          <input type="checkbox" name="includedInReports" value="on" defaultChecked className="h-4 w-4" />
+          <input
+            type="checkbox"
+            name="includedInReports"
+            value="on"
+            defaultChecked
+            className="h-4 w-4"
+          />
           Include this account in reports
         </label>
         <label className="flex items-center gap-2">
@@ -95,6 +113,21 @@ export function NewAccountForm({ defaultCurrency, today }: { defaultCurrency: st
 }
 
 export const CURRENCIES = [
-  "USD", "EUR", "GBP", "CAD", "AUD", "NZD", "JPY", "CHF", "SEK", "NOK", "DKK",
-  "INR", "NPR", "SGD", "HKD", "BRL", "ZAR"
+  "USD",
+  "EUR",
+  "GBP",
+  "CAD",
+  "AUD",
+  "NZD",
+  "JPY",
+  "CHF",
+  "SEK",
+  "NOK",
+  "DKK",
+  "INR",
+  "NPR",
+  "SGD",
+  "HKD",
+  "BRL",
+  "ZAR"
 ];

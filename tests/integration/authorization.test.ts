@@ -23,7 +23,9 @@ describe("family tenancy", () => {
     const outsider = await makeUser();
     const accountId = await makeAccount(owner);
 
-    await expect(accountsSvc.getAccountOverview(db(), actorOf(outsider), accountId)).rejects.toMatchObject({
+    await expect(
+      accountsSvc.getAccountOverview(db(), actorOf(outsider), accountId)
+    ).rejects.toMatchObject({
       code: "resource.not_found"
     });
     void accountId;
@@ -51,7 +53,9 @@ describe("family tenancy", () => {
       sql`UPDATE users SET platform_role = 'super_admin' WHERE id = ${admin.userId}::uuid`
     );
     const accountId = await makeAccount(owner);
-    await expect(accountsSvc.getAccountOverview(db(), actorOf(admin), accountId)).rejects.toMatchObject({
+    await expect(
+      accountsSvc.getAccountOverview(db(), actorOf(admin), accountId)
+    ).rejects.toMatchObject({
       code: "resource.not_found"
     });
   });
@@ -60,7 +64,10 @@ describe("family tenancy", () => {
 describe("account sharing permission matrix", () => {
   it("read_only can view but not annotate", async () => {
     const owner = await makeUser({ familyName: "ShareFam" });
-    const member = await makeUser({ email: `member-${Date.now()}@test.local`, familyName: "Other" });
+    const member = await makeUser({
+      email: `member-${Date.now()}@test.local`,
+      familyName: "Other"
+    });
 
     await joinFamily(member, owner.familyId);
     const accountId = await makeAccount(owner, { joint: false });
@@ -70,7 +77,9 @@ describe("account sharing permission matrix", () => {
     await expect(entriesSvc.getEntryDetail(db(), actorOf(member), entryId)).resolves.toBeTruthy();
 
     await expect(
-      entriesSvc.updateTransactionEntry(db(), actorOf(member), entryId, { notes: "annotate attempt" })
+      entriesSvc.updateTransactionEntry(db(), actorOf(member), entryId, {
+        notes: "annotate attempt"
+      })
     ).rejects.toMatchObject({ code: "access.denied" });
     await expect(
       entriesSvc.updateTransactionEntry(db(), actorOf(member), entryId, { name: "rename" })
@@ -86,7 +95,9 @@ describe("account sharing permission matrix", () => {
     const entryId = await addTxn(owner, accountId, { amountLedgerMinor: 5000, name: "RW txn" });
     await accountsSvc.shareAccount(db(), actorOf(owner), accountId, member.userId, "read_write");
 
-    await entriesSvc.updateTransactionEntry(db(), actorOf(member), entryId, { notes: "annotated by rw" });
+    await entriesSvc.updateTransactionEntry(db(), actorOf(member), entryId, {
+      notes: "annotated by rw"
+    });
     await expect(
       entriesSvc.updateTransactionEntry(db(), actorOf(member), entryId, { amountLedgerMinor: 9999 })
     ).rejects.toMatchObject({ code: "access.denied" });
@@ -101,9 +112,9 @@ describe("account sharing permission matrix", () => {
     await joinFamily(colleague, owner.familyId);
 
     const accountId = await makeAccount(owner, { joint: false });
-    await expect(
-      entriesSvc.listEntriesPage(db(), actorOf(colleague), {})
-    ).resolves.toMatchObject({ items: [] });
+    await expect(entriesSvc.listEntriesPage(db(), actorOf(colleague), {})).resolves.toMatchObject({
+      items: []
+    });
     void accountId;
   });
 
@@ -125,7 +136,8 @@ describe("family lifecycle guards", () => {
     const member = await makeUser({ email: `m2-${Date.now()}@test.local` });
     await joinFamily(member, admin.familyId);
 
-    await expect(usersSvc.setMemberRole(db(), actorOf(admin), admin.userId, "member")).rejects.toBeUndefined;
+    await expect(usersSvc.setMemberRole(db(), actorOf(admin), admin.userId, "member")).rejects
+      .toBeUndefined;
     await expect(usersSvc.removeMember(db(), actorOf(admin), admin.userId)).rejects.toBeTruthy();
   });
 
@@ -134,14 +146,18 @@ describe("family lifecycle guards", () => {
     const member = await makeUser({ email: `plain-${Date.now()}@test.local` });
     await joinFamily(member, admin.familyId);
 
-    await expect(familiesSvc.updateFamilySettings(db(), actorOf(member, "member"), { name: "Nope Inc" })).rejects.toMatchObject({
+    await expect(
+      familiesSvc.updateFamilySettings(db(), actorOf(member, "member"), { name: "Nope Inc" })
+    ).rejects.toMatchObject({
       code: "access.denied"
     });
   });
 
   it("deleteFamily requires matching confirmation name", async () => {
     const admin = await makeUser();
-    await expect(familiesSvc.deleteFamily(db(), actorOf(admin), "wrong-name")).rejects.toMatchObject({
+    await expect(
+      familiesSvc.deleteFamily(db(), actorOf(admin), "wrong-name")
+    ).rejects.toMatchObject({
       code: "validation.failed"
     });
     const fam = await familiesSvc.getFamilyById(db(), admin.familyId);
@@ -199,10 +215,14 @@ describe("recurring account access", () => {
     const listed = await recurringSvc.listSeries(db(), actorOf(member));
     expect(listed.map((s) => s.id)).toContain(seriesId);
 
-    await expect(recurringSvc.setSeriesActive(db(), actorOf(member), seriesId, false)).rejects.toMatchObject({
+    await expect(
+      recurringSvc.setSeriesActive(db(), actorOf(member), seriesId, false)
+    ).rejects.toMatchObject({
       code: "access.denied"
     });
-    await expect(recurringSvc.skipNextOccurrence(db(), actorOf(member), seriesId)).rejects.toMatchObject({
+    await expect(
+      recurringSvc.skipNextOccurrence(db(), actorOf(member), seriesId)
+    ).rejects.toMatchObject({
       code: "access.denied"
     });
     await expect(recurringSvc.deleteSeries(db(), actorOf(member), seriesId)).rejects.toMatchObject({
@@ -225,7 +245,9 @@ describe("transfer unlink access", () => {
       date: daysAgo(1),
       amountDisplayMinor: 500
     });
-    await expect(orchestrate.unlinkTransfer(db(), actorOf(member), transferId)).rejects.toMatchObject({
+    await expect(
+      orchestrate.unlinkTransfer(db(), actorOf(member), transferId)
+    ).rejects.toMatchObject({
       code: "access.denied"
     });
   });
@@ -263,7 +285,9 @@ describe("member removal privacy (S03/S14)", () => {
 
     // The private account is preserved under the deactivated owner but stays
     // invisible to the family admin.
-    await expect(accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), privateAccount)).rejects.toMatchObject({
+    await expect(
+      accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), privateAccount)
+    ).rejects.toMatchObject({
       code: "resource.not_found"
     });
     const preserved = await db().select().from(accounts).where(eq(accounts.id, privateAccount));
@@ -271,7 +295,11 @@ describe("member removal privacy (S03/S14)", () => {
     expect(preserved[0]?.ownerId).toBe(member.userId);
 
     // The joint account should remain for the family
-    const jointOverview = await accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), jointAccount);
+    const jointOverview = await accountsSvc.getAccountOverview(
+      db(),
+      actorOf(admin, "admin"),
+      jointAccount
+    );
     expect(jointOverview.account.id).toBe(jointAccount);
   });
 });
@@ -303,7 +331,13 @@ describe("recurring series authorization (S04)", () => {
     ).rejects.toMatchObject({ code: "resource.not_found" });
 
     // If admin shares adminAccount with member as read_only:
-    await accountsSvc.shareAccount(db(), actorOf(admin, "admin"), adminAccount, member.userId, "read_only");
+    await accountsSvc.shareAccount(
+      db(),
+      actorOf(admin, "admin"),
+      adminAccount,
+      member.userId,
+      "read_only"
+    );
 
     // Member with read_only on source still cannot update or reassign series
     await expect(
@@ -322,8 +356,16 @@ describe("recurring series authorization (S04)", () => {
 
   it("denies moving recurring series across accounts with different currencies", async () => {
     const user = await makeUser({ familyName: "RecurringFxFamily" });
-    const usdAccount = await makeAccount(user, { name: "USD Account", currency: "USD", joint: true });
-    const eurAccount = await makeAccount(user, { name: "EUR Account", currency: "EUR", joint: true });
+    const usdAccount = await makeAccount(user, {
+      name: "USD Account",
+      currency: "USD",
+      joint: true
+    });
+    const eurAccount = await makeAccount(user, {
+      name: "EUR Account",
+      currency: "EUR",
+      joint: true
+    });
 
     const seriesId = await recurringSvc.createSeries(db(), actorOf(user, "admin"), {
       accountId: usdAccount,

@@ -6,7 +6,11 @@ import * as splitsSvc from "./splits";
 import * as transfersSvc from "./transfers";
 import { recalculateAccount } from "./balances";
 
-export async function addTransaction(exec: Executor, actor: Actor, input: entriesSvc.TransactionEntryInput) {
+export async function addTransaction(
+  exec: Executor,
+  actor: Actor,
+  input: entriesSvc.TransactionEntryInput
+) {
   const res = await entriesSvc.createTransactionEntry(exec, actor, input);
   if (!res.duplicated) await recalculateAccount(exec, input.accountId, input.date);
   return res;
@@ -56,7 +60,12 @@ export async function linkTransfer(
   outflowEntryId: string,
   inflowEntryId: string
 ) {
-  const res = await transfersSvc.createTransferFromTransactions(exec, actor, outflowEntryId, inflowEntryId);
+  const res = await transfersSvc.createTransferFromTransactions(
+    exec,
+    actor,
+    outflowEntryId,
+    inflowEntryId
+  );
   if (!res.existing) {
     for (const id of [outflowEntryId, inflowEntryId]) {
       await recalculateAccount(exec, await accountIdForEntry(exec, id));

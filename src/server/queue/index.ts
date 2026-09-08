@@ -27,7 +27,11 @@ export async function enqueue(
     maxAttempts: opts.maxAttempts ?? 5,
     ...(opts.delaySeconds ? { runAfter: new Date(Date.now() + opts.delaySeconds * 1000) } : {})
   };
-  const rows = await exec.insert(jobs).values(values).onConflictDoNothing().returning({ id: jobs.id });
+  const rows = await exec
+    .insert(jobs)
+    .values(values)
+    .onConflictDoNothing()
+    .returning({ id: jobs.id });
   return rows[0]?.id ?? null;
 }
 
@@ -43,7 +47,11 @@ export async function recoverStaleJobs(exec: Executor): Promise<number> {
   return res.rowCount ?? 0;
 }
 
-export async function claimBatch(exec: Executor, workerName: string, limit: number): Promise<ClaimedJob[]> {
+export async function claimBatch(
+  exec: Executor,
+  workerName: string,
+  limit: number
+): Promise<ClaimedJob[]> {
   const res = await exec.execute(sql`
     UPDATE jobs SET status = 'running', locked_by = ${workerName}, locked_at = now(),
       attempts = attempts + 1, updated_at = now()
@@ -73,9 +81,15 @@ export async function completeJob(exec: Executor, jobId: string): Promise<void> 
   `);
 }
 
-export async function failJob(exec: Executor, job: ClaimedJob, error: unknown): Promise<"retry" | "dead"> {
+export async function failJob(
+  exec: Executor,
+  job: ClaimedJob,
+  error: unknown
+): Promise<"retry" | "dead"> {
   const message =
-    error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 500) : String(error).slice(0, 500);
+    error instanceof Error
+      ? `${error.name}: ${error.message}`.slice(0, 500)
+      : String(error).slice(0, 500);
   if (job.attempts >= job.maxAttempts) {
     await exec.execute(sql`
       UPDATE jobs SET status = 'dead', last_error = ${message}, updated_at = now() WHERE id = ${job.id}
@@ -160,8 +174,9 @@ export async function runPendingNow(
   return processed;
 }
 
-
-export async function getQueueStats(exec: Executor): Promise<{ pending: number; running: number; completed: number; dead: number }> {
+export async function getQueueStats(
+  exec: Executor
+): Promise<{ pending: number; running: number; completed: number; dead: number }> {
   const res = await exec.execute<{ status: string; count: number }>(sql`
     SELECT status, count(*)::int AS count FROM jobs GROUP BY status
   `);

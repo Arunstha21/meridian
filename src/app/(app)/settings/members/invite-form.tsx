@@ -16,7 +16,13 @@ export function InviteForm() {
       <h2 className="mb-3 text-sm font-medium text-muted">Invite a member</h2>
       <form action={action} className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
         <Field label="Email" htmlFor="invite-email">
-          <Input id="invite-email" name="email" type="email" required placeholder="partner@example.com" />
+          <Input
+            id="invite-email"
+            name="email"
+            type="email"
+            required
+            placeholder="partner@example.com"
+          />
         </Field>
         <Field label="Role" htmlFor="invite-role">
           <Select id="invite-role" name="role" defaultValue="member">
@@ -28,9 +34,7 @@ export function InviteForm() {
           <SubmitButton>Send invite</SubmitButton>
         </div>
       </form>
-      {state?.ok === false ? (
-        <FormError message={state.error} />
-      ) : null}
+      {state?.ok === false ? <FormError message={state.error} /> : null}
       {inviteUrl ? (
         <FormSuccess
           message={

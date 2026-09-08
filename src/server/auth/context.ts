@@ -86,19 +86,27 @@ export async function assertVerifiedActor(): Promise<Actor> {
 }
 
 export async function currentFamily(actor: Actor): Promise<Family> {
-  const [family] = await getDb().select().from(families).where(eq(families.id, actor.familyId)).limit(1);
+  const [family] = await getDb()
+    .select()
+    .from(families)
+    .where(eq(families.id, actor.familyId))
+    .limit(1);
   if (!family) throw errors.notFound("Family");
   return family;
 }
 
 export async function requestMeta(): Promise<{ ip: string | null; userAgent: string | null }> {
   const h = await headers();
-  const trustProxy = process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY_HEADERS === "true";
+  const trustProxy =
+    process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY_HEADERS === "true";
   let ip: string | null = null;
   if (trustProxy) {
     const forwarded = h.get("x-forwarded-for");
     if (forwarded) {
-      const parts = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+      const parts = forwarded
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
       ip = (parts.length > 0 ? parts[0] : null) ?? null;
     } else {
       ip = h.get("x-real-ip") ?? null;

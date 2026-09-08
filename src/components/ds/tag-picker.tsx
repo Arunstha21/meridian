@@ -35,5 +35,9 @@ export function TagPicker({
 }
 
 export function parseTagIds(formData: FormData, key = "tagIds"): string[] {
-  return [...new Set(formData.getAll(key).filter((v): v is string => typeof v === "string" && v.length > 0))];
+  return [
+    ...new Set(
+      formData.getAll(key).filter((v): v is string => typeof v === "string" && v.length > 0)
+    )
+  ];
 }

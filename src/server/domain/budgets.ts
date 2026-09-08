@@ -55,14 +55,20 @@ export async function setBudget(
   });
 }
 
-export async function removeBudget(exec: Executor, actor: Actor, categoryId: string | null): Promise<void> {
+export async function removeBudget(
+  exec: Executor,
+  actor: Actor,
+  categoryId: string | null
+): Promise<void> {
   const removed = await exec
     .update(budgets)
     .set({ active: false, updatedAt: new Date() })
     .where(
       and(
         eq(budgets.familyId, actor.familyId),
-        categoryId === null ? sql`${budgets.categoryId} IS NULL` : eq(budgets.categoryId, categoryId)
+        categoryId === null
+          ? sql`${budgets.categoryId} IS NULL`
+          : eq(budgets.categoryId, categoryId)
       )
     )
     .returning({ id: budgets.id });

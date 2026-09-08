@@ -23,7 +23,8 @@ export async function manageCategoryAction(
   return runAction("category.manage", async () => {
     const actor = await assertActor();
     const input = categorySchema.safeParse(formValues(formData));
-    if (!input.success) throw (await import("@/lib/errors")).errors.validation("Check the category fields.");
+    if (!input.success)
+      throw (await import("@/lib/errors")).errors.validation("Check the category fields.");
     const d = input.data;
     await withTransaction(async (tx) => {
       if (d.op === "create") {
@@ -67,11 +68,15 @@ export async function deleteCategoryAction(formData: FormData): Promise<ActionSt
   });
 }
 
-export async function manageTagAction(_prev: ActionState | undefined, formData: FormData): Promise<ActionState> {
+export async function manageTagAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
   return runAction("tag.manage", async () => {
     const actor = await assertActor();
     const input = tagSchema.safeParse(formValues(formData));
-    if (!input.success) throw (await import("@/lib/errors")).errors.validation("Check the tag fields.");
+    if (!input.success)
+      throw (await import("@/lib/errors")).errors.validation("Check the tag fields.");
     const d = input.data;
     await withTransaction(async (tx) => {
       if (d.op === "create") {

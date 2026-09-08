@@ -81,7 +81,10 @@ export function SignInForm() {
       <SubmitButton className="w-full">Sign in</SubmitButton>
       <p className="text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{" "}
-        <Link href="/sign-up" className="font-medium text-foreground underline-offset-4 hover:underline">
+        <Link
+          href="/sign-up"
+          className="font-medium text-foreground underline-offset-4 hover:underline"
+        >
           Sign up
         </Link>
       </p>

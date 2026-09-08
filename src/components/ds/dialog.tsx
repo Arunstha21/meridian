@@ -59,7 +59,9 @@ export function Dialog({
       >
         <div className="flex flex-col gap-1 border-b border-border p-5">
           <div className="flex items-start justify-between gap-4">
-            <h2 id={titleId} className="text-base font-semibold">{title}</h2>
+            <h2 id={titleId} className="text-base font-semibold">
+              {title}
+            </h2>
             <button
               type="button"
               onClick={close}
@@ -69,7 +71,11 @@ export function Dialog({
               ✕
             </button>
           </div>
-          {description ? <p id={descId} className="text-sm text-muted">{description}</p> : null}
+          {description ? (
+            <p id={descId} className="text-sm text-muted">
+              {description}
+            </p>
+          ) : null}
         </div>
         <div className="p-5">{children}</div>
       </dialog>

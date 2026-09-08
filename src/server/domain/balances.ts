@@ -41,7 +41,14 @@ async function loadAccountMeta(exec: Executor, accountId: string): Promise<Accou
     WHERE a.id = ${accountId}::uuid
   `);
   const row = (res.rows ?? [])[0] as
-    | { id: string; currency: string; type: string; opening_balance_minor: string; opened_on: string; timezone: string }
+    | {
+        id: string;
+        currency: string;
+        type: string;
+        opening_balance_minor: string;
+        opened_on: string;
+        timezone: string;
+      }
     | undefined;
   if (!row) return null;
   return {
@@ -114,7 +121,9 @@ export async function recalculateAccount(
     const [prev] = await exec
       .select({ balanceMinor: balancesTable.balanceMinor })
       .from(balancesTable)
-      .where(sql`${balancesTable.accountId} = ${accountId}::uuid AND ${balancesTable.asOf} < ${start}::date`)
+      .where(
+        sql`${balancesTable.accountId} = ${accountId}::uuid AND ${balancesTable.asOf} < ${start}::date`
+      )
       .orderBy(sql`${balancesTable.asOf} DESC`)
       .limit(1);
     if (prev) baseline = safeParseMinor(prev.balanceMinor);
@@ -138,7 +147,9 @@ export async function recalculateAccount(
   }
 
   await exec.transaction(async (tx) => {
-    await tx.execute(sql`DELETE FROM balances WHERE account_id = ${accountId}::uuid AND as_of >= ${start}::date`);
+    await tx.execute(
+      sql`DELETE FROM balances WHERE account_id = ${accountId}::uuid AND as_of >= ${start}::date`
+    );
     const chunkSize = 500;
     for (let i = 0; i < rows.length; i += chunkSize) {
       const chunk = rows.slice(i, i + chunkSize);
@@ -160,14 +171,22 @@ export async function latestBalancesFor(
 ): Promise<Map<string, { balanceMinor: number; asOf: string; currency: string }>> {
   const result = new Map<string, { balanceMinor: number; asOf: string; currency: string }>();
   if (!accountIds.length) return result;
-  const res = await exec.execute<{ account_id: string; balance_minor: string; as_of: string; currency: string }>(sql`
+  const res = await exec.execute<{
+    account_id: string;
+    balance_minor: string;
+    as_of: string;
+    currency: string;
+  }>(sql`
     SELECT DISTINCT ON (account_id)
       account_id::text AS account_id,
       balance_minor::text AS balance_minor,
       as_of::text AS as_of,
       currency
     FROM balances
-    WHERE account_id IN (${sql.join(accountIds.map((id) => sql`${id}::uuid`), sql`, `)})
+    WHERE account_id IN (${sql.join(
+      accountIds.map((id) => sql`${id}::uuid`),
+      sql`, `
+    )})
     ORDER BY account_id, as_of DESC
   `);
   for (const r of res.rows ?? []) {

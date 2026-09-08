@@ -85,7 +85,8 @@ export function AccountCards() {
                     layout
                     animate={{
                       y: stackPos * Math.min(maxOffset, 16),
-                      scale: 1 - (order.length - 1 - stackPos) * (0.12 / Math.max(order.length - 1, 1)),
+                      scale:
+                        1 - (order.length - 1 - stackPos) * (0.12 / Math.max(order.length - 1, 1)),
                       zIndex: stackPos
                     }}
                     transition={{ type: "spring", stiffness: 400, damping: 28 }}
@@ -125,7 +126,12 @@ export function AccountCards() {
               {active.length} {active.length === 1 ? "account" : "accounts"}
             </span>
           </div>
-          <Button variant="outline" size="icon" className="size-7 rounded-full" render={<Link href="/accounts/new" />}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-7 rounded-full"
+            render={<Link href="/accounts/new" />}
+          >
             <PlusIcon className="size-3.5" />
             <span className="sr-only">Add account</span>
           </Button>
