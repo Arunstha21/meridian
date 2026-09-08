@@ -25,7 +25,10 @@ export async function createInvitation(
   }
 
   const existing = await findUserByEmail(exec, email);
-  if (existing) throw errors.conflict("That person already has an account.");
+  // Removed members may be re-invited; accepting reactivates their account.
+  if (existing && !existing.removedAt) {
+    throw errors.conflict("That person already has an account.");
+  }
 
   const [pending] = await exec
     .select({ count: sql<number>`count(*)::int` })
@@ -95,6 +98,16 @@ export async function acceptInvitationForExistingUser(
     if (user.email.toLowerCase() !== invitation.email) {
       throw errors.forbidden("This invitation was sent to a different email address.");
     }
+    const [row] = await tx
+      .select({ removedAt: users.removedAt })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+    if (row?.removedAt) {
+      throw errors.forbidden(
+        "This account has been removed from its family. Open the invitation while signed out to rejoin."
+      );
+    }
     await joinFamily(tx, invitation, user.id);
     return { userId: user.id, familyId: invitation.familyId, role: invitation.role };
   });
@@ -118,21 +131,41 @@ export async function acceptInvitationWithNewAccount(
     if (!invitation) throw errors.validation("This invitation link is invalid or has expired.");
 
     const clash = await findUserByEmail(tx, invitation.email);
-    if (clash) throw errors.conflict("An account with this email already exists. Sign in to accept.");
-
-    const [user] = await tx
-      .insert(users)
-      .values({
-        familyId: invitation.familyId,
-        email: invitation.email,
-        passwordHash,
-        name,
-        familyRole: invitation.role,
-        platformRole: "user",
-        emailVerifiedAt: mustVerify ? null : new Date()
-      })
-      .returning({ id: users.id });
-    const userId = user!.id;
+    let userId: string;
+    if (clash) {
+      if (!clash.removedAt) {
+        throw errors.conflict("An account with this email already exists. Sign in to accept.");
+      }
+      // Reactivate the removed member's account under this invitation.
+      // Receiving and accepting the emailed link proves inbox ownership.
+      await tx
+        .update(users)
+        .set({
+          familyId: invitation.familyId,
+          passwordHash,
+          name,
+          familyRole: invitation.role as "admin" | "member",
+          emailVerifiedAt: mustVerify ? null : new Date(),
+          removedAt: null,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, clash.id));
+      userId = clash.id;
+    } else {
+      const [user] = await tx
+        .insert(users)
+        .values({
+          familyId: invitation.familyId,
+          email: invitation.email,
+          passwordHash,
+          name,
+          familyRole: invitation.role,
+          platformRole: "user",
+          emailVerifiedAt: mustVerify ? null : new Date()
+        })
+        .returning({ id: users.id });
+      userId = user!.id;
+    }
 
     await joinFamily(tx, invitation, userId, { alreadyMember: true });
     return { userId, familyId: invitation.familyId, role: invitation.role };

@@ -111,7 +111,7 @@ function MemberTable({
                       </span>
                     }
                     title={`Remove ${m.name}?`}
-                    description="They will lose access to this family. Transactions they recorded stay in the ledger."
+                    description="They will immediately lose access. Their accounts and every transaction they recorded stay preserved in the ledger."
                     confirmLabel="Remove member"
                     action={manageMemberAction}
                   >

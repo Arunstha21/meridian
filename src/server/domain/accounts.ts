@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { accountShares, accounts, entries, users } from "../db/schema";
 import type { Actor } from "../auth/context";
@@ -359,7 +359,7 @@ export async function familyMemberOptions(exec: Executor, familyId: string) {
   return exec
     .select({ id: users.id, name: users.name, email: users.email })
     .from(users)
-    .where(eq(users.familyId, familyId));
+    .where(and(eq(users.familyId, familyId), isNull(users.removedAt)));
 }
 
 export async function accountsExistForFamily(exec: Executor, familyId: string, ids: string[]) {

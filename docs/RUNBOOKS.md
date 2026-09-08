@@ -95,3 +95,47 @@ When a background job exceeds its maximum attempts (default 5), it enters the `d
 3. **Mail Configuration**:
    - Set `MAIL_TRANSPORT=smtp` and `SMTP_URL=smtp://user:pass@smtp.host:587` in production.
    - Meridian will fail to start the mailer visibly if `MAIL_TRANSPORT=smtp` is set without `SMTP_URL`.
+
+---
+
+## 4. Platform Administrator Management
+
+Platform super-admin is never granted through signup, email verification, or
+family invitations (S13). It is granted only by an operator with database
+access:
+
+```bash
+# Grant. Requires the account to have proven inbox ownership (a previously
+# clicked email-verification or password-reset link). If ownership is
+# unproven, a one-time verification link is issued instead — nothing is granted.
+npm run admin:promote -- ops@example.com
+
+# Re-run the same command after the account owner opens the link.
+npm run admin:promote -- ops@example.com
+
+# Revoke.
+npm run admin:promote -- ops@example.com --demote
+```
+
+Every grant and revocation writes an audit event
+(`user.platform_admin_granted` / `user.platform_admin_revoked`).
+
+---
+
+## 5. Member Removal & Restoration
+
+Removing a family member deactivates the account (`users.removed_at`) instead
+of deleting it (S14):
+
+- The member's sessions, auth tokens, and account shares are revoked
+  immediately; shares on accounts they own are revoked as well.
+- Accounts they own — including private accounts — stay preserved with all
+  ledger entries, balances, transfers, and audit history under the deactivated
+  owner. Nobody gains access to the archived private accounts.
+- Removed members cannot sign in, be promoted to platform admin, or accept
+  invitations while removed.
+- To restore a removed member: send them a new invitation
+  (Settings > Members). Accepting the emailed link reactivates the account
+  and lets them set a new password.
+- Family admins cannot remove a platform super-admin; demote that account
+  first (see section 4).

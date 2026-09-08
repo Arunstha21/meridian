@@ -40,6 +40,7 @@ export const users = pgTable(
     familyRole: text("family_role").notNull().default("member"),
     platformRole: text("platform_role").notNull().default("user"),
     emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
     preferences: jsonb("preferences").notNull().default({}),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()

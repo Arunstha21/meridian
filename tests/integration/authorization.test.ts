@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { sql } from "drizzle-orm";
 import { eq } from "drizzle-orm";
-import { users } from "@/server/db/schema";
+import { accounts, users } from "@/server/db/schema";
 import { db, makeUser, makeAccount, addTxn, truncateAll, actorOf } from "../helpers";
 import * as accountsSvc from "@/server/domain/accounts";
 import * as entriesSvc from "@/server/domain/entries";
@@ -249,8 +249,8 @@ describe("valuations access", () => {
   });
 });
 
-describe("member removal privacy (S03)", () => {
-  it("deletes private accounts owned by a removed member instead of converting them to joint", async () => {
+describe("member removal privacy (S03/S14)", () => {
+  it("archives private accounts owned by a removed member instead of deleting or converting them", async () => {
     const admin = await makeUser({ familyName: "RemovalPrivacyFamily" });
     const member = await makeUser({ email: `removal-${Date.now()}@test.local` });
     await joinFamily(member, admin.familyId);
@@ -261,10 +261,14 @@ describe("member removal privacy (S03)", () => {
     // Admin removes member
     await usersSvc.removeMember(db(), actorOf(admin, "admin"), member.userId);
 
-    // The private account must have been deleted, not left orphaned with ownerId null
+    // The private account is preserved under the deactivated owner but stays
+    // invisible to the family admin.
     await expect(accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), privateAccount)).rejects.toMatchObject({
       code: "resource.not_found"
     });
+    const preserved = await db().select().from(accounts).where(eq(accounts.id, privateAccount));
+    expect(preserved).toHaveLength(1);
+    expect(preserved[0]?.ownerId).toBe(member.userId);
 
     // The joint account should remain for the family
     const jointOverview = await accountsSvc.getAccountOverview(db(), actorOf(admin, "admin"), jointAccount);

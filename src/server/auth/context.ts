@@ -43,7 +43,7 @@ export async function loadActor(): Promise<Actor | null> {
   const session = await findLiveSession(db, token);
   if (!session) return null;
   const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
-  if (!user) return null;
+  if (!user || user.removedAt) return null;
   await touchSession(db, session);
   return actorFromRow(user, session.id);
 }

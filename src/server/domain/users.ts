@@ -1,6 +1,6 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { accounts, authTokens, families, sessions, users } from "../db/schema";
+import { accountShares, accounts, authTokens, families, sessions, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/crypto";
 import { errors } from "@/lib/errors";
@@ -106,6 +106,9 @@ export async function grantPlatformAdmin(
 ): Promise<PlatformAdminOutcome> {
   const user = await findUserByEmail(exec, email);
   if (!user) throw errors.notFound("User");
+  if (user.removedAt) {
+    throw errors.conflict("This account has been removed from its family and cannot be promoted.");
+  }
   if (user.platformRole === "super_admin") return { status: "already_admin" };
 
   const [consumed] = await exec
@@ -171,6 +174,11 @@ export async function authenticate(
   const user = await findUserByEmail(exec, input.email);
   if (!user || !(await verifyPassword(user.passwordHash, input.password))) {
     throw errors.unauthorized();
+  }
+  if (user.removedAt) {
+    throw errors.forbidden(
+      "This account has been removed from its family. To rejoin, ask a family admin to send a new invitation."
+    );
   }
 
   const { token } = await createSession(exec, user.id, meta);
@@ -364,7 +372,7 @@ export async function listFamilyMembers(exec: Executor, familyId: string) {
       joinedAt: users.createdAt
     })
     .from(users)
-    .where(eq(users.familyId, familyId))
+    .where(and(eq(users.familyId, familyId), isNull(users.removedAt)))
     .orderBy(users.createdAt);
 }
 
@@ -373,18 +381,38 @@ export async function removeMember(exec: Executor, actor: Actor, targetUserId: s
   if (targetUserId === actor.userId) throw errors.validation("You cannot remove yourself. Delete the family instead.");
   const [target] = await exec.select().from(users).where(eq(users.id, targetUserId)).limit(1);
   if (!target || target.familyId !== actor.familyId) throw errors.notFound("Member");
+  if (target.removedAt) throw errors.conflict("This member has already been removed.");
+  if (target.platformRole === "super_admin") {
+    throw errors.forbidden(
+      "This member is a platform administrator. Ask the operator to demote them first."
+    );
+  }
   if (target.familyRole === "admin") {
     const admins = await countFamilyAdmins(exec, actor.familyId);
     if (admins <= 1) throw errors.conflict("Promote another admin before removing the last admin.");
   }
 
   await exec.transaction(async (tx) => {
-    // Prevent the departing member's private accounts from silently converting to joint accounts
+    // Deactivate instead of delete (S14): the member's accounts, ledger
+    // entries, balances, and audit history stay preserved under a
+    // deactivated owner instead of cascading away.
     await tx
-      .delete(accounts)
-      .where(and(eq(accounts.familyId, actor.familyId), eq(accounts.ownerId, targetUserId)));
+      .update(users)
+      .set({ removedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, targetUserId));
 
-    await tx.delete(users).where(eq(users.id, targetUserId));
+    // Revoke every access path for the removed member: their sessions and
+    // tokens, shares granted to them, and shares on the accounts they own
+    // (those accounts are archived under the deactivated owner).
+    await tx.delete(sessions).where(eq(sessions.userId, targetUserId));
+    await tx.delete(authTokens).where(eq(authTokens.userId, targetUserId));
+    await tx.delete(accountShares).where(eq(accountShares.userId, targetUserId));
+    await tx.delete(accountShares).where(
+      inArray(
+        accountShares.accountId,
+        tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.ownerId, targetUserId))
+      )
+    );
   });
 
   await recordAudit(exec, {
@@ -404,7 +432,7 @@ export async function setMemberRole(
 ): Promise<void> {
   if (actor.familyRole !== "admin") throw errors.forbidden("Only family admins can change roles.");
   const [target] = await exec.select().from(users).where(eq(users.id, targetUserId)).limit(1);
-  if (!target || target.familyId !== actor.familyId) throw errors.notFound("Member");
+  if (!target || target.familyId !== actor.familyId || target.removedAt) throw errors.notFound("Member");
   if (target.familyRole === "admin" && role === "member") {
     const admins = await countFamilyAdmins(exec, actor.familyId);
     if (admins <= 1) throw errors.conflict("Promote another admin before demoting the last admin.");
@@ -424,6 +452,6 @@ async function countFamilyAdmins(exec: Executor, familyId: string): Promise<numb
   const [row] = await exec
     .select({ count: sql<number>`count(*)::int` })
     .from(users)
-    .where(and(eq(users.familyId, familyId), eq(users.familyRole, "admin")));
+    .where(and(eq(users.familyId, familyId), eq(users.familyRole, "admin"), isNull(users.removedAt)));
   return row?.count ?? 0;
 }
