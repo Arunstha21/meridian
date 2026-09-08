@@ -5,7 +5,7 @@ import type { Executor } from "../src/server/db/migrate-types";
 import { migrateUp } from "../src/server/db/migrate";
 import { ensureDefaultFlags } from "../src/server/flags";
 import { hashPassword } from "../src/lib/crypto";
-import { adminEmails, env } from "../src/lib/env";
+import { env } from "../src/lib/env";
 import * as accountsSvc from "../src/server/domain/accounts";
 import * as categoriesSvc from "../src/server/domain/categories";
 import * as tagsSvc from "../src/server/domain/tags";
@@ -58,7 +58,6 @@ async function main() {
 
   const password = env.SEED_PASSWORD ?? "meridian-demo-2026";
   const hash = await hashPassword(password);
-  const isAdminEmail = adminEmails().includes(email);
 
   const familyRes = await db.execute<{ id: string }>(sql`
     INSERT INTO families (name, currency, timezone)
@@ -69,7 +68,7 @@ async function main() {
 
   const adminRes = await db.execute<{ id: string }>(sql`
     INSERT INTO users (family_id, email, password_hash, name, family_role, platform_role, email_verified_at)
-    VALUES (${familyId}::uuid, ${email}, ${hash}, 'Demo Admin', 'admin', ${isAdminEmail ? 'super_admin' : 'user'}::text, now())
+    VALUES (${familyId}::uuid, ${email}, ${hash}, 'Demo Admin', 'admin', 'user'::text, now())
     RETURNING id::text AS id
   `);
   const partnerRes = await db.execute<{ id: string }>(sql`
@@ -282,6 +281,7 @@ async function main() {
   console.log("Demo data seeded:");
   console.log(`  sign-in: ${email}`);
   console.log(`  password: ${password}`);
+  console.log("  platform admin: npm run admin:promote -- <your-email>");
   }
 
 main().then(

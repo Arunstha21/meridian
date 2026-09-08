@@ -16,7 +16,8 @@
     "test:watch": "vitest",
     "db:migrate": "tsx bin/migrate.ts up",
     "db:migrate:down": "tsx bin/migrate.ts down",
-    "db:seed": "tsx bin/seed.ts"
+    "db:seed": "tsx bin/seed.ts",
+    "admin:promote": "tsx bin/promote-admin.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

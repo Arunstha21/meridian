@@ -4,7 +4,7 @@ import { db, makeUser, truncateAll, actorOf } from "../helpers";
 import * as invitationsSvc from "@/server/domain/invitations";
 import * as usersSvc from "@/server/domain/users";
 import { markEmailVerified } from "@/server/security/auth-tokens";
-import { users } from "@/server/db/schema";
+import { users, authTokens } from "@/server/db/schema";
 import { hashToken } from "@/lib/crypto";
 import { assertActorVerified } from "@/server/auth/context";
 
@@ -80,27 +80,82 @@ describe("S02: Platform Admin Escalation Guards", () => {
     expect(user?.platformRole).toBe("user");
   });
 
-  it("requires email verification before granting super_admin on registration", async () => {
-    process.env.ADMIN_EMAILS = "new-superadmin@example.com";
-    process.env.REQUIRE_EMAIL_VERIFICATION = "true";
+  it("never grants super_admin at registration regardless of ADMIN_EMAILS or verification mode", async () => {
+    // Verification disabled (the default): signup must never promote, even for a listed address.
+    process.env.ADMIN_EMAILS = "listed-admin@example.com, verify-admin@example.com";
+    process.env.REQUIRE_EMAIL_VERIFICATION = "false";
 
-    const userRes = await usersSvc.registerUserWithFamily(db(), {
-      email: "new-superadmin@example.com",
+    const direct = await usersSvc.registerUserWithFamily(db(), {
+      email: "listed-admin@example.com",
       password: "TestPassword123!Secure",
-      name: "New Admin",
-      familyName: "Admin Family"
+      name: "Listed Admin",
+      familyName: "Listed Family"
+    });
+    const [directUser] = await db().select().from(users).where(eq(users.id, direct.userId));
+    expect(directUser?.platformRole).toBe("user");
+
+    // Verification enabled: signup stays a plain user, and completing email
+    // verification must not promote either.
+    process.env.REQUIRE_EMAIL_VERIFICATION = "true";
+    const verifying = await usersSvc.registerUserWithFamily(db(), {
+      email: "verify-admin@example.com",
+      password: "TestPassword123!Secure",
+      name: "Verifying Admin",
+      familyName: "Verifying Family"
+    });
+    await markEmailVerified(db(), verifying.userId);
+    const [verifiedUser] = await db().select().from(users).where(eq(users.id, verifying.userId));
+    expect(verifiedUser?.emailVerifiedAt).not.toBeNull();
+    expect(verifiedUser?.platformRole).toBe("user");
+  });
+});
+
+describe("S13: Operator-only platform admin promotion", () => {
+  it("requires proven inbox ownership before granting super_admin", async () => {
+    // makeUser marks the email verified via direct UPDATE, but no emailed link
+    // was ever consumed: inbox ownership is NOT proven yet.
+    const owner = await makeUser();
+    const outcome = await usersSvc.grantPlatformAdmin(db(), owner.email);
+    expect(outcome.status).toBe("verification_required");
+    const [stillUser] = await db().select().from(users).where(eq(users.id, owner.userId));
+    expect(stillUser?.platformRole).toBe("user");
+
+    // Simulate the account owner clicking the emailed link: a consumed token.
+    await db().insert(authTokens).values({
+      userId: owner.userId,
+      purpose: "email_verification",
+      tokenHash: hashToken("consumed-s13-verification-token"),
+      expiresAt: new Date(Date.now() + 3_600_000),
+      usedAt: new Date()
     });
 
-    // Before verification, platformRole must be "user"
-    const [before] = await db().select().from(users).where(eq(users.id, userRes.userId));
-    expect(before?.platformRole).toBe("user");
-    expect(before?.emailVerifiedAt).toBeNull();
+    expect((await usersSvc.grantPlatformAdmin(db(), owner.email)).status).toBe("promoted");
+    const [admin] = await db().select().from(users).where(eq(users.id, owner.userId));
+    expect(admin?.platformRole).toBe("super_admin");
 
-    // After email verification, platformRole should be upgraded to super_admin
-    await markEmailVerified(db(), userRes.userId);
-    const [after] = await db().select().from(users).where(eq(users.id, userRes.userId));
-    expect(after?.emailVerifiedAt).not.toBeNull();
-    expect(after?.platformRole).toBe("super_admin");
+    // Re-running is idempotent, and the operator can demote.
+    expect((await usersSvc.grantPlatformAdmin(db(), owner.email)).status).toBe("already_admin");
+    expect(await usersSvc.revokePlatformAdmin(db(), owner.email)).toBe(true);
+    const [demoted] = await db().select().from(users).where(eq(users.id, owner.userId));
+    expect(demoted?.platformRole).toBe("user");
+  });
+
+  it("accepts a consumed password-reset token as inbox ownership proof", async () => {
+    const owner = await makeUser();
+    await db().insert(authTokens).values({
+      userId: owner.userId,
+      purpose: "password_reset",
+      tokenHash: hashToken("consumed-s13-reset-token"),
+      expiresAt: new Date(Date.now() + 3_600_000),
+      usedAt: new Date()
+    });
+    expect((await usersSvc.grantPlatformAdmin(db(), owner.email)).status).toBe("promoted");
+  });
+
+  it("rejects promotion of unknown addresses", async () => {
+    await expect(usersSvc.grantPlatformAdmin(db(), "ghost-s13@example.com")).rejects.toMatchObject({
+      code: "resource.not_found"
+    });
   });
 });
 

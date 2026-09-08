@@ -44,8 +44,14 @@ docker compose up --build
 That starts Postgres, applies migrations, serves the web app on http://localhost:3000, and runs the worker. Set `MAIL_FROM` (and SMTP) in the compose environment before using real email.
 
 The demo seed creates `demo@meridian.local` with password `meridian-demo-2026`
-(override with `SEED_PASSWORD`). Grant platform super-admin by adding your email to
-`ADMIN_EMAILS` before signing up, or promote directly in the database.
+(override with `SEED_PASSWORD`).
+
+Platform super-admin is never granted at signup, even for addresses listed in
+`ADMIN_EMAILS`. Promote an operator with `npm run admin:promote -- you@example.com`
+(`--demote` to revoke). The command requires the account to have proven inbox
+ownership — a previously clicked email-verification or password-reset link — and
+otherwise issues a one-time verification link instead. `ADMIN_EMAILS` only blocks
+those addresses from being invited into a family.
 
 ## Scripts
 

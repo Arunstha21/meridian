@@ -1,10 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { accounts, families, sessions, users } from "../db/schema";
+import { accounts, authTokens, families, sessions, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/crypto";
 import { errors } from "@/lib/errors";
-import { adminEmails, requireEmailVerification } from "@/lib/env";
+import { requireEmailVerification } from "@/lib/env";
 import { isValidCurrency } from "@/lib/money";
 import { validateTimezone } from "./families";
 import { recordAudit } from "../observability/audit";
@@ -51,7 +51,6 @@ export async function registerUserWithFamily(
   const timezone = validateTimezone(input.timezone ?? "Etc/UTC");
 
   const mustVerify = requireEmailVerification();
-  const shouldBePlatformAdmin = !mustVerify && adminEmails().includes(email);
 
   const result = await exec.transaction(async (tx) => {
     const [family] = await tx
@@ -71,7 +70,9 @@ export async function registerUserWithFamily(
         passwordHash: await hashPassword(input.password),
         name,
         familyRole: "admin",
-        platformRole: shouldBePlatformAdmin ? "super_admin" : "user",
+        // Platform admin is never granted at signup. Use the operator flow
+        // (bin/promote-admin.ts), which requires proven inbox ownership.
+        platformRole: "user",
         emailVerifiedAt: mustVerify ? null : new Date()
       })
       .returning({ id: users.id });
@@ -86,6 +87,75 @@ export async function registerUserWithFamily(
     entityId: result.userId
   });
   return result;
+}
+
+export type PlatformAdminOutcome =
+  | { status: "promoted" }
+  | { status: "already_admin" }
+  | { status: "verification_required"; verificationToken: string };
+
+/**
+ * Operator-only platform admin grant (S13). Never reachable from public flows.
+ * Requires proven inbox ownership: a previously consumed email-verification or
+ * password-reset token. When ownership is unproven, a fresh verification token
+ * is issued and the caller must deliver it to the account owner.
+ */
+export async function grantPlatformAdmin(
+  exec: Executor,
+  email: string
+): Promise<PlatformAdminOutcome> {
+  const user = await findUserByEmail(exec, email);
+  if (!user) throw errors.notFound("User");
+  if (user.platformRole === "super_admin") return { status: "already_admin" };
+
+  const [consumed] = await exec
+    .select({ id: authTokens.id })
+    .from(authTokens)
+    .where(
+      and(
+        eq(authTokens.userId, user.id),
+        inArray(authTokens.purpose, ["email_verification", "password_reset"]),
+        isNotNull(authTokens.usedAt)
+      )
+    )
+    .limit(1);
+
+  if (!consumed) {
+    const { issueAuthToken } = await import("../security/auth-tokens");
+    const verificationToken = await issueAuthToken(exec, user.id, "email_verification");
+    return { status: "verification_required", verificationToken };
+  }
+
+  await exec
+    .update(users)
+    .set({ platformRole: "super_admin", updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+  await recordAudit(exec, {
+    familyId: user.familyId,
+    actorUserId: user.id,
+    action: "user.platform_admin_granted",
+    entityType: "user",
+    entityId: user.id
+  });
+  return { status: "promoted" };
+}
+
+export async function revokePlatformAdmin(exec: Executor, email: string): Promise<boolean> {
+  const user = await findUserByEmail(exec, email);
+  if (!user) throw errors.notFound("User");
+  if (user.platformRole !== "super_admin") return false;
+  await exec
+    .update(users)
+    .set({ platformRole: "user", updatedAt: new Date() })
+    .where(eq(users.id, user.id));
+  await recordAudit(exec, {
+    familyId: user.familyId,
+    actorUserId: user.id,
+    action: "user.platform_admin_revoked",
+    entityType: "user",
+    entityId: user.id
+  });
+  return true;
 }
 
 export async function authenticate(
