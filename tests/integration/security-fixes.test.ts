@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
-import { sql, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, makeUser, truncateAll, actorOf } from "../helpers";
 import * as invitationsSvc from "@/server/domain/invitations";
 import * as usersSvc from "@/server/domain/users";
 import { markEmailVerified } from "@/server/security/auth-tokens";
-import { assertActor } from "@/server/auth/context";
 import { users } from "@/server/db/schema";
+import { hashToken } from "@/lib/crypto";
+import { assertActorVerified } from "@/server/auth/context";
 
 const originalAdminEmails = process.env.ADMIN_EMAILS;
 const originalRequireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION;
@@ -20,7 +21,6 @@ afterEach(() => {
   } else {
     delete process.env.ADMIN_EMAILS;
   }
-
   if (originalRequireEmailVerification !== undefined) {
     process.env.REQUIRE_EMAIL_VERIFICATION = originalRequireEmailVerification;
   } else {
@@ -28,88 +28,107 @@ afterEach(() => {
   }
 });
 
-describe("S02: Platform-admin escalation controls", () => {
-  it("rejects inviting platform administrator email addresses", async () => {
-    process.env.ADMIN_EMAILS = "root@example.com,superadmin@example.com";
-    const admin = await makeUser({ familyName: "EscalationTestFamily" });
+describe("S02: Platform Admin Escalation Guards", () => {
+  it("rejects invitations to addresses configured in ADMIN_EMAILS", async () => {
+    process.env.ADMIN_EMAILS = "superadmin@example.com, platform-lead@meridian.local";
 
+    const inviter = await makeUser();
     await expect(
-      invitationsSvc.createInvitation(db(), actorOf(admin, "admin"), {
+      invitationsSvc.createInvitation(db(), actorOf(inviter), {
         email: "superadmin@example.com",
         role: "member"
       })
-    ).rejects.toMatchObject({
-      code: "access.denied"
-    });
+    ).rejects.toMatchObject({ code: "access.denied" });
+
+    await expect(
+      invitationsSvc.createInvitation(db(), actorOf(inviter), {
+        email: "PLATFORM-LEAD@meridian.local",
+        role: "admin"
+      })
+    ).rejects.toMatchObject({ code: "access.denied" });
   });
 
-  it("never grants super_admin role when accepting an invitation", async () => {
-    process.env.ADMIN_EMAILS = "victim@example.com";
-    const familyOwner = await makeUser({ familyName: "InviteFamily" });
+  it("does NOT grant super_admin upon accepting an invitation even if listed in ADMIN_EMAILS", async () => {
+    process.env.ADMIN_EMAILS = "targeted-admin@example.com";
+    const inviter = await makeUser();
+    const rawToken = "test_raw_token_s02_unique";
 
-    // Force an invitation into DB directly to test acceptance defense-in-depth
-    const token = "inv-token-admin-target";
-    const tokenHash = (await import("@/lib/crypto")).hashToken(token);
-    await db().execute(sql`
-      INSERT INTO invitations (family_id, email, family_role, token_hash, invited_by, expires_at)
-      VALUES (${familyOwner.familyId}::uuid, 'victim@example.com', 'admin', ${tokenHash}, ${familyOwner.userId}::uuid, now() + interval '1 day')
-    `);
+    // Directly insert invitation targeting the admin email to simulate pre-existing or bypassed invitation
+    await db()
+      .insert((await import("@/server/db/schema")).invitations)
+      .values({
+        familyId: inviter.familyId,
+        invitedBy: inviter.userId,
+        email: "targeted-admin@example.com",
+        familyRole: "admin",
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + 86400000)
+      });
 
-    const result = await invitationsSvc.acceptInvitationWithNewAccount(db(), token, {
-      name: "Victim Admin",
-      password: "Sup3rSecure!Pass123"
+    // Claim invitation
+    const accepted = await invitationsSvc.acceptInvitationWithNewAccount(db(), rawToken, {
+      name: "Target Admin",
+      password: "TestPassword123!Secure"
     });
 
-    const [user] = await db().select().from(users).where(eq(users.id, result.userId)).limit(1);
-    // Even though email is in ADMIN_EMAILS, accepting an invitation MUST NOT escalate to super_admin
+    const [user] = await db()
+      .select()
+      .from(users)
+      .where(eq(users.id, accepted.userId));
+
+    // Must be "user", NOT "super_admin"
     expect(user?.platformRole).toBe("user");
   });
 
   it("requires email verification before granting super_admin on registration", async () => {
-    process.env.ADMIN_EMAILS = "admin-pending@example.com";
+    process.env.ADMIN_EMAILS = "new-superadmin@example.com";
     process.env.REQUIRE_EMAIL_VERIFICATION = "true";
 
-    const res = await usersSvc.registerUserWithFamily(db(), {
-      email: "admin-pending@example.com",
-      password: "Sup3rSecure!Pass123",
-      name: "Pending Admin",
-      familyName: "Pending Admin Family"
+    const userRes = await usersSvc.registerUserWithFamily(db(), {
+      email: "new-superadmin@example.com",
+      password: "TestPassword123!Secure",
+      name: "New Admin",
+      familyName: "Admin Family"
     });
 
-    const [unverified] = await db().select().from(users).where(eq(users.id, res.userId)).limit(1);
-    expect(unverified?.emailVerifiedAt).toBeNull();
-    // Prior to verification, platformRole must remain 'user'
-    expect(unverified?.platformRole).toBe("user");
+    // Before verification, platformRole must be "user"
+    const [before] = await db().select().from(users).where(eq(users.id, userRes.userId));
+    expect(before?.platformRole).toBe("user");
+    expect(before?.emailVerifiedAt).toBeNull();
 
-    // Once email is verified via token flow, user is promoted to super_admin
-    await markEmailVerified(db(), res.userId);
-
-    const [verified] = await db().select().from(users).where(eq(users.id, res.userId)).limit(1);
-    expect(verified?.emailVerifiedAt).not.toBeNull();
-    expect(verified?.platformRole).toBe("super_admin");
+    // After email verification, platformRole should be upgraded to super_admin
+    await markEmailVerified(db(), userRes.userId);
+    const [after] = await db().select().from(users).where(eq(users.id, userRes.userId));
+    expect(after?.emailVerifiedAt).not.toBeNull();
+    expect(after?.platformRole).toBe("super_admin");
   });
 });
 
-describe("S06: Email-verification boundary enforcement", () => {
-  it("assertActor denies mutations when actor email is unverified and verification is required", async () => {
+describe("S06: Email Verification Mutation Guard", () => {
+  it("blocks unverified users when REQUIRE_EMAIL_VERIFICATION is true", async () => {
     process.env.REQUIRE_EMAIL_VERIFICATION = "true";
 
-    const unverifiedActor = {
-      userId: "00000000-0000-0000-0000-000000000001",
-      sessionId: "test-sess",
-      familyId: "00000000-0000-0000-0000-000000000002",
-      familyRole: "admin" as const,
-      platformRole: "user" as const,
-      email: "unverified@example.com",
-      name: "Unverified",
-      emailVerified: false
+    // Create user without verified email
+    const unique = Math.random().toString(36).slice(2, 8);
+    const reg = await usersSvc.registerUserWithFamily(db(), {
+      email: `unverified-${unique}@test.local`,
+      password: "Password123!Secure",
+      name: "Unverified User",
+      familyName: `Family ${unique}`
+    });
+
+    // Directly assert that unverified status blocks non-whitelisted actions
+    const actor: import("@/server/auth/context").Actor = {
+      userId: reg.userId,
+      familyId: reg.familyId,
+      familyRole: "admin",
+      platformRole: "user",
+      emailVerified: false,
+      sessionId: "test-session-id",
+      email: `unverified-${unique}@test.local`,
+      name: "Unverified User"
     };
 
-    expect(() => {
-      const opts: { allowUnverified?: boolean } = {};
-      if (!opts.allowUnverified && unverifiedActor.emailVerified === false) {
-        throw new Error("Email verification is required.");
-      }
-    }).toThrow("Email verification is required.");
+    expect(() => assertActorVerified(actor)).toThrowError();
   });
 });

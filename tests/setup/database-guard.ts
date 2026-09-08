@@ -76,8 +76,8 @@ export function assertSafeTestDatabase(
           `CRITICAL: TEST_DATABASE_URL targets the same database ("${dbName}") as the application DATABASE_URL. Refusing to run tests.`
         );
       }
-    } catch (e: any) {
-      if (e.message && e.message.startsWith("CRITICAL:")) throw e;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message.startsWith("CRITICAL:")) throw e;
     }
   }
 

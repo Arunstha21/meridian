@@ -1,6 +1,6 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
-import { accountShares, accounts, entries, families, users } from "../db/schema";
+import { accountShares, accounts, entries, users } from "../db/schema";
 import type { Actor } from "../auth/context";
 import {
   ACCOUNT_TYPES,
@@ -230,7 +230,8 @@ export async function listAccountsForActor(
   actor: Actor
 ): Promise<AccountListItem[]> {
   const rows = await exec
-    .select({ account: accounts, sharePermission: accountShares.permission })
+    .select({ account: accounts, sharePermission: accountShares.permission }
+    )
     .from(accounts)
     .leftJoin(
       accountShares,

@@ -66,11 +66,17 @@ export async function requireSuperAdmin(): Promise<Actor> {
   return actor;
 }
 
+export function assertActorVerified(actor: Actor): void {
+  if (requireEmailVerification() && !actor.emailVerified) {
+    throw errors.forbidden("Email verification is required.");
+  }
+}
+
 export async function assertActor(opts: { allowUnverified?: boolean } = {}): Promise<Actor> {
   const actor = await loadActor();
   if (!actor) throw errors.unauthorized();
-  if (!opts.allowUnverified && requireEmailVerification() && !actor.emailVerified) {
-    throw errors.forbidden("Email verification is required.");
+  if (!opts.allowUnverified) {
+    assertActorVerified(actor);
   }
   return actor;
 }
@@ -87,9 +93,19 @@ export async function currentFamily(actor: Actor): Promise<Family> {
 
 export async function requestMeta(): Promise<{ ip: string | null; userAgent: string | null }> {
   const h = await headers();
-  const forwarded = h.get("x-forwarded-for");
+  const trustProxy = process.env.TRUST_PROXY === "true" || process.env.TRUST_PROXY_HEADERS === "true";
+  let ip: string | null = null;
+  if (trustProxy) {
+    const forwarded = h.get("x-forwarded-for");
+    if (forwarded) {
+      const parts = forwarded.split(",").map((p) => p.trim()).filter(Boolean);
+      ip = (parts.length > 0 ? parts[0] : null) ?? null;
+    } else {
+      ip = h.get("x-real-ip") ?? null;
+    }
+  }
   return {
-    ip: forwarded ? forwarded.split(",")[0]!.trim() : h.get("x-real-ip"),
-    userAgent: h.get("user-agent")
+    ip,
+    userAgent: h.get("user-agent") ? h.get("user-agent")!.slice(0, 500) : null
   };
 }

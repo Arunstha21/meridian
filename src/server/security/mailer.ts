@@ -21,7 +21,7 @@ export interface Mailer {
   send(input: MailInput): Promise<void>;
 }
 
-class ConsoleMailer implements Mailer {
+export class ConsoleMailer implements Mailer {
   async send(input: MailInput): Promise<void> {
     log.info(
       { to: input.to, subject: input.subject, text: isProd ? "[redacted]" : input.text },
@@ -30,7 +30,7 @@ class ConsoleMailer implements Mailer {
   }
 }
 
-class SmtpMailer implements Mailer {
+export class SmtpMailer implements Mailer {
   private transporter: Transporter;
 
   constructor(url: string) {
@@ -48,7 +48,10 @@ class SmtpMailer implements Mailer {
 }
 
 export function createMailer(): Mailer {
-  if (env.MAIL_TRANSPORT === "smtp" && env.SMTP_URL) {
+  if (env.MAIL_TRANSPORT === "smtp") {
+    if (!env.SMTP_URL) {
+      throw new Error("MAIL_TRANSPORT is set to 'smtp' but SMTP_URL is not configured. Refusing to start mailer.");
+    }
     return new SmtpMailer(env.SMTP_URL);
   }
   return new ConsoleMailer();

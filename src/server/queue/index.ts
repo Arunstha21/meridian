@@ -159,3 +159,20 @@ export async function runPendingNow(
   }
   return processed;
 }
+
+
+export async function getQueueStats(exec: Executor): Promise<{ pending: number; running: number; completed: number; dead: number }> {
+  const res = await exec.execute<{ status: string; count: number }>(sql`
+    SELECT status, count(*)::int AS count FROM jobs GROUP BY status
+  `);
+  const counts: Record<string, number> = { pending: 0, running: 0, completed: 0, dead: 0 };
+  for (const row of res.rows ?? []) {
+    counts[row.status] = Number(row.count);
+  }
+  return {
+    pending: counts.pending ?? 0,
+    running: counts.running ?? 0,
+    completed: counts.completed ?? 0,
+    dead: counts.dead ?? 0
+  };
+}

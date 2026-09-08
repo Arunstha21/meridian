@@ -3,7 +3,6 @@ import type { Executor } from "../db/client";
 import { balances as balancesTable } from "../db/schema";
 import { isValuationDriven } from "../authorization/access";
 import { addDays, diffDays, isIsoDate, minDate, todayIn } from "@/lib/datetime";
-import { captureDebugLog } from "../observability/debug-log";
 import { errors } from "@/lib/errors";
 
 type AccountMeta = {
@@ -46,31 +45,12 @@ export async function recalculateAccount(
 ): Promise<void> {
   const meta = await loadAccountMeta(exec, accountId);
   if (!meta) return;
+
   const today = todayIn(meta.timezone);
 
-  let earliestEntry: string | null = null;
-  if (isValuationDriven(meta.type)) {
-    const res = await exec.execute<{ d: string }>(sql`
-      SELECT MIN(date)::text AS d FROM entries
-      WHERE account_id = ${accountId}::uuid AND entryable_type = 'valuation'
-    `);
-    earliestEntry = ((res.rows ?? [])[0]?.d ?? "").slice(0, 10) || null;
-  } else {
-    const res = await exec.execute<{ d: string }>(sql`
-      SELECT MIN(date)::text AS d FROM entries e
-      WHERE e.account_id = ${accountId}::uuid
-        AND e.entryable_type = 'transaction'
-        AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
-    `);
-    earliestEntry = ((res.rows ?? [])[0]?.d ?? "").slice(0, 10) || null;
-  }
-
   let start = meta.openedOn;
-  if (earliestEntry) start = minDate(start, earliestEntry);
-  if (fromDate && isIsoDate(fromDate)) start = minDate(start, fromDate);
-  if (start > today) {
-    await exec.execute(sql`DELETE FROM balances WHERE account_id = ${accountId}::uuid`);
-    return;
+  if (fromDate && isIsoDate(fromDate)) {
+    start = minDate(meta.openedOn, fromDate);
   }
 
   const dayCount = Math.max(1, diffDays(today, start) + 1);
@@ -82,46 +62,48 @@ export async function recalculateAccount(
   }
 
   const eventsByDate = new Map<string, number>();
+
   if (isValuationDriven(meta.type)) {
-    const res = await exec.execute<{ d: string; amount: string }>(sql`
-      SELECT date::text AS d, amount_minor::text AS amount
+    const res = await exec.execute<{ date: string; amount_minor: string }>(sql`
+      SELECT date::text AS date, amount_minor::text AS amount_minor
       FROM entries
-      WHERE account_id = ${accountId}::uuid AND entryable_type = 'valuation' AND date <= ${today}::date
+      WHERE account_id = ${accountId}::uuid
+        AND entryable_type = 'valuation'
+      ORDER BY date ASC, created_at ASC
+    `);
+    for (const r of res.rows ?? []) {
+      eventsByDate.set(r.date.slice(0, 10), Number(r.amount_minor));
+    }
+  } else {
+    const res = await exec.execute<{ date: string; sum_minor: string }>(sql`
+      SELECT date::text AS date, coalesce(sum(amount_minor), 0)::text AS sum_minor
+      FROM entries
+      WHERE account_id = ${accountId}::uuid
+        AND entryable_type = 'transaction'
+        AND NOT EXISTS (
+          SELECT 1 FROM entries c WHERE c.parent_entry_id = entries.id
+        )
+      GROUP BY date
       ORDER BY date ASC
     `);
     for (const r of res.rows ?? []) {
-      eventsByDate.set(r.d.slice(0, 10), Number(r.amount));
-    }
-  } else {
-    const res = await exec.execute<{ d: string; total: string }>(sql`
-      SELECT date::text AS d, COALESCE(SUM(amount_minor), 0)::text AS total
-      FROM entries e
-      WHERE e.account_id = ${accountId}::uuid
-        AND e.entryable_type = 'transaction'
-        AND e.date <= ${today}::date
-        AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
-      GROUP BY date
-    `);
-    for (const r of res.rows ?? []) {
-      eventsByDate.set(r.d.slice(0, 10), Number(r.total));
+      eventsByDate.set(r.date.slice(0, 10), Number(r.sum_minor));
     }
   }
 
-  const priorTotal = isValuationDriven(meta.type)
-    ? 0
-    : (
-        await exec.execute<{ total: string }>(sql`
-          SELECT COALESCE(SUM(amount_minor), 0)::text AS total
-          FROM entries e
-          WHERE e.account_id = ${accountId}::uuid
-            AND e.entryable_type = 'transaction'
-            AND e.date < ${start}::date
-            AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
-        `)
-      ).rows?.[0]?.total ?? "0";
+  let baseline = meta.openingBalanceMinor;
+  if (start > meta.openedOn) {
+    const [prev] = await exec
+      .select({ balanceMinor: balancesTable.balanceMinor })
+      .from(balancesTable)
+      .where(sql`${balancesTable.accountId} = ${accountId}::uuid AND ${balancesTable.asOf} < ${start}::date`)
+      .orderBy(sql`${balancesTable.asOf} DESC`)
+      .limit(1);
+    if (prev) baseline = prev.balanceMinor;
+  }
 
   const rows: { accountId: string; asOf: string; balanceMinor: number; currency: string }[] = [];
-  let displayBalance = meta.openingBalanceMinor - Number(priorTotal);
+  let displayBalance = baseline;
   if (isValuationDriven(meta.type)) displayBalance = meta.openingBalanceMinor;
 
   let cursor = start;
