@@ -6,6 +6,7 @@ import { registerUserWithFamily } from "@/server/domain/users";
 import * as accountsSvc from "@/server/domain/accounts";
 import * as orchestrate from "@/server/domain/orchestrate";
 import type { TransactionEntryInput } from "@/server/domain/entries";
+import { assertSafeTestDatabase } from "./setup/database-guard";
 void (0 as unknown as TransactionEntryInput);
 
 export const db = () => getDb();
@@ -45,6 +46,9 @@ const TABLES = [
 ];
 
 export async function truncateAll(): Promise<void> {
+  const url = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
+  if (!url) throw new Error("No database URL configured for test truncation.");
+  assertSafeTestDatabase(url, process.env.APP_DATABASE_URL);
   const client = getDbClient();
   await client.unsafe(`TRUNCATE ${TABLES.join(", ")} CASCADE`);
 }
@@ -52,7 +56,9 @@ export async function truncateAll(): Promise<void> {
 let rawClient: postgres.Sql | null = null;
 function getDbClient(): postgres.Sql {
   if (!rawClient) {
-    const url = process.env.DATABASE_URL!;
+    const url = process.env.DATABASE_URL;
+    if (!url) throw new Error("DATABASE_URL is missing in test environment");
+    assertSafeTestDatabase(url, process.env.APP_DATABASE_URL);
     rawClient = postgres(url, { max: 5 });
   }
   return rawClient;

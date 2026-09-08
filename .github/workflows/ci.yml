@@ -23,8 +23,9 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://meridian:meridian@localhost:5432/meridian
+      DATABASE_URL: postgres://meridian:meridian@localhost:5432/meridian_test
       TEST_DATABASE_URL: postgres://meridian:meridian@localhost:5432/meridian_test
+      APP_DATABASE_URL: postgres://meridian:meridian@localhost:5432/meridian
       APP_URL: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
