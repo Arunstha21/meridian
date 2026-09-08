@@ -27,3 +27,13 @@ export async function togglePrivacyAction(): Promise<void> {
   await setUserPreference(db, actor.userId, "privacy_mode", !current);
   revalidatePath("/", "layout");
 }
+
+export async function setThemePreferenceAction(theme: "light" | "dark" | "system"): Promise<void> {
+  if (theme !== "light" && theme !== "dark" && theme !== "system") return;
+  const store = await cookies();
+  store.set("theme", theme, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  const actor = await loadActor();
+  if (actor) {
+    await setUserPreference(getDb(), actor.userId, "theme", theme);
+  }
+}

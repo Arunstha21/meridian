@@ -10,6 +10,7 @@ import { listSavedFilters } from "@/server/domain/saved-filters";
 import { Card, EmptyState, PageHeader } from "@/components/ds/card";
 import { Amount } from "@/components/finance/amount";
 import { fmtDate } from "@/lib/format";
+import { isIsoDate } from "@/lib/datetime";
 import { Select, Input } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 import { SavedFilterBar } from "./saved-filter-bar";
@@ -30,8 +31,29 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
   const kind = one("kind") as "expense" | "income" | "transfer" | undefined;
   const cursorRaw = one("cursor");
-  const cursor = cursorRaw ? (() => { try { return JSON.parse(cursorRaw) as { date: string; id: string }; } catch { return null; } })() : null;
+  const cursor = cursorRaw
+    ? (() => {
+        try {
+          const parsed = JSON.parse(cursorRaw);
+          if (
+            parsed &&
+            typeof parsed === "object" &&
+            typeof parsed.date === "string" &&
+            typeof parsed.id === "string"
+          ) {
+            return parsed as { date: string; id: string };
+          }
+          return null;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
   const direction = one("dir") === "prev" ? ("prev" as const) : ("next" as const);
+  const rawFrom = one("from");
+  const rawTo = one("to");
+  const from = rawFrom && isIsoDate(rawFrom) ? rawFrom : undefined;
+  const to = rawTo && isIsoDate(rawTo) ? rawTo : undefined;
 
   const filters = {
     accountId: one("account"),
@@ -39,8 +61,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     tagId: one("tag"),
     search: one("q"),
     kind,
-    from: one("from"),
-    to: one("to"),
+    from,
+    to,
     cursor,
     direction,
     limit: 25
@@ -69,6 +91,15 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
 
   const tagNameById = new Map(tags.map((t) => [t.id, t.name]));
 
+  const removeParamUrl = (removeKey: string) => {
+    const params = new URLSearchParams();
+    for (const [k, v] of Object.entries(currentParams)) {
+      if (k !== removeKey) params.set(k, v);
+    }
+    const qs = params.toString();
+    return qs ? `?${qs}` : "/transactions";
+  };
+
   const listQuery = (c: { date: string; id: string } | null, dir?: "prev") => {
     if (!c) return "";
     const params = new URLSearchParams();
@@ -86,7 +117,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
       <PageHeader
         title="Transactions"
         actions={
-          <Link href="/transactions/new" className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg">
+          <Link href="/transactions/new" className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground">
             New transaction
           </Link>
         }
@@ -103,11 +134,11 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
         />
       ) : null}
 
-      <Card className="no-print overflow-hidden">
+      <Card className="no-print overflow-hidden space-y-3">
         <form method="get" className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <div className="sm:col-span-2">
             <label htmlFor="q" className="sr-only">Search</label>
-            <Input id="q" name="q" defaultValue={filters.search} placeholder="Search…" />
+            <Input id="q" name="q" defaultValue={filters.search} placeholder="Search description, merchant, notes…" />
           </div>
           <div>
             <label htmlFor="account" className="sr-only">Account</label>
@@ -158,15 +189,66 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             Clear
           </Link>
         </form>
+
+        {Object.keys(currentParams).length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted">Active:</span>
+            {currentParams.q ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                Search: &ldquo;{currentParams.q}&rdquo;
+                <Link href={removeParamUrl("q")} className="text-muted hover:text-foreground" aria-label="Remove search filter">✕</Link>
+              </span>
+            ) : null}
+            {currentParams.account ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                Account: {accounts.find((a) => a.id === currentParams.account)?.name ?? currentParams.account}
+                <Link href={removeParamUrl("account")} className="text-muted hover:text-foreground" aria-label="Remove account filter">✕</Link>
+              </span>
+            ) : null}
+            {currentParams.category ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                Category: {categories.find((c) => c.id === currentParams.category)?.name ?? currentParams.category}
+                <Link href={removeParamUrl("category")} className="text-muted hover:text-foreground" aria-label="Remove category filter">✕</Link>
+              </span>
+            ) : null}
+            {currentParams.tag ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                Tag: #{tags.find((t) => t.id === currentParams.tag)?.name ?? currentParams.tag}
+                <Link href={removeParamUrl("tag")} className="text-muted hover:text-foreground" aria-label="Remove tag filter">✕</Link>
+              </span>
+            ) : null}
+            {currentParams.kind ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                Type: {currentParams.kind}
+                <Link href={removeParamUrl("kind")} className="text-muted hover:text-foreground" aria-label="Remove type filter">✕</Link>
+              </span>
+            ) : null}
+            {currentParams.from ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                From: {currentParams.from}
+                <Link href={removeParamUrl("from")} className="text-muted hover:text-foreground" aria-label="Remove from filter">✕</Link>
+              </span>
+            ) : null}
+            {currentParams.to ? (
+              <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
+                To: {currentParams.to}
+                <Link href={removeParamUrl("to")} className="text-muted hover:text-foreground" aria-label="Remove to filter">✕</Link>
+              </span>
+            ) : null}
+            <Link href="/transactions" className="ml-1 text-xs text-primary hover:underline">
+              Clear all
+            </Link>
+          </div>
+        ) : null}
       </Card>
 
       {page.items.length === 0 ? (
         <EmptyState title="No transactions found" hint="Try clearing the filters or record a new transaction." />
       ) : (
-        <Card className="overflow-x-auto p-0">
+        <Card className="overflow-x-auto p-0 ring-1 ring-foreground/10">
           <table className="w-full min-w-160 text-sm">
             <thead>
-              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <th scope="col" className="px-4 py-3 font-medium">Date</th>
                 <th scope="col" className="px-4 py-3 font-medium">Description</th>
                 <th scope="col" className="px-4 py-3 font-medium">Account</th>
@@ -175,8 +257,8 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             </thead>
             <tbody className="divide-y divide-border">
               {page.items.map((e: EntryListItem) => (
-                <tr key={e.id} className="transition-colors hover:bg-surface-hover">
-                  <td className="whitespace-nowrap px-4 py-3 text-muted">{fmtDate(e.date)}</td>
+                <tr key={e.id} className="transition-colors hover:bg-muted/50">
+                  <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{fmtDate(e.date)}</td>
                   <td className="px-4 py-3">
                     <Link href={`/transactions/${e.id}`} className="font-medium hover:underline">
                       {e.transferId ? <span aria-hidden>⇄ </span> : null}
@@ -217,5 +299,3 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     </div>
   );
 }
-
-

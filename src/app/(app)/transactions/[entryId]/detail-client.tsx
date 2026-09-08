@@ -13,8 +13,10 @@ import Link from "next/link";
 import { Card, Alert } from "@/components/ds/card";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
-import { ConfirmDialog, Dialog, useDialogClose } from "@/components/ds/dialog";
+import { ConfirmDialog, Dialog } from "@/components/ds/dialog";
 import { TagPicker } from "@/components/ds/tag-picker";
+import { minorToDecimal, parseAmountToMinor } from "@/lib/money";
+import { usePrivacy } from "@/components/layout/privacy-context";
 
 export type DetailProps = {
   entry: {
@@ -44,12 +46,13 @@ export type DetailProps = {
   }[];
 };
 
-function displayAmount(minor: number): string {
+function displayAmount(minor: number, currency: string): string {
   const abs = Math.abs(minor);
-  return (abs / 100).toFixed(2);
+  return minorToDecimal(abs, currency);
 }
 
 export function TransactionDetailClient(p: DetailProps) {
+  const privacy = usePrivacy();
   const isExpense = p.entry.amountMinor > 0;
   const canCore = p.level === "full_control";
   const [updateState, updateAction] = useActionState(updateTransactionAction, undefined);
@@ -91,7 +94,8 @@ export function TransactionDetailClient(p: DetailProps) {
               id="d-amount"
               name="amount"
               inputMode="decimal"
-              defaultValue={displayAmount(p.entry.amountMinor)}
+              type={privacy ? "password" : "text"}
+              defaultValue={displayAmount(p.entry.amountMinor, p.entry.currency)}
               disabled={!canCore}
             />
           </Field>
@@ -153,7 +157,7 @@ export function TransactionDetailClient(p: DetailProps) {
                         Unlink transfer
                       </span>
                     }
-                    title="Unlink this transfer?"
+                    title="Unlink this transfer??"
                     description="Both transactions stay in their accounts. They will no longer be treated as a pair."
                     confirmLabel="Unlink"
                     variant="secondary"
@@ -195,7 +199,7 @@ export function TransactionDetailClient(p: DetailProps) {
                     <Link href={`/transactions/${c.id}`} className="hover:underline">
                       {c.name}
                     </Link>
-                    <span className="tabular">{displayAmount(c.amountMinor)}</span>
+                    <span className="tabular">{privacy ? "•••••" : displayAmount(c.amountMinor, p.entry.currency)}</span>
                   </li>
                 ))}
               </ul>
@@ -230,6 +234,7 @@ export function TransactionDetailClient(p: DetailProps) {
               <SplitForm
                 parentEntryId={p.entry.id}
                 totalMinor={p.entry.amountMinor}
+                currency={p.entry.currency}
                 categories={p.categories}
               />
             </Dialog>
@@ -315,13 +320,15 @@ function SuggestTransfer({
 function SplitForm({
   parentEntryId,
   totalMinor,
+  currency,
   categories
 }: {
   parentEntryId: string;
   totalMinor: number;
+  currency: string;
   categories: { id: string; name: string }[];
 }) {
-  const close = useDialogClose();
+  const privacy = usePrivacy();
   const [state, action] = useActionState(splitEntryAction, undefined);
   const [rows, setRows] = useState([{ amount: 0, name: "", categoryId: "" }, { amount: 0, name: "", categoryId: "" }]);
 
@@ -347,20 +354,19 @@ function SplitForm({
       <FormError message={state?.ok === false ? state.error : undefined} />
       <p className="text-sm text-muted">
         Parts must add up to the full original amount. Remaining:{" "}
-        <strong className="tabular">{(Math.abs(remaining) / 100).toFixed(2)}</strong>
+        <strong className="tabular">{privacy ? "•••••" : minorToDecimal(Math.abs(remaining), currency)}</strong>
       </p>
       {rows.map((row, i) => (
         <div key={i} className="grid gap-2 sm:grid-cols-3">
           <Field label={`Part ${i + 1} amount`} htmlFor={`part-${i}`}>
             <Input
               id={`part-${i}`}
-              type="number"
-              step="0.01"
+              type="text"
               inputMode="decimal"
               required
               onChange={(e) => {
-                const v = Number(e.target.value);
-                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, amount: Math.round(v * 100) } : old)));
+                const v = parseAmountToMinor(e.target.value, currency);
+                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, amount: v } : old)));
               }}
             />
           </Field>
@@ -375,13 +381,13 @@ function SplitForm({
               }}
             />
           </Field>
-          <Field label="Category" htmlFor={`part-cat-${i}`}>
+          <Field label="Category" htmlFor={`part-category-${i}`}>
             <Select
-              id={`part-cat-${i}`}
+              id={`part-category-${i}`}
               value={row.categoryId}
               onChange={(e) => {
-                const categoryId = e.target.value;
-                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, categoryId } : old)));
+                const cat = e.target.value;
+                setRows((prev) => prev.map((old, idx) => (idx === i ? { ...old, categoryId: cat } : old)));
               }}
             >
               <option value="">Uncategorized</option>
@@ -394,20 +400,15 @@ function SplitForm({
           </Field>
         </div>
       ))}
-      <div className="flex justify-between">
+      <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={() => setRows((r) => [...r, { amount: 0, name: "", categoryId: "" }])}
-          className="text-sm text-primary hover:underline"
+          onClick={() => setRows((prev) => [...prev, { amount: 0, name: "", categoryId: "" }])}
+          className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium"
         >
-          + Add part
+          Add another part
         </button>
-        <div className="flex gap-2">
-          <button type="button" onClick={close} className="px-3 py-2 text-sm">
-            Cancel
-          </button>
-          <SubmitButton disabled={remaining !== 0}>Create split</SubmitButton>
-        </div>
+        <SubmitButton>Create split</SubmitButton>
       </div>
     </form>
   );

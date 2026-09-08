@@ -83,47 +83,46 @@ export async function updateTransactionAction(
   formData: FormData
 ): Promise<ActionState> {
   const parsed = updateTxnSchema.safeParse(formValues(formData));
-  if (!parsed.success || !parsed.data.entryId) {
-    return { ok: false, error: "Invalid request.", code: "validation.failed" };
-  }
+  if (!parsed.success) return { ok: false, error: "Check the highlighted fields.", code: "validation.failed" };
   const input = parsed.data;
   return runAction("txn.update", async () => {
     const actor = await assertActor();
-    const patch: Record<string, unknown> = {};
+    const res = await getDb().execute<{ account_id: string; currency: string }>(
+      sql`SELECT e.account_id, a.currency FROM entries e JOIN accounts a ON a.id = e.account_id WHERE e.id = ${input.entryId}::uuid`
+    );
+    const row = (res.rows ?? [])[0];
+    if (!row) throw errors.notFound("Transaction");
 
-    if (input.date) patch.date = input.date;
-    if (input.name !== undefined && input.name.trim() !== "") patch.name = input.name;
-    if (input.notes !== undefined) patch.notes = input.notes.trim() === "" ? null : input.notes;
-    if (input.merchant !== undefined) patch.merchant = input.merchant.trim() === "" ? null : input.merchant;
-    if (input.categoryId !== undefined) patch.categoryId = input.categoryId === "" ? null : input.categoryId;
-    patch.replaceTagIds = parseTagIds(formData);
-    if (input.amount !== undefined && input.amount !== "" && input.ledgerSign) {
-      const currency = await currencyForOfEntry(input.entryId);
-      const magnitude = Math.abs(parseAmountToMinor(input.amount, currency));
-      patch.amountLedgerMinor = input.ledgerSign === "-1" ? -magnitude : magnitude;
+    let amountLedgerMinor: number | undefined;
+    if (input.amount !== undefined && input.amount.trim() !== "") {
+      const parsedAmount = Math.abs(parseAmountToMinor(input.amount, row.currency));
+      const sign = input.ledgerSign === "-1" ? -1 : 1;
+      amountLedgerMinor = parsedAmount * sign;
     }
 
     await withTransaction((tx) =>
-      orchestrate.editTransaction(tx, actor, input.entryId, patch as Parameters<typeof orchestrate.editTransaction>[3])
+      orchestrate.editTransaction(tx, actor, input.entryId, {
+        date: input.date,
+        name: input.name,
+        amountLedgerMinor,
+        notes: input.notes,
+        merchant: input.merchant,
+        categoryId: input.categoryId === "" ? null : input.categoryId,
+        replaceTagIds: formData.has("tagIds") ? parseTagIds(formData) : null
+      })
     );
     revalidatePath("/transactions");
-    revalidatePath("/");
     revalidatePath(`/transactions/${input.entryId}`);
+    revalidatePath(`/accounts/${row.account_id}`);
+    revalidatePath("/");
     return undefined;
   });
 }
 
-async function currencyForOfEntry(entryId: string): Promise<string> {
-  const res = await getDb().execute<{ currency: string }>(
-    sql`SELECT currency FROM accounts WHERE id = (SELECT account_id FROM entries WHERE id = ${entryId}::uuid)`
-  );
-  return (res.rows ?? [])[0]?.currency ?? "USD";
-}
-
-export async function deleteEntryAction(formData: FormData): Promise<void> {
+export async function deleteEntryAction(formData: FormData): Promise<ActionState> {
   "use server";
   const entryId = String(formData.get("entryId") ?? "");
-  await runAction("txn.delete", async () => {
+  return runAction("txn.delete", async () => {
     const actor = await assertActor();
     await withTransaction((tx) => orchestrate.removeEntry(tx, actor, entryId));
     revalidatePath("/transactions");
@@ -160,10 +159,10 @@ export async function splitEntryAction(
   });
 }
 
-export async function unsplitEntryAction(formData: FormData): Promise<void> {
+export async function unsplitEntryAction(formData: FormData): Promise<ActionState> {
   "use server";
   const parentEntryId = String(formData.get("parentEntryId") ?? "");
-  await runAction("txn.unsplit", async () => {
+  return runAction("txn.unsplit", async () => {
     const actor = await assertActor();
     await withTransaction((tx) => orchestrate.unsplitTransaction(tx, actor, parentEntryId));
     revalidatePath("/transactions");
@@ -193,11 +192,11 @@ export async function linkTransferAction(
   });
 }
 
-export async function unlinkTransferAction(formData: FormData): Promise<void> {
+export async function unlinkTransferAction(formData: FormData): Promise<ActionState> {
   "use server";
   const transferId = String(formData.get("transferId") ?? "");
   const entryId = String(formData.get("entryId") ?? "");
-  await runAction("transfer.unlink", async () => {
+  return runAction("transfer.unlink", async () => {
     const actor = await assertActor();
     await withTransaction((tx) => orchestrate.unlinkTransfer(tx, actor, transferId));
     revalidatePath("/transactions");
@@ -260,7 +259,7 @@ export async function recordValuationAction(
       await valuationsSvc.recordValuation(tx, actor, {
         accountId: input.accountId,
         date: input.date,
-        amountDisplayMinor: Math.abs(parseAmountToMinor(input.amount, currency)),
+        amountDisplayMinor: parseAmountToMinor(input.amount, currency),
         kind: input.kind
       });
       await recalculateAccount(tx, input.accountId, input.date);

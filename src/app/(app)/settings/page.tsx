@@ -63,7 +63,7 @@ export default async function SettingsPage() {
           {actor.familyRole === "admin" ? (
             <OrgForm familyName={family.name} currency={family.currency} locale={family.locale} />
           ) : (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               Only family admins can change organization settings. Ask an admin to update the family
               name, currency or locale.
             </p>
@@ -88,10 +88,10 @@ export default async function SettingsPage() {
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block rounded-lg border border-border px-3 py-2.5 transition-colors hover:bg-surface-hover"
+                  className="block rounded-lg px-3 py-2.5 ring-1 ring-foreground/10 transition-colors hover:bg-accent"
                 >
                   <span className="block text-sm font-medium">{item.label}</span>
-                  <span className="block text-xs text-muted">{item.hint}</span>
+                  <span className="block text-xs text-muted-foreground">{item.hint}</span>
                 </Link>
               </li>
             ))}

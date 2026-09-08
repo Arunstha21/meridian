@@ -1,11 +1,14 @@
 "use client";
 
-import { useActionState } from "react";
+import { useState, useActionState } from "react";
 import { setBudgetAction, removeBudgetAction } from "./actions";
 import { Card, Badge } from "@/components/ds/card";
 import { Field, FormError, Input } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
+import { BudgetRings } from "@/components/finance/budget-rings";
 import { fmtMoney } from "@/lib/format";
+import { minorToDecimal } from "@/lib/money";
+import { usePrivacy } from "@/components/layout/privacy-context";
 
 export type Progress = {
   categoryId: string | null;
@@ -46,16 +49,36 @@ export function BudgetsView({
   overall,
   perCategory,
   categoriesWithoutBudget,
-  monthLabel
+  monthLabel,
+  privacy = false
 }: {
   currency: string;
   overall: Progress | null;
   perCategory: Progress[];
   categoriesWithoutBudget: { id: string; name: string }[];
   monthLabel: string;
+  privacy?: boolean;
 }) {
+  const contextPrivacy = usePrivacy();
+  const effectivePrivacy = privacy || contextPrivacy;
+  const fmt = (minor: number) => (effectivePrivacy ? "•••••" : fmtMoney(minor, currency));
+
+  const rings = [
+    ...(overall
+      ? [{ id: "overall", name: "Overall", spentMinor: overall.spentMinor, limitMinor: overall.limitMinor, pct: overall.pct }]
+      : []),
+    ...perCategory.map((item) => ({
+      id: item.categoryId ?? item.categoryName,
+      name: item.categoryName,
+      spentMinor: item.spentMinor,
+      limitMinor: item.limitMinor,
+      pct: item.pct
+    }))
+  ];
+
   return (
     <div className="space-y-4">
+      <BudgetRings items={rings} currency={currency} privacy={effectivePrivacy} monthLabel={monthLabel} />
       <Card className="overflow-hidden">
         <div className="flex items-baseline justify-between">
           <h2 className="text-base font-medium text-primary">Overall monthly cap — {monthLabel}</h2>
@@ -67,24 +90,24 @@ export function BudgetsView({
           <div className="mt-3 space-y-2">
             <div className="flex items-baseline justify-between text-sm">
               <span className="tabular font-medium">
-                {fmtMoney(overall.spentMinor, currency)} spent
+                {fmt(overall.spentMinor)} spent
               </span>
               <span className="tabular text-muted">
-                of {fmtMoney(overall.limitMinor, currency)}
+                of {fmt(overall.limitMinor)}
               </span>
             </div>
             <ProgressBar pct={overall.pct} />
             <p className="text-xs text-muted">
               {overall.remainingMinor >= 0
-                ? `${fmtMoney(overall.remainingMinor, currency)} left this month`
-                : `${fmtMoney(-overall.remainingMinor, currency)} over cap`}
+                ? `${fmt(overall.remainingMinor)} left this month`
+                : `${fmt(-overall.remainingMinor)} over cap`}
             </p>
           </div>
         ) : (
           <p className="mt-2 text-sm text-muted">No overall cap set.</p>
         )}
         <div className="mt-4 border-t border-border pt-4">
-          <OverallCapForm current={overall?.limitMinor ?? null} currency={currency} />
+          <OverallCapForm current={overall?.limitMinor ?? null} currency={currency} privacy={effectivePrivacy} />
         </div>
       </Card>
 
@@ -96,22 +119,13 @@ export function BudgetsView({
           ) : (
             <ul className="divide-y divide-border">
               {perCategory.map((b) => (
-                <li key={b.categoryId ?? "overall"} className="space-y-2 py-3">
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span className="flex min-w-0 items-center gap-2 font-medium">
-                      <span className="truncate">{b.categoryName}</span>
-                      <Badge tone={pctTone(b.pct)}>{Math.round(b.pct * 100)}%</Badge>
-                    </span>
-                    <span className="tabular shrink-0 text-muted">
-                      {fmtMoney(b.spentMinor, currency)} / {fmtMoney(b.limitMinor, currency)}
-                    </span>
-                  </div>
-                  <ProgressBar pct={b.pct} />
-                  <form action={removeBudgetAction}>
-                    <input type="hidden" name="categoryId" value={b.categoryId ?? ""} />
-                    <SubmitButton variant="ghost">Remove budget</SubmitButton>
-                  </form>
-                </li>
+                <CategoryBudgetItem
+                  key={b.categoryId ?? "overall"}
+                  budget={b}
+                  currency={currency}
+                  effectivePrivacy={effectivePrivacy}
+                  fmt={fmt}
+                />
               ))}
             </ul>
           )}
@@ -126,7 +140,91 @@ export function BudgetsView({
   );
 }
 
-function OverallCapForm({ current, currency }: { current: number | null; currency: string }) {
+function CategoryBudgetItem({
+  budget,
+  currency,
+  effectivePrivacy,
+  fmt
+}: {
+  budget: Progress;
+  currency: string;
+  effectivePrivacy: boolean;
+  fmt: (minor: number) => string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editState, editAction] = useActionState(setBudgetAction, undefined);
+  const [removeState, removeAction] = useActionState(removeBudgetAction, undefined);
+
+  return (
+    <li className="space-y-2 py-3">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="flex min-w-0 items-center gap-2 font-medium">
+          <span className="truncate">{budget.categoryName}</span>
+          <Badge tone={pctTone(budget.pct)}>{Math.round(budget.pct * 100)}%</Badge>
+        </span>
+        <span className="tabular shrink-0 text-muted">
+          {effectivePrivacy ? "••••••" : fmt(budget.spentMinor)} / {effectivePrivacy ? "••••••" : fmt(budget.limitMinor)}
+        </span>
+      </div>
+      <ProgressBar pct={budget.pct} />
+      
+      {editing ? (
+        <form
+          action={async (fd) => {
+            await editAction(fd);
+            setEditing(false);
+          }}
+          className="flex flex-wrap items-end gap-2 pt-1"
+        >
+          <input type="hidden" name="categoryId" value={budget.categoryId ?? ""} />
+          <FormError message={editState?.ok === false ? editState.error : undefined} />
+          <div className="w-32">
+            <Input
+              name="amount"
+              inputMode="decimal"
+              defaultValue={minorToDecimal(budget.limitMinor, currency)}
+              placeholder="0.00"
+              required
+            />
+          </div>
+          <SubmitButton className="px-2 py-1 text-xs">Save</SubmitButton>
+          <button
+            type="button"
+            onClick={() => setEditing(false)}
+            className="rounded px-2 py-1 text-xs text-muted hover:bg-muted"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <div className="flex items-center gap-2 pt-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded px-2 py-1 text-xs text-primary hover:bg-muted"
+          >
+            Edit limit
+          </button>
+          <form action={removeAction}>
+            <input type="hidden" name="categoryId" value={budget.categoryId ?? ""} />
+            <SubmitButton variant="ghost" className="px-2 py-1 text-xs">Remove budget</SubmitButton>
+            <FormError message={removeState?.ok === false ? removeState.error : undefined} />
+          </form>
+        </div>
+      )}
+    </li>
+  );
+}
+
+function OverallCapForm({
+  current,
+  currency,
+  privacy = false
+}: {
+  current: number | null;
+  currency: string;
+  privacy?: boolean;
+}) {
   const [state, action] = useActionState(setBudgetAction, undefined);
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
@@ -137,8 +235,9 @@ function OverallCapForm({ current, currency }: { current: number | null; currenc
           id="overall-amount"
           name="amount"
           inputMode="decimal"
+          type={privacy ? "password" : "text"}
           placeholder="5000.00"
-          defaultValue={current !== null ? (current / 100).toFixed(2) : ""}
+          defaultValue={current !== null ? minorToDecimal(current, currency) : ""}
         />
       </Field>
       <SubmitButton>{current !== null ? "Update cap" : "Set cap"}</SubmitButton>
@@ -155,11 +254,21 @@ function SetBudgetForm({
   currency: string;
 }) {
   const [state, action] = useActionState(setBudgetAction, undefined);
+  if (categories.length === 0) {
+    return (
+      <div className="space-y-2 py-2">
+        <p className="text-sm text-muted">
+          All existing categories have monthly budgets set. You can adjust limits by clicking &ldquo;Edit limit&rdquo; on any budget on the left.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <form action={action} className="space-y-4">
       <FormError message={state?.ok === false ? state.error : undefined} />
       <p className="text-xs text-muted">
-        Only unbudgeted categories are listed. Remove a budget above to change it.
+        Select a category to establish or update its monthly limit.
       </p>
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Category</span>

@@ -55,9 +55,9 @@ const tagSchema = z.object({
   op: z.enum(["create", "update", "delete"])
 });
 
-export async function deleteCategoryAction(formData: FormData): Promise<void> {
+export async function deleteCategoryAction(formData: FormData): Promise<ActionState> {
   "use server";
-  await runAction("category.delete", async () => {
+  return runAction("category.delete", async () => {
     const actor = await assertActor();
     const id = String(formData.get("id") ?? "");
     if (!id) return;
@@ -91,9 +91,9 @@ export async function manageTagAction(_prev: ActionState | undefined, formData: 
   });
 }
 
-export async function deleteTagAction(formData: FormData): Promise<void> {
+export async function deleteTagAction(formData: FormData): Promise<ActionState> {
   "use server";
-  await runAction("tag.delete", async () => {
+  return runAction("tag.delete", async () => {
     const actor = await assertActor();
     const id = String(formData.get("id") ?? "");
     if (!id) return;

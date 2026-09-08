@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { chatMessages } from "../db/schema";
 import type { ProviderMessage } from "../ai/provider";
@@ -15,9 +15,12 @@ export async function loadHistory(
     .select()
     .from(chatMessages)
     .where(and(eq(chatMessages.familyId, familyId), eq(chatMessages.userId, userId)))
-    .orderBy(asc(chatMessages.createdAt));
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(limit + 5);
 
-  // Drop the trailing user message (if any) so the caller's new message doesn't duplicate.
+  rows.reverse();
+
+  // Drop empty messages if any
   const usable = rows.filter((r) => r.content !== "");
   return usable.slice(-limit).map((r) => ({
     role: r.role as ProviderMessage["role"],

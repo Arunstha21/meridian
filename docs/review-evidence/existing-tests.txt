@@ -1,0 +1,37 @@
+
+ RUN  v3.2.7 C:/Users/Arun/Development/meridian
+
+{
+  severity_local: 'NOTICE',
+  severity: 'NOTICE',
+  code: '00000',
+  message: 'database "meridian_review_f3befe91654fd515" does not exist, skipping',
+  file: 'dbcommands.c',
+  line: '1622',
+  routine: 'dropdb'
+}
+ ✓ tests/integration/authorization.test.ts (14 tests) 1457ms
+ ✓ tests/integration/auth.test.ts (11 tests) 1015ms
+ ✓ tests/integration/ledger.test.ts (7 tests) 732ms
+ ✓ tests/integration/transfers-balances.test.ts (8 tests) 805ms
+ ✓ tests/integration/chat-proposals.test.ts (5 tests) 586ms
+ ✓ tests/integration/reports-export.test.ts (4 tests) 576ms
+ ✓ tests/integration/sure-import.test.ts (4 tests) 530ms
+ ✓ tests/integration/queue-audit.test.ts (7 tests) 384ms
+ ✓ tests/integration/health.test.ts (1 test) 308ms
+ ✓ tests/unit/crypto.test.ts (7 tests) 167ms
+ ✓ tests/unit/money.test.ts (7 tests) 19ms
+ ✓ tests/unit/datetime.test.ts (1 test) 18ms
+ ✓ tests/unit/meroshare-client.test.ts (1 test) 10ms
+ ✓ tests/unit/recurring.test.ts (6 tests) 4ms
+ ✓ tests/unit/cron.test.ts (5 tests) 4ms
+ ✓ tests/unit/reports-fx.test.ts (3 tests) 3ms
+ ✓ tests/unit/format.test.ts (2 tests) 2ms
+ ✓ tests/unit/amount.test.ts (3 tests) 2ms
+ ✓ tests/unit/mailer.test.ts (1 test) 2ms
+
+ Test Files  19 passed (19)
+      Tests  97 passed (97)
+   Start at  07:48:47
+   Duration  19.27s (transform 551ms, setup 110ms, collect 7.22s, tests 6.63s, environment 3ms, prepare 1.61s)
+

@@ -50,8 +50,8 @@ export async function connectMeroShareAction(
   });
 }
 
-export async function syncMeroShareAction(formData: FormData): Promise<void> {
-  await runAction("meroshare.sync", async () => {
+export async function syncMeroShareAction(_previous: ActionState | undefined, formData: FormData): Promise<ActionState> {
+  return runAction("meroshare.sync", async () => {
     const actor = await assertActor();
     await consumeRateLimit(getDb(), `meroshare.sync:${actor.userId}`, 30, 3600);
     const connectionId = z.string().uuid().parse(formData.get("connectionId"));
@@ -59,14 +59,18 @@ export async function syncMeroShareAction(formData: FormData): Promise<void> {
     revalidatePath("/settings/meroshare");
     revalidatePath("/accounts");
     revalidatePath("/");
+    return undefined;
   });
 }
 
-export async function disconnectMeroShareAction(formData: FormData): Promise<void> {
-  await runAction("meroshare.disconnect", async () => {
+export async function disconnectMeroShareAction(_previous: ActionState | undefined, formData: FormData): Promise<ActionState> {
+  return runAction("meroshare.disconnect", async () => {
     const actor = await assertActor();
     const connectionId = z.string().uuid().parse(formData.get("connectionId"));
     await disconnectMeroShareConnection(getDb(), actor, connectionId);
     revalidatePath("/settings/meroshare");
+    revalidatePath("/accounts");
+    revalidatePath("/");
+    return undefined;
   });
 }

@@ -1,16 +1,17 @@
 import type { ComponentProps } from "react";
+import { cn } from "@/lib/utils";
 
 export function Card({ className = "", ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={`rounded-xl border border-border bg-surface p-4 shadow-sm ${className}`}
+      className={cn("rounded-xl bg-card p-4 text-card-foreground ring-1 ring-foreground/10", className)}
       {...props}
     />
   );
 }
 
 const badgeTones = {
-  neutral: "bg-border/60 text-muted",
+  neutral: "bg-muted text-muted-foreground",
   success: "bg-success/10 text-success",
   warning: "bg-warning/10 text-warning",
   destructive: "bg-destructive/10 text-destructive",
@@ -25,9 +26,7 @@ export function Badge({
   children: React.ReactNode;
 }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeTones[tone]}`}
-    >
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeTones[tone]}`}>
       {children}
     </span>
   );
@@ -43,9 +42,9 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface p-10 text-center">
+    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-card p-10 text-center">
       <p className="font-medium">{title}</p>
-      {hint ? <p className="text-sm text-muted">{hint}</p> : null}
+      {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
       {action}
     </div>
   );
@@ -84,8 +83,8 @@ export function PageHeader({
   return (
     <header className="flex flex-wrap items-start justify-between gap-4 pb-1">
       <div className="space-y-1">
-        <h1 className="text-xl font-medium tracking-tight sm:text-3xl">{title}</h1>
-        {subtitle ? <p className="text-sm text-muted sm:text-base">{subtitle}</p> : null}
+        <h1 className="text-xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        {subtitle ? <p className="text-sm text-muted-foreground sm:text-base">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex items-center gap-2 no-print">{actions}</div> : null}
     </header>

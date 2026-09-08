@@ -14,6 +14,11 @@ import { addMinor } from "@/lib/money";
 import { isIsoDate } from "@/lib/datetime";
 import { recordAudit } from "../observability/audit";
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isValidUuid(id: unknown): id is string {
+  return typeof id === "string" && UUID_REGEX.test(id);
+}
+
 export const MAX_NAME_LENGTH = 240;
 export const MAX_NOTES_LENGTH = 5000;
 export const MAX_MERCHANT_LENGTH = 120;
@@ -437,9 +442,9 @@ export async function listEntriesPage(
     )`
   ];
 
-  if (filters.accountId) conditions.push(eq(entries.accountId, filters.accountId));
-  if (filters.categoryId) conditions.push(eq(transactions.categoryId, filters.categoryId));
-  if (filters.tagId) {
+  if (filters.accountId && isValidUuid(filters.accountId)) conditions.push(eq(entries.accountId, filters.accountId));
+  if (filters.categoryId && isValidUuid(filters.categoryId)) conditions.push(eq(transactions.categoryId, filters.categoryId));
+  if (filters.tagId && isValidUuid(filters.tagId)) {
     conditions.push(
       exists(
         sql`SELECT 1 FROM transaction_tags tt WHERE tt.transaction_id = ${transactions.id} AND tt.tag_id = ${filters.tagId}`
@@ -448,7 +453,7 @@ export async function listEntriesPage(
   }
   if (filters.search) {
     const pattern = `%${filters.search}%`;
-    conditions.push(or(ilike(entries.name, pattern), ilike(entries.notes, pattern))!);
+    conditions.push(or(ilike(entries.name, pattern), ilike(entries.notes, pattern), ilike(transactions.merchant, pattern))!);
   }
   if (filters.kind === "expense") {
     conditions.push(sql`${transactions.transferId} IS NULL`, sql`${entries.amountMinor} > 0`, LEAF);
@@ -461,7 +466,7 @@ export async function listEntriesPage(
   }
   if (filters.from && isIsoDate(filters.from)) conditions.push(gte(entries.date, filters.from));
   if (filters.to && isIsoDate(filters.to)) conditions.push(lte(entries.date, filters.to));
-  if (filters.cursor) {
+  if (filters.cursor && isIsoDate(filters.cursor.date) && isValidUuid(filters.cursor.id)) {
     if (goingPrev) {
       conditions.push(
         sql`(${entries.date}, ${entries.id}) > (${filters.cursor.date}::date, ${filters.cursor.id}::uuid)`

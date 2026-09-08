@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const sections = [
   {
@@ -33,12 +34,12 @@ export function SettingsNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="lg:sticky lg:top-24 lg:self-start">
+    <aside className="lg:sticky lg:top-20 lg:self-start">
       <nav aria-label="Settings" className="space-y-5">
         {sections.map((section) => (
           <section key={section.label}>
             <div className="mb-2 flex items-center gap-2 px-2">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {section.label}
               </h2>
               <span className="h-px flex-1 bg-border" aria-hidden />
@@ -54,11 +55,12 @@ export function SettingsNav() {
                     <Link
                       href={link.href}
                       aria-current={active ? "page" : undefined}
-                      className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
+                      className={cn(
+                        "block rounded-lg px-3 py-2 text-sm transition-colors",
                         active
-                          ? "bg-surface text-primary shadow-sm"
-                          : "text-muted hover:bg-surface-hover hover:text-primary"
-                      }`}
+                          ? "bg-card text-foreground shadow-sm ring-1 ring-foreground/10"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      )}
                     >
                       {link.label}
                     </Link>

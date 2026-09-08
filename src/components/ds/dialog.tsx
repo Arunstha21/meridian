@@ -1,12 +1,15 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
 import { SubmitButton } from "./submit-button";
+import { FormError } from "./form";
 
-const DialogCloseContext = createContext<() => void>(() => {});
+const DialogCloseContext = createContext<(() => void) | null>(null);
 
-export function useDialogClose() {
-  return useContext(DialogCloseContext);
+export function useDialogClose(): () => void {
+  const close = useContext(DialogCloseContext);
+  if (!close) throw new Error("useDialogClose must be used within a Dialog");
+  return close;
 }
 
 export function Dialog({
@@ -23,6 +26,8 @@ export function Dialog({
   width?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const descId = useId();
 
   useEffect(() => {
     const dialog = ref.current;
@@ -45,6 +50,8 @@ export function Dialog({
       </button>
       <dialog
         ref={ref}
+        aria-labelledby={titleId}
+        aria-describedby={description ? descId : undefined}
         onClick={(e) => {
           if (e.target === ref.current) close();
         }}
@@ -52,7 +59,7 @@ export function Dialog({
       >
         <div className="flex flex-col gap-1 border-b border-border p-5">
           <div className="flex items-start justify-between gap-4">
-            <h2 className="text-base font-semibold">{title}</h2>
+            <h2 id={titleId} className="text-base font-semibold">{title}</h2>
             <button
               type="button"
               onClick={close}
@@ -62,7 +69,7 @@ export function Dialog({
               ✕
             </button>
           </div>
-          {description ? <p className="text-sm text-muted">{description}</p> : null}
+          {description ? <p id={descId} className="text-sm text-muted">{description}</p> : null}
         </div>
         <div className="p-5">{children}</div>
       </dialog>
@@ -84,7 +91,7 @@ export function ConfirmDialog({
   description: string;
   confirmLabel?: string;
   variant?: "destructive" | "secondary";
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => void | Promise<unknown>;
   children?: React.ReactNode;
 }) {
   return (
@@ -102,19 +109,34 @@ function ConfirmForm({
   variant,
   children
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (formData: FormData) => void | Promise<unknown>;
   confirmLabel: string;
   variant: "destructive" | "secondary";
   children?: React.ReactNode;
 }) {
   const close = useDialogClose();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (formData: FormData) => {
+    setError(null);
+    const res = await action(formData);
+    if (res && typeof res === "object" && "ok" in res && !res.ok) {
+      const msg = "error" in res && typeof res.error === "string" ? res.error : "Action failed";
+      setError(msg);
+      return;
+    }
+  };
+
   return (
-    <form action={action} className="flex flex-wrap justify-end gap-2">
-      {children}
-      <button type="button" onClick={close} className="rounded-lg px-3 py-2 text-sm">
-        Cancel
-      </button>
-      <SubmitButton variant={variant}>{confirmLabel}</SubmitButton>
+    <form action={handleSubmit} className="flex flex-col gap-3">
+      {error ? <FormError message={error} /> : null}
+      <div className="flex flex-wrap justify-end gap-2">
+        {children}
+        <button type="button" onClick={close} className="rounded-lg px-3 py-2 text-sm">
+          Cancel
+        </button>
+        <SubmitButton variant={variant}>{confirmLabel}</SubmitButton>
+      </div>
     </form>
   );
 }

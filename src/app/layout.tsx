@@ -1,7 +1,19 @@
 import type { Metadata, Viewport } from "next";
 import { cookies, headers } from "next/headers";
+import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorkerRegistrar } from "@/components/layout/sw-registrar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"]
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"]
+});
 
 export const metadata: Metadata = {
   title: { default: "Meridian", template: "%s · Meridian" },
@@ -20,13 +32,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   const script = `(function(){try{var t=${JSON.stringify(theme)};var d=window.matchMedia("(prefers-color-scheme: dark)").matches;if(t==="dark"||(t==="system"&&d)){document.documentElement.classList.add("dark");}}catch(e){}})();`;
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: script }} />
       </head>
-      <body>
-        {children}
-        <ServiceWorkerRegistrar />
+      <body className="min-h-full flex flex-col">
+        <TooltipProvider>
+          {children}
+          <ServiceWorkerRegistrar />
+        </TooltipProvider>
       </body>
     </html>
   );

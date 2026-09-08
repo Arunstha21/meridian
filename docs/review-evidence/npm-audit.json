@@ -1,0 +1,203 @@
+﻿{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "drizzle-orm": {
+      "name": "drizzle-orm",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1116251,
+          "name": "drizzle-orm",
+          "dependency": "drizzle-orm",
+          "title": "Drizzle ORM has SQL injection via improperly escaped SQL identifiers",
+          "url": "https://github.com/advisories/GHSA-gpj5-g38j-94v9",
+          "severity": "high",
+          "cwe": [
+            "CWE-89"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+          },
+          "range": "<0.45.2"
+        }
+      ],
+      "effects": [],
+      "range": "<0.45.2",
+      "nodes": [
+        "node_modules/drizzle-orm"
+      ],
+      "fixAvailable": {
+        "name": "drizzle-orm",
+        "version": "0.45.2",
+        "isSemVerMajor": true
+      }
+    },
+    "nodemailer": {
+      "name": "nodemailer",
+      "severity": "high",
+      "isDirect": true,
+      "via": [
+        {
+          "source": 1109804,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Email to an unintended domain can occur due to Interpretation Conflict",
+          "url": "https://github.com/advisories/GHSA-mm7p-fcc7-pg87",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-20",
+            "CWE-436"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<7.0.7"
+        },
+        {
+          "source": 1115470,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer has SMTP command injection due to unsanitized `envelope.size` parameter",
+          "url": "https://github.com/advisories/GHSA-c7w3-x93f-qmm8",
+          "severity": "low",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<8.0.4"
+        },
+        {
+          "source": 1116270,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer Vulnerable to SMTP Command Injection via CRLF in Transport name Option (EHLO/HELO) ",
+          "url": "https://github.com/advisories/GHSA-vvjj-xcjg-gr5g",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 4.9,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:N/I:H/A:N"
+          },
+          "range": "<=8.0.4"
+        },
+        {
+          "source": 1120795,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: CRLF injection in Nodemailer List-* header comments allows arbitrary message header injection",
+          "url": "https://github.com/advisories/GHSA-268h-hp4c-crq3",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-93"
+          ],
+          "cvss": {
+            "score": 5.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<=8.0.8"
+        },
+        {
+          "source": 1120796,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer jsonTransport bypasses disableFileAccess and disableUrlAccess during message normalization",
+          "url": "https://github.com/advisories/GHSA-wqvq-jvpq-h66f",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-862"
+          ],
+          "cvss": {
+            "score": 5.4,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:L/I:L/A:N"
+          },
+          "range": "<=8.0.8"
+        },
+        {
+          "source": 1120797,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Improper TLS Certificate Validation in OAuth2 Token Fetch Enables Credential Interception",
+          "url": "https://github.com/advisories/GHSA-r7g4-qg5f-qqm2",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-295"
+          ],
+          "cvss": {
+            "score": 6.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": "<=8.0.7"
+        },
+        {
+          "source": 1123478,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer’s addressparser is vulnerable to DoS caused by recursive calls",
+          "url": "https://github.com/advisories/GHSA-rcmh-qjqh-p98v",
+          "severity": "high",
+          "cwe": [
+            "CWE-703"
+          ],
+          "cvss": {
+            "score": 7.5,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+          },
+          "range": ">=3.0.0 <=7.0.10"
+        },
+        {
+          "source": 1158513,
+          "name": "nodemailer",
+          "dependency": "nodemailer",
+          "title": "Nodemailer: Message-level raw option bypasses disableFileAccess/disableUrlAccess, enabling arbitrary file read and full-response SSRF in the delivered message",
+          "url": "https://github.com/advisories/GHSA-p6gq-j5cr-w38f",
+          "severity": "high",
+          "cwe": [
+            "CWE-73",
+            "CWE-918"
+          ],
+          "cvss": {
+            "score": 7.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:L/A:N"
+          },
+          "range": "<=9.0.0"
+        }
+      ],
+      "effects": [],
+      "range": "<=9.0.0",
+      "nodes": [
+        "node_modules/nodemailer"
+      ],
+      "fixAvailable": {
+        "name": "nodemailer",
+        "version": "10.0.1",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 2,
+      "critical": 0,
+      "total": 2
+    },
+    "dependencies": {
+      "prod": 142,
+      "dev": 701,
+      "optional": 141,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 880
+    }
+  }
+}

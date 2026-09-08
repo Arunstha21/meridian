@@ -1,0 +1,77 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator
+} from "@/components/ui/breadcrumb";
+
+const labelMap: Record<string, string> = {
+  accounts: "Accounts",
+  transactions: "Transactions",
+  budgets: "Budgets",
+  reports: "Reports",
+  chat: "Assistant",
+  settings: "Settings",
+  "quick-add": "Quick add",
+  new: "New",
+  categories: "Categories",
+  tags: "Tags",
+  recurring: "Recurring",
+  meroshare: "MeroShare",
+  members: "Members",
+  data: "Data",
+  security: "Security",
+  admin: "Admin"
+};
+
+export function DynamicBreadcrumb() {
+  const pathname = usePathname();
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments.length === 0) {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbPage>Overview</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    );
+  }
+
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        {segments.map((segment, index) => {
+          const href = "/" + segments.slice(0, index + 1).join("/");
+          const mapped = labelMap[segment];
+          const label = mapped ?? (segment.length > 18 ? `${segment.slice(0, 8)}…` : segment);
+          const isLast = index === segments.length - 1;
+
+          return (
+            <BreadcrumbItem
+              key={href}
+              className={index === 0 && segments.length > 1 ? "hidden md:block" : undefined}
+            >
+              {isLast ? (
+                <BreadcrumbPage>{label}</BreadcrumbPage>
+              ) : (
+                <>
+                  <BreadcrumbLink render={<Link href={href} />}>{label}</BreadcrumbLink>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                </>
+              )}
+            </BreadcrumbItem>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}

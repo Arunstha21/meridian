@@ -1,18 +1,26 @@
-import Link from "next/link";
 import { requireVerifiedActor, currentFamily } from "@/server/auth/context";
 import { getDb } from "@/server/db/client";
-import { dashboardSummary, netWorthSeries } from "@/server/domain/reports";
+import { dashboardSummary, incomeExpenseSeries, netWorthSeries } from "@/server/domain/reports";
 import { budgetOverview } from "@/server/domain/budgets";
 import { getUserPrivacyMode } from "@/server/domain/users";
-import { Card, PageHeader, EmptyState, Badge } from "@/components/ds/card";
-import { Amount, BarRow } from "@/components/finance/amount";
-import { NetWorthChart, RangePicker } from "@/components/finance/net-worth-chart";
-import { fmtMoney } from "@/lib/format";
-import { listAccountsForActor, isLiability } from "@/server/domain/accounts";
+import { listAccountsForActor } from "@/server/domain/accounts";
+import { DashboardCustomizer } from "@/components/finance/dashboard-customizer";
+import type { DashboardData, HealthFactor } from "@/components/finance/dashboard-data";
 
 export const metadata = { title: "Dashboard" };
 
 const NW_RANGES = new Set(["90", "180", "365", "all"]);
+
+function clamp(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function factor(id: string, label: string, score: number, description: string): HealthFactor {
+  const clamped = clamp(score);
+  const status: HealthFactor["status"] =
+    clamped >= 80 ? "excellent" : clamped >= 60 ? "good" : clamped >= 40 ? "fair" : "poor";
+  return { id, label, score: clamped, status, description };
+}
 
 export default async function DashboardPage({
   searchParams
@@ -26,290 +34,88 @@ export default async function DashboardPage({
   const nwRange = nw && NW_RANGES.has(nw) ? nw : "90";
   const seriesDays = nwRange === "all" ? ("all" as const) : Number(nwRange);
 
-  const [summary, accounts, series, budget] = await Promise.all([
+  const [summary, accounts, series, budget, flows] = await Promise.all([
     dashboardSummary(db, family, actor.userId),
     listAccountsForActor(db, actor),
     netWorthSeries(db, family, actor.userId, seriesDays),
-    budgetOverview(db, family, actor.userId)
+    budgetOverview(db, family, actor.userId),
+    incomeExpenseSeries(db, family, actor.userId, 12)
   ]);
 
   const privacy = await getUserPrivacyMode(db, actor.userId);
+  const income = summary.incomeThisMonthMinor;
+  const expense = summary.expenseThisMonthMinor;
+  const savingsRate = income > 0 ? (income - expense) / income : 0;
+  const savingsScore = income > 0 ? 50 + savingsRate * 100 : expense === 0 ? 70 : 30;
+  const spendScore = income > 0 ? 100 - (expense / income) * 80 : expense === 0 ? 70 : 25;
+  const netWorthScore = summary.netWorthMinor >= 0 ? 70 + Math.min(30, summary.assetsMinor > 0 ? 20 : 0) : 25;
+  const budgetScore = budget.overall ? 120 - budget.overall.pct * 100 : 55;
   const activeAccounts = accounts.filter((a) => a.status === "active");
+  const activityScore = Math.min(100, activeAccounts.length * 15 + summary.recentEntries.length * 8);
+  const factors = [
+    factor("savings", "Savings rate", savingsScore, "Income kept after this month's spending."),
+    factor("spending", "Spending load", spendScore, "How heavy expenses are relative to income."),
+    factor("networth", "Net worth", netWorthScore, "Assets versus liabilities on reportable accounts."),
+    factor("budget", "Budget discipline", budgetScore, budget.overall ? "Progress against your overall monthly cap." : "Set an overall cap to score this factor."),
+    factor("activity", "Ledger activity", activityScore, "Active accounts and recent transactions keep the picture current.")
+  ];
+  const overall = clamp(factors.reduce((sum, item) => sum + item.score, 0) / factors.length);
 
-  return (
-    <>
-      <PageHeader
-        title={`Welcome back, ${actor.name.split(" ")[0]}`}
-        subtitle={new Intl.DateTimeFormat(family.locale, {
-          dateStyle: "full",
-          timeZone: family.timezone
-        }).format(new Date())}
-        actions={
-          <Link
-            href="/accounts/new"
-            className="hidden rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg sm:inline-flex"
-          >
-            + New account
-          </Link>
+  const hasHistory = activeAccounts.length > 0 && (summary.recentEntries.length > 0 || flows.length > 0);
+  const insufficientData = !hasHistory;
+
+  // Real historical trend comparing this month to prior month:
+  const lastMonthFlow = flows.length >= 2 ? flows[flows.length - 2] : null;
+  const lastMonthIncome = lastMonthFlow?.incomeMinor ?? 0;
+  const lastMonthExpense = lastMonthFlow?.expenseMinor ?? 0;
+  const lastMonthSavingsRate = lastMonthIncome > 0 ? (lastMonthIncome - lastMonthExpense) / lastMonthIncome : 0;
+  const trendDiff = (savingsRate - lastMonthSavingsRate) * 100;
+  const trend = trendDiff >= 0 ? "up" : "down";
+  const trendDelta = Math.round(trendDiff);
+
+  const data: DashboardData = {
+    greeting: `Welcome back, ${actor.name.split(" ")[0] ?? actor.name}`,
+    dateLabel: new Intl.DateTimeFormat(family.locale, {
+      dateStyle: "full",
+      timeZone: family.timezone
+    }).format(new Date()),
+    currency: family.currency,
+    locale: family.locale,
+    privacy,
+    netWorthMinor: summary.netWorthMinor,
+    assetsMinor: summary.assetsMinor,
+    liabilitiesMinor: summary.liabilitiesMinor,
+    incomeThisMonthMinor: summary.incomeThisMonthMinor,
+    expenseThisMonthMinor: summary.expenseThisMonthMinor,
+    series,
+    flows,
+    topCategories: summary.topCategories.map((item) => ({ name: item.name, totalMinor: item.totalMinor })),
+    recent: summary.recentEntries,
+    accounts: accounts.map((account) => ({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      displayBalanceMinor: account.displayBalanceMinor,
+      currency: account.currency,
+      institution: account.institution,
+      status: account.status
+    })),
+    budgetOverall: budget.overall
+      ? {
+          limitMinor: budget.overall.limitMinor,
+          spentMinor: budget.overall.spentMinor,
+          remainingMinor: budget.overall.remainingMinor,
+          pct: budget.overall.pct
         }
-      />
+      : null,
+    health: {
+      overall,
+      trend,
+      trendDelta,
+      factors,
+      insufficientData
+    }
+  };
 
-      <div className="grid gap-6 sm:grid-cols-3">
-        <Card className="min-h-[340px] sm:col-span-2">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-base font-medium text-primary">Net worth</h2>
-            <RangePicker value={nwRange} basePath="/" />
-          </div>
-          <p className="tabular mt-1 text-3xl font-semibold">
-            <Amount minor={summary.netWorthMinor} currency={family.currency} masked={privacy} />
-          </p>
-          <div className="mt-4">
-            <NetWorthChart points={series} currency={family.currency} masked={privacy} />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-muted">Assets</p>
-              <Amount
-                minor={summary.assetsMinor}
-                currency={family.currency}
-                masked={privacy}
-                className="font-medium"
-              />
-            </div>
-            <div>
-              <p className="text-muted">Liabilities</p>
-              <Amount
-                minor={summary.liabilitiesMinor}
-                currency={family.currency}
-                masked={privacy}
-                className="font-medium"
-              />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="space-y-5">
-          <div>
-            <h2 className="text-base font-medium text-primary">Income this month</h2>
-            <p className="tabular mt-1 text-xl font-semibold text-income">
-              <Amount
-                minor={summary.incomeThisMonthMinor}
-                currency={family.currency}
-                masked={privacy}
-              />
-            </p>
-          </div>
-          <div>
-            <h2 className="text-base font-medium text-primary">Spending this month</h2>
-            <p className="tabular mt-1 text-xl font-semibold">
-              <Amount
-                minor={summary.expenseThisMonthMinor}
-                currency={family.currency}
-                masked={privacy}
-              />
-            </p>
-          </div>
-          <Link
-            href="/reports"
-            className="inline-block text-sm text-primary underline-offset-4 hover:underline"
-          >
-            View reports →
-          </Link>
-        </Card>
-      </div>
-
-      {budget.overall || budget.perCategory.length > 0 ? (
-        <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-medium text-primary">Budgets this month</h2>
-            <Link href="/budgets" className="text-sm text-primary hover:underline">
-              Manage
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {budget.overall ? (
-              <div>
-                <div className="mb-1 flex items-baseline justify-between text-sm">
-                  <span className="font-medium">Overall</span>
-                  <span className="tabular text-muted">
-                    {privacy
-                      ? "•••••"
-                      : `${fmtMoney(budget.overall.spentMinor, family.currency)} / ${fmtMoney(budget.overall.limitMinor, family.currency)}`}
-                  </span>
-                </div>
-                <BarRow
-                  label="Overall"
-                  value={budget.overall.spentMinor}
-                  total={budget.overall.limitMinor}
-                  formatted={privacy ? "•••••" : `${Math.round(budget.overall.pct * 100)}%`}
-                />
-              </div>
-            ) : null}
-            {budget.perCategory
-              .filter((b) => b.pct >= 0.8)
-              .slice(0, 3)
-              .map((b) => (
-                <div key={b.categoryId ?? "x"}>
-                  <div className="mb-1 flex items-baseline justify-between text-sm">
-                    <span className="truncate">{b.categoryName}</span>
-                    <span className="tabular text-muted">
-                      {privacy
-                        ? "•••••"
-                        : `${fmtMoney(b.spentMinor, family.currency)} / ${fmtMoney(b.limitMinor, family.currency)}`}
-                    </span>
-                  </div>
-                  <BarRow
-                    label={b.categoryName}
-                    value={b.spentMinor}
-                    total={b.limitMinor}
-                    formatted={privacy ? "•••••" : `${Math.round(b.pct * 100)}%`}
-                  />
-                </div>
-              ))}
-          </div>
-        </Card>
-      ) : null}
-
-      <div className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
-          <h2 className="mb-4 text-base font-medium text-primary">Top spending by category</h2>
-          {summary.topCategories.length === 0 ? (
-            <p className="text-sm text-muted">No spending recorded this month.</p>
-          ) : (
-            <div className="space-y-3">
-              {summary.topCategories.map((c) => (
-                <BarRow
-                  key={c.categoryId ?? "uncategorized"}
-                  label={c.name}
-                  value={c.totalMinor}
-                  total={summary.topCategories[0]?.totalMinor ?? c.totalMinor}
-                  formatted={privacy ? "•••••" : fmtMoney(c.totalMinor, family.currency)}
-                />
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-medium text-primary">Recent activity</h2>
-            <Link href="/transactions" className="text-sm text-primary hover:underline">
-              View all
-            </Link>
-          </div>
-          {summary.recentEntries.length === 0 ? (
-            <EmptyState
-              title="Nothing here yet"
-              hint="Add an account and record your first transaction."
-              action={
-                <Link
-                  href="/accounts/new"
-                  className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg"
-                >
-                  Add an account
-                </Link>
-              }
-            />
-          ) : (
-            <ul className="divide-y divide-border">
-              {summary.recentEntries.map((e) => (
-                <li key={e.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/transactions/${e.id}`}
-                      className="block truncate text-sm font-medium hover:underline"
-                    >
-                      {e.transferId ? "⇄ " : ""}
-                      {e.name}
-                    </Link>
-                    <p className="truncate text-xs text-muted">{e.accountName}</p>
-                  </div>
-                  <Amount
-                    minor={-e.amountMinor}
-                    currency={e.currency}
-                    masked={privacy}
-                    signed
-                    colorize
-                    className="shrink-0 text-sm"
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
-
-      {activeAccounts.length === 0 ? (
-        <Card>
-          <h2 className="text-base font-medium text-primary">Get started</h2>
-          <p className="mt-1 text-sm text-muted">
-            Three steps to a working ledger. You can change currency and time zone later in
-            Settings.
-          </p>
-          <ol className="mt-4 space-y-3 text-sm">
-            <li className="rounded-lg border border-border px-3 py-2.5">
-              <p className="font-medium">1. Confirm your household</p>
-              <p className="text-muted">
-                Reporting currency is {family.currency} in {family.timezone}.
-              </p>
-              <Link href="/settings" className="mt-1 inline-block text-primary hover:underline">
-                Review settings
-              </Link>
-            </li>
-            <li className="rounded-lg border border-border px-3 py-2.5">
-              <p className="font-medium">2. Add your first account</p>
-              <p className="text-muted">Cash, credit card, or another asset you want to track.</p>
-              <Link
-                href="/accounts/new"
-                className="mt-2 inline-flex rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-fg"
-              >
-                Add an account
-              </Link>
-            </li>
-            <li className="rounded-lg border border-border px-3 py-2.5">
-              <p className="font-medium">3. Record a transaction</p>
-              <p className="text-muted">Income, spending, or a transfer once you have an account.</p>
-            </li>
-          </ol>
-        </Card>
-      ) : null}
-
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-medium text-primary">Accounts</h2>
-          <Link href="/accounts" className="text-sm text-primary hover:underline">
-            Manage
-          </Link>
-        </div>
-        {activeAccounts.length === 0 ? (
-          <p className="text-sm text-muted">No active accounts yet.</p>
-        ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {activeAccounts.map((a) => (
-              <li key={a.id}>
-                <Link
-                  href={`/accounts/${a.id}`}
-                  className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-sm transition-colors hover:bg-surface-hover"
-                >
-                  <span className="flex min-w-0 items-center gap-2">
-                    <span className="truncate">{a.name}</span>
-                    {!a.isJoint && a.level === "read_only" ? (
-                      <Badge tone="neutral">view only</Badge>
-                    ) : null}
-                  </span>
-                  <Amount
-                    minor={a.displayBalanceMinor}
-                    currency={a.currency}
-                    masked={privacy}
-                    colorize={isLiability(a.type)}
-                    className="shrink-0 tabular text-muted"
-                  />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-    </>
-  );
+  return <DashboardCustomizer data={data} />;
 }

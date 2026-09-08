@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { signUpAction } from "../actions";
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
@@ -78,6 +79,12 @@ export function SignUpForm() {
         />
       </Field>
       <SubmitButton className="w-full">Create your account</SubmitButton>
+      <p className="text-center text-sm text-muted-foreground">
+        Already have an account?{" "}
+        <Link href="/sign-in" className="font-medium text-foreground underline-offset-4 hover:underline">
+          Sign in
+        </Link>
+      </p>
     </form>
   );
 }

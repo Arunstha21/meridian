@@ -15,9 +15,9 @@ export function SubmitButton({
   const base =
     "inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50 px-3.5 py-2 min-h-9";
   const variants: Record<string, string> = {
-    primary: "bg-primary text-primary-fg hover:opacity-90",
-    secondary: "border border-border bg-surface shadow-sm hover:bg-surface-hover",
-    ghost: "hover:bg-surface-inset-hover",
+    primary: "bg-primary text-primary-foreground hover:opacity-90",
+    secondary: "border border-border bg-card shadow-sm hover:bg-accent",
+    ghost: "hover:bg-accent",
     destructive: "bg-destructive text-white hover:opacity-90",
     link: "text-primary underline underline-offset-4"
   };

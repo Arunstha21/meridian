@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { loadActor } from "@/server/auth/context";
-import { Card } from "@/components/ds/card";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SignInForm } from "./sign-in-form";
 
 export const metadata = { title: "Sign in" };
@@ -9,9 +9,8 @@ export default async function SignInPage() {
   const actor = await loadActor();
   if (actor) redirect("/");
   return (
-    <Card>
-      <h1 className="mb-4 text-lg font-semibold">Sign in</h1>
+    <AuthShell title="Welcome back" subtitle="Sign in to your Meridian household">
       <SignInForm />
-    </Card>
+    </AuthShell>
   );
 }

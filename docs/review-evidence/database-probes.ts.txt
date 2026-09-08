@@ -1,0 +1,92 @@
+import assert from 'node:assert/strict';
+import { sql } from 'drizzle-orm';
+import { getDb, closeDb } from '../src/server/db/client';
+import { registerUserWithFamily, removeMember } from '../src/server/domain/users';
+import { createInvitation, acceptInvitationWithNewAccount } from '../src/server/domain/invitations';
+import { createAccount, listAccountsForActor, setAccountStatus } from '../src/server/domain/accounts';
+import { buildFamilyExport } from '../src/server/domain/exports';
+import { getAccountAccess } from '../src/server/authorization/access';
+import { addTransaction, splitTransaction, editTransaction, makeTransferWithEntries } from '../src/server/domain/orchestrate';
+import { getFamilyById } from '../src/server/domain/families';
+import { dashboardSummary } from '../src/server/domain/reports';
+import { upsertRate } from '../src/server/domain/exchange-rates';
+import type { Actor } from '../src/server/auth/context';
+import { createSeries, updateSeries } from '../src/server/domain/recurring';
+
+async function main() {
+  if (!/^\/meridian_review_[a-f0-9]{16}$/.test(new URL(process.env.DATABASE_URL!).pathname)) throw new Error('Isolated review database required');
+  const db = getDb();
+  const suffix = Date.now();
+  const user = await registerUserWithFamily(db, { email: `review-${suffix}@example.test`, password: 'ReviewPassword123!', name: 'Review owner', familyName: 'Review household' });
+  const actor: Actor = { ...user, sessionId: '', familyRole: 'admin', platformRole: 'user', email: `review-${suffix}@example.test`, name: 'Review owner', emailVerified: true };
+  const invite = await createInvitation(db, actor, { email: `member-${suffix}@example.test`, role: 'member' });
+  const member = await acceptInvitationWithNewAccount(db, invite.token, { name: 'Review member', password: 'ReviewPassword123!' });
+  const memberActor: Actor = { ...actor, userId: member.userId, familyRole: 'member' };
+  const today = new Date().toISOString().slice(0, 10);
+  const account = async (owner: Actor, name: string, currency = 'USD', openedOn = today) =>
+    (await createAccount(db, owner, { type: 'depository', name, currency, openingBalanceDisplayMinor: 0, openedOn, includedInReports: true, joint: false })).accountId;
+  const privateId = await account(actor, 'Private review account');
+  const memberDestination = await account(memberActor, 'Member destination');
+  const seriesId = await createSeries(db, actor, { accountId: privateId, name: 'Private recurring expense', amountLedgerMinor: 1000, frequency: 'monthly', config: { dayOfMonth: 1 }, nextDue: today });
+  await updateSeries(db, memberActor, seriesId, { accountId: memberDestination });
+  const moved = await db.execute(sql`SELECT account_id FROM recurring_series WHERE id = ${seriesId}::uuid`);
+  assert.equal(moved.rows[0].account_id, memberDestination);
+  console.log('CONFIRMED S04: member can reassign another private account recurring series by known ID without source access.');
+  const access = await getAccountAccess(db, memberActor, privateId);
+  assert.equal(access.granted, false);
+  const exported = await buildFamilyExport(db, memberActor);
+  assert.ok(exported.accounts.some((a: any) => a.id === privateId));
+  console.log('CONFIRMED S01: denied private account appears in member export.');
+
+  const adminInvite = await createInvitation(db, actor, { email: 'review-platform-admin@example.test', role: 'member' });
+  const elevated = await acceptInvitationWithNewAccount(db, adminInvite.token, { name: 'Untrusted invite creator', password: 'ReviewPassword123!' });
+  const elevatedRow = await db.execute(sql`SELECT platform_role, email_verified_at IS NOT NULL AS verified FROM users WHERE id = ${elevated.userId}::uuid`);
+  assert.equal(elevatedRow.rows[0].platform_role, 'super_admin');
+  assert.equal(elevatedRow.rows[0].verified, true);
+  console.log('CONFIRMED S02: invitation creates verified super_admin without inbox control.');
+
+  const memberPrivate = await account(memberActor, 'Removed member private account');
+  assert.equal((await getAccountAccess(db, actor, memberPrivate)).granted, false);
+  await removeMember(db, actor, member.userId);
+  const after = await getAccountAccess(db, actor, memberPrivate);
+  assert.ok(after.granted && after.level === 'full_control' && after.account.ownerId === null);
+  console.log('CONFIRMED S03: member removal turns their private account into joint full_control.');
+
+  const parent = await addTransaction(db, actor, { accountId: privateId, date: today, name: 'Split parent', amountLedgerMinor: 10000 });
+  await splitTransaction(db, actor, parent.entryId, [{ amountLedgerMinor: 4000 }, { amountLedgerMinor: 6000 }]);
+  const children = await db.execute(sql`SELECT id FROM entries WHERE parent_entry_id = ${parent.entryId}::uuid ORDER BY amount_minor`);
+  await editTransaction(db, actor, String(children.rows[0].id), { amountLedgerMinor: 9000 });
+  const sums = await db.execute(sql`SELECT (SELECT amount_minor::text FROM entries WHERE id = ${parent.entryId}::uuid) AS parent, SUM(amount_minor)::text AS children FROM entries WHERE parent_entry_id = ${parent.entryId}::uuid`);
+  assert.equal(sums.rows[0].parent, '10000'); assert.equal(sums.rows[0].children, '15000');
+  console.log('CONFIRMED F01: editing split child leaves parent 10000 vs child total 15000.');
+
+  const transferTo = await account(actor, 'Transfer destination');
+  const transfer = await makeTransferWithEntries(db, actor, { fromAccountId: privateId, toAccountId: transferTo, amountDisplayMinor: 1000, date: today });
+  const leg = await db.execute(sql`SELECT outflow_entry_id FROM transfers WHERE id = ${transfer.transferId}::uuid`);
+  await editTransaction(db, actor, String(leg.rows[0].outflow_entry_id), { amountLedgerMinor: 2000 });
+  const transferSum = await db.execute(sql`SELECT SUM(e.amount_minor)::text AS total FROM transfers t JOIN entries e ON e.id IN (t.outflow_entry_id,t.inflow_entry_id) WHERE t.id = ${transfer.transferId}::uuid`);
+  assert.equal(transferSum.rows[0].total, '1000');
+  console.log('CONFIRMED F02: editing linked transfer leg leaves nonzero sum of 1000.');
+
+  await setAccountStatus(db, actor, privateId, 'disabled');
+  await editTransaction(db, actor, parent.entryId, { name: 'Edited while closed' });
+  console.log('CONFIRMED F03: transaction remains editable after account closure.');
+
+  const oldId = await account(actor, 'Old account', 'USD', '2000-01-01');
+  await addTransaction(db, actor, { accountId: oldId, date: today, name: 'Old account income', amountLedgerMinor: -10000 });
+  const oldAccount = (await listAccountsForActor(db, actor)).find(a => a.id === oldId)!;
+  assert.equal(oldAccount.displayBalanceMinor, 0);
+  console.log('CONFIRMED F04: account older than 4000 days shows 0 after 10000 income.');
+
+  const fxUser = await registerUserWithFamily(db, { email: `fx-${suffix}@example.test`, password: 'ReviewPassword123!', name: 'FX review', familyName: 'FX household', currency: 'USD' });
+  const fxActor = { ...actor, ...fxUser };
+  const yen = await account(fxActor, 'Yen account', 'JPY');
+  await addTransaction(db, fxActor, { accountId: yen, date: today, name: 'JPY income', amountLedgerMinor: -10000 });
+  await upsertRate(db, { base: 'JPY', quote: 'USD', rate: '0.01', quotedOn: today });
+  const family = (await getFamilyById(db, fxUser.familyId))!;
+  const summary = await dashboardSummary(db, family, fxUser.userId);
+  assert.equal(summary.netWorthMinor, 100);
+  console.log('CONFIRMED F05: 10000 JPY at 0.01 USD/JPY reports 100 cents instead of 10000 cents.');
+  await closeDb();
+}
+main().catch(async e => { console.error(e); await closeDb(); process.exitCode = 1; });

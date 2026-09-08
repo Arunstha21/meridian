@@ -11,6 +11,7 @@ import {
 import { Field, FormError, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 import { ConfirmDialog } from "@/components/ds/dialog";
+import { usePrivacy } from "@/components/layout/privacy-context";
 
 type Capital = { id: number; code: string; name: string };
 type Connection = {
@@ -21,8 +22,7 @@ type Connection = {
     dpName: string;
     lastSyncedAt: Date | null;
   };
-  accounts: Array<{
-    id: string;
+  accounts: Array<{    id: string;
     name: string;
     boid: string;
     totalValueMinor: number;
@@ -32,6 +32,7 @@ type Connection = {
 };
 
 export function MeroShareManager({ connections }: { connections: Connection[] }) {
+  const privacy = usePrivacy();
   const [capitals, setCapitals] = useState<Capital[]>([]);
   const [capitalError, setCapitalError] = useState<string>();
   useEffect(() => {
@@ -47,93 +48,103 @@ export function MeroShareManager({ connections }: { connections: Connection[] })
       {connections.length ? (
         <section className="space-y-3" aria-label="Connected MeroShare portfolios">
           {connections.map((item) => (
-            <article
-              key={item.connection.id}
-              className="rounded-xl border border-border bg-surface p-4 shadow-sm"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-medium text-primary">{item.connection.name}</h2>
-                  <p className="text-sm text-muted">
-                    {item.connection.dpName} · last synced{" "}
-                    {item.connection.lastSyncedAt
-                      ? new Date(item.connection.lastSyncedAt).toLocaleString()
-                      : "never"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <form action={syncMeroShareAction}>
-                    <input type="hidden" name="connectionId" value={item.connection.id} />
-                    <SubmitButton variant="secondary">Sync now</SubmitButton>
-                  </form>
-                  <ConfirmDialog
-                    trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Disconnect</span>}
-                    title={`Disconnect ${item.connection.name}?`}
-                    description="Meridian keeps the investment account and its latest valuation. Credentials are removed."
-                    confirmLabel="Disconnect"
-                    action={disconnectMeroShareAction}
-                  >
-                    <input type="hidden" name="connectionId" value={item.connection.id} />
-                  </ConfirmDialog>
-                </div>
-              </div>
-              <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
-                {item.accounts.map((account) => (
-                  <li key={account.id} className="px-3 py-3 text-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <Link
-                        className="font-medium hover:underline"
-                        href={`/accounts/${account.id}`}
-                      >
-                        {account.name}
-                      </Link>
-                      <span className="text-muted">
-                        DEMAT •••• {account.boid.slice(-4)} · {formatNpr(account.totalValueMinor)}
-                      </span>
-                    </div>
-                    {account.holdings.length ? (
-                      <div className="mt-3 overflow-x-auto rounded-md bg-surface-inset">
-                        <table className="w-full min-w-[420px] text-left text-xs">
-                          <thead className="border-b border-border text-muted">
-                            <tr>
-                              <th className="px-3 py-2 font-medium">Scrip</th>
-                              <th className="px-3 py-2 text-right font-medium">Quantity</th>
-                              <th className="px-3 py-2 text-right font-medium">Current value</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border/80">
-                            {account.holdings.map((holding) => (
-                              <tr key={holding.ticker}>
-                                <td className="px-3 py-2">
-                                  <span className="font-medium text-primary">{holding.ticker}</span>
-                                  <span className="ml-2 text-muted">{holding.name}</span>
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums">
-                                  {formatQuantity(holding.quantity)}
-                                </td>
-                                <td className="px-3 py-2 text-right tabular-nums">
-                                  {formatNpr(holding.marketValueMinor)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-xs text-muted">No current holdings reported.</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-muted">
-                Disconnecting deletes stored MeroShare credentials and portfolio sync data, but
-                retains the Meridian investment account and its latest valuation.
-              </p>
-            </article>
+            <ConnectionCard key={item.connection.id} item={item} privacy={privacy} />
           ))}
         </section>
       ) : null}
     </div>
+  );
+}
+
+function ConnectionCard({ item, privacy }: { item: Connection; privacy: boolean }) {
+  const [syncState, syncAction] = useActionState(syncMeroShareAction, undefined);
+  const [disconnectState, disconnectAction] = useActionState(disconnectMeroShareAction, undefined);
+
+  const formatNprValue = (minor: number) => (privacy ? "•••••" : formatNpr(minor));
+
+  return (
+    <article className="rounded-xl border border-border bg-surface p-4 shadow-sm">
+      <FormError message={syncState?.ok === false ? syncState.error : undefined} />
+      <FormError message={disconnectState?.ok === false ? disconnectState.error : undefined} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-medium text-primary">{item.connection.name}</h2>
+          <p className="text-sm text-muted">
+            {item.connection.dpName} · last synced{" "}
+            {item.connection.lastSyncedAt
+              ? new Date(item.connection.lastSyncedAt).toLocaleString()
+              : "never"}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <form action={syncAction}>
+            <input type="hidden" name="connectionId" value={item.connection.id} />
+            <SubmitButton variant="secondary">Sync now</SubmitButton>
+          </form>
+          <ConfirmDialog
+            trigger={<span className="inline-flex rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover">Disconnect</span>}
+            title={`Disconnect ${item.connection.name}?`}
+            description="Meridian keeps the investment account and its latest valuation. Credentials are removed."
+            confirmLabel="Disconnect"
+            action={disconnectAction}
+          >
+            <input type="hidden" name="connectionId" value={item.connection.id} />
+          </ConfirmDialog>
+        </div>
+      </div>
+      <ul className="mt-3 divide-y divide-border rounded-lg border border-border">
+        {item.accounts.map((account) => (
+          <li key={account.id} className="px-3 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <Link
+                className="font-medium hover:underline"
+                href={`/accounts/${account.id}`}
+              >
+                {account.name}
+              </Link>
+              <span className="text-muted">
+                DEMAT •••• {account.boid.slice(-4)} · {formatNprValue(account.totalValueMinor)}
+              </span>
+            </div>
+            {account.holdings.length ? (
+              <div className="mt-3 overflow-x-auto rounded-md bg-surface-inset">
+                <table className="w-full min-w-[420px] text-left text-xs">
+                  <thead className="border-b border-border text-muted">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Scrip</th>
+                      <th className="px-3 py-2 text-right font-medium">Quantity</th>
+                      <th className="px-3 py-2 text-right font-medium">Current value</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/80">
+                    {account.holdings.map((holding) => (
+                      <tr key={holding.ticker}>
+                        <td className="px-3 py-2">
+                          <span className="font-medium text-primary">{holding.ticker}</span>
+                          <span className="ml-2 text-muted">{holding.name}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatQuantity(holding.quantity)}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums">
+                          {formatNprValue(holding.marketValueMinor)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted">No current holdings reported.</p>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-xs text-muted">
+        Disconnecting deletes stored MeroShare credentials and portfolio sync data, but
+        retains the Meridian investment account and its latest valuation.
+      </p>
+    </article>
   );
 }
 
@@ -168,46 +179,33 @@ function ConnectForm({ capitals, capitalError }: { capitals: Capital[]; capitalE
             id="mero-dp"
             value={selectedId}
             onChange={(event) => setSelectedId(event.target.value)}
-            required
-            disabled={!capitals.length}
+            disabled={capitals.length === 0}
           >
-            <option value="">{capitals.length ? "Choose your DP" : "Loading DPs…"}</option>
+            <option value="">Choose your DP/capital</option>
             {capitals.map((capital) => (
               <option key={capital.id} value={capital.id}>
-                {capital.code} — {capital.name}
+                {capital.name} ({capital.code})
               </option>
             ))}
           </Select>
         </Field>
+        <Field label="Client ID" htmlFor="mero-client-id">
+          <Input id="mero-client-id" name="clientId" value={selected?.id ?? ""} readOnly />
+        </Field>
+        <Field label="DP code" htmlFor="mero-dp-code">
+          <Input id="mero-dp-code" name="dpCode" value={selected?.code ?? ""} readOnly />
+        </Field>
+        <Field label="DP name" htmlFor="mero-dp-name">
+          <Input id="mero-dp-name" name="dpName" value={selected?.name ?? ""} readOnly />
+        </Field>
         <Field label="MeroShare username" htmlFor="mero-username">
-          <Input
-            id="mero-username"
-            name="username"
-            autoComplete="username"
-            required
-            maxLength={100}
-          />
+          <Input id="mero-username" name="username" required autoComplete="off" />
         </Field>
         <Field label="MeroShare password" htmlFor="mero-password">
-          <Input
-            id="mero-password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            maxLength={255}
-          />
+          <Input id="mero-password" name="password" type="password" required autoComplete="off" />
         </Field>
       </div>
-      <input type="hidden" name="clientId" value={selected?.id ?? ""} />
-      <input type="hidden" name="dpCode" value={selected?.code ?? ""} />
-      <input type="hidden" name="dpName" value={selected?.name ?? ""} />
-      <SubmitButton disabled={!selected}>Connect and sync</SubmitButton>
-      {state?.ok ? (
-        <p className="text-sm text-success">
-          Connected and imported {state.data?.accounts ?? 0} portfolio account(s).
-        </p>
-      ) : null}
+      <SubmitButton disabled={!selected}>Save and sync initial portfolio</SubmitButton>
     </form>
   );
 }

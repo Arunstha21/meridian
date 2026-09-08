@@ -1,12 +1,14 @@
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function AppLoading() {
   return (
     <div className="space-y-6" aria-busy="true" aria-live="polite">
-      <div className="h-8 w-56 animate-pulse rounded-lg bg-border/70" />
-      <div className="grid gap-6 sm:grid-cols-3">
-        <div className="min-h-[280px] animate-pulse rounded-xl border border-border bg-surface sm:col-span-2" />
-        <div className="min-h-[280px] animate-pulse rounded-xl border border-border bg-surface" />
+      <Skeleton className="h-8 w-56" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Skeleton className="min-h-[280px] rounded-xl sm:col-span-2" />
+        <Skeleton className="min-h-[280px] rounded-xl" />
       </div>
-      <div className="min-h-[180px] animate-pulse rounded-xl border border-border bg-surface" />
+      <Skeleton className="min-h-[180px] rounded-xl" />
       <span className="sr-only">Loading</span>
     </div>
   );

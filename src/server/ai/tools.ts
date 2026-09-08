@@ -32,7 +32,7 @@ export type ToolContext = {
 
 export type ToolHandler = (args: Record<string, unknown>, ctx: ToolContext) => Promise<unknown>;
 
-type Tool = { definition: ToolDefinition; handler: ToolHandler };
+type Tool = { definition: ToolDefinition; schema: z.ZodTypeAny; handler: ToolHandler };
 
 function tool(name: string, description: string, schema: z.ZodTypeAny, handler: ToolHandler): Tool {
   return {
@@ -45,6 +45,7 @@ function tool(name: string, description: string, schema: z.ZodTypeAny, handler: 
         parameters: z.toJSONSchema(schema as z.ZodType<Record<string, unknown>>)
       }
     },
+    schema,
     handler
   };
 }
@@ -205,14 +206,21 @@ export function toolDefinitions(): ToolDefinition[] {
 export async function executeTool(name: string, argsJson: string, ctx: ToolContext): Promise<unknown> {
   const t = TOOL_MAP.get(name);
   if (!t) return { error: `Unknown tool: ${name}` };
-  let args: Record<string, unknown>;
+  let rawArgs: unknown;
   try {
-    args = argsJson ? JSON.parse(argsJson) : {};
+    rawArgs = argsJson ? JSON.parse(argsJson) : {};
   } catch {
     return { error: `Invalid JSON arguments for ${name}` };
   }
+  const parsed = t.schema.safeParse(rawArgs);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return {
+      error: `Invalid tool arguments for ${name}: ${issue?.path.join(".") || "root"} - ${issue?.message}`
+    };
+  }
   try {
-    return await t.handler(args, ctx);
+    return await t.handler(parsed.data as Record<string, unknown>, ctx);
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }

@@ -72,7 +72,7 @@ export async function updateFamilySettings(
     updates.currency = newCurrency;
   }
   if (patch.timezone !== undefined) updates.timezone = validateTimezone(patch.timezone);
-  if (patch.locale !== undefined) updates.locale = patch.locale;
+  if (patch.locale !== undefined) updates.locale = validateLocale(patch.locale);
   await exec.update(families).set(updates).where(eq(families.id, actor.familyId));
   await recordAudit(exec, {
     familyId: actor.familyId,
@@ -82,6 +82,16 @@ export async function updateFamilySettings(
     entityId: actor.familyId,
     metadata: { fields: Object.keys(updates).filter((k) => k !== "updatedAt") }
   });
+}
+
+export function validateLocale(locale: string): string {
+  try {
+    const supported = Intl.DateTimeFormat.supportedLocalesOf([locale]);
+    if (!supported.length) throw new Error("Unsupported locale");
+    return locale;
+  } catch {
+    throw errors.validation("Invalid locale identifier.");
+  }
 }
 
 export function validateTimezone(tz: string): string {

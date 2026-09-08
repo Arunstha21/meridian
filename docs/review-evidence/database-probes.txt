@@ -1,0 +1,9 @@
+CONFIRMED S04: member can reassign another private account recurring series by known ID without source access.
+CONFIRMED S01: denied private account appears in member export.
+CONFIRMED S02: invitation creates verified super_admin without inbox control.
+CONFIRMED S03: member removal turns their private account into joint full_control.
+CONFIRMED F01: editing split child leaves parent 10000 vs child total 15000.
+CONFIRMED F02: editing linked transfer leg leaves nonzero sum of 1000.
+CONFIRMED F03: transaction remains editable after account closure.
+CONFIRMED F04: account older than 4000 days shows 0 after 10000 income.
+CONFIRMED F05: 10000 JPY at 0.01 USD/JPY reports 100 cents instead of 10000 cents.

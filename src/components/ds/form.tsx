@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 const inputClass =
-  "w-full rounded-md border border-border bg-surface px-3 py-2 text-sm shadow-sm transition-[border-color,box-shadow] placeholder:text-muted/70 focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10 disabled:opacity-60";
+  "h-8 w-full rounded-lg border border-input bg-background px-2.5 py-1 text-sm shadow-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-60";
 
 export function Input({ className = "", ...props }: ComponentProps<"input">) {
   return <input className={`${inputClass} ${className}`} {...props} />;
@@ -34,7 +34,7 @@ export function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-xs font-medium text-muted">
+      <label htmlFor={htmlFor} className="block text-xs font-medium text-muted-foreground">
         {label}
       </label>
       {children}

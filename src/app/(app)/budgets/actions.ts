@@ -26,12 +26,16 @@ export async function setBudgetAction(_prev: ActionState | undefined, formData: 
   });
 }
 
-export async function removeBudgetAction(formData: FormData): Promise<void> {
-  await runAction("budget.remove", async () => {
+export async function removeBudgetAction(
+  _prev: ActionState | undefined,
+  formData: FormData
+): Promise<ActionState> {
+  return runAction("budget.remove", async () => {
     const actor = await requireVerifiedActor();
     const categoryId = String(formData.get("categoryId") ?? "");
     await removeBudget(getDb(), actor, categoryId || null);
     revalidatePath("/budgets");
     revalidatePath("/");
+    return undefined;
   });
 }

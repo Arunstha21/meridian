@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { loadActor } from "@/server/auth/context";
-import { Card } from "@/components/ds/card";
+import { AuthShell } from "@/components/auth/auth-shell";
 import { SignUpForm } from "./sign-up-form";
 
 export const metadata = { title: "Create your account" };
@@ -9,9 +9,8 @@ export default async function SignUpPage() {
   const actor = await loadActor();
   if (actor) redirect("/");
   return (
-    <Card>
-      <h1 className="mb-4 text-lg font-semibold">Create your account</h1>
+    <AuthShell title="Create your account" subtitle="Start a household ledger in a few minutes">
       <SignUpForm />
-    </Card>
+    </AuthShell>
   );
 }
