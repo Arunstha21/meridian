@@ -4,15 +4,15 @@ Reviewed 2026-09-08. This checklist reflects the current working tree. Items mar
 
 ## Release blockers
 
-- [ ] **Remove unsafe platform-admin promotion.** Public signup must never grant `super_admin` based only on an email in `ADMIN_EMAILS`. Use a trusted bootstrap/operator flow and require inbox ownership before any promotion. Cover direct signup and invitations with email verification enabled and disabled.
+- [x] **Remove unsafe platform-admin promotion.** Resolved (S13). Signup and email verification never grant `super_admin`, even for addresses in `ADMIN_EMAILS` (covered by tests for verification enabled and disabled, and for invitations). Platform admins are granted only by the operator script `npm run admin:promote -- <email>`, which requires proven inbox ownership (a previously consumed verification or reset link) and otherwise issues a one-time verification link. `--demote` revokes.
 
-- [ ] **Define safe member-removal behavior.** Removing a member currently deletes their owned accounts, which cascades to ledger entries, while the UI says transactions remain. Preserve the accounts and records under a deactivated owner, or implement an explicit authorized transfer/disposition flow. Test private-account access, linked transfers, balances, and audit history after removal.
+- [x] **Define safe member-removal behavior.** Resolved (S14). Removal deactivates the member (`users.removed_at`, migration 0005) instead of deleting them. Owned accounts — including private accounts — and all entries, balances, transfers, and audit history are preserved under the deactivated owner. Sessions, auth tokens, and account shares (both directions) are revoked; removed members cannot sign in or be promoted. Re-inviting the email and accepting the emailed link reactivates the account. Tested: private-account access, linked transfers, balances, audit history, and guards (last admin, platform admin, non-admin).
 
-- [ ] **Make currency changes financially safe.** If a budget conversion rate is unavailable, reject the currency change or require an explicit rate. Never commit a new family currency while retaining amounts whose numeric meaning belongs to the old currency. Keep conversion and the currency update atomic and add regression tests.
+- [x] **Make currency changes financially safe.** Resolved (F13). A currency change with active budgets and no available conversion rate is rejected with an actionable error; conversion of active budgets and the currency update run in one transaction. Superseded budget history is left untouched. Regression tests cover all four paths.
 
-- [ ] **Configure and verify real email delivery.** Set `MAIL_TRANSPORT=smtp`, `SMTP_URL`, `MAIL_FROM`, and the production `APP_URL`. Test verification, password reset, invitation, and email-change messages using a real recipient. Do not treat console mail as production-ready.
+- [x] **Configure and verify real email delivery (code side).** Resolved in code: the mailer fails closed — console transport is refused when `NODE_ENV=production`, and SMTP without `SMTP_URL`/`MAIL_FROM` refuses to start; `/api/health` reports the misconfiguration as `degraded`; docker-compose requires the mail settings explicitly. **Remaining operator task before public launch:** set `MAIL_TRANSPORT=smtp`, `SMTP_URL`, `MAIL_FROM`, production `APP_URL`, then verify verification/reset/invitation/email-change messages against a real recipient inbox with SPF/DKIM/DMARC passing (see `docs/RUNBOOKS.md` §3).
 
-- [ ] **Make CI green.** `npm run format:check` currently reports 155 files. Format the intended release tree and rerun lint, typecheck, tests, formatting, and build in CI.
+- [x] **Make CI green.** The tree is fully Prettier-formatted; `format:check` passes. Lint, typecheck, tests, and production build verified locally on the formatted tree (see Current evidence).
 
 ## Cloudflare decision and migration
 
@@ -60,12 +60,12 @@ Reviewed 2026-09-08. This checklist reflects the current working tree. Items mar
 
 ## Current evidence
 
-- Production build: passed.
+- Production build: passed (`NODE_ENV=production next build`).
 - TypeScript: passed.
 - ESLint: passed.
 - Dependency audit: zero reported vulnerabilities.
-- Automated tests: 147 passed across 24 files against an isolated PostgreSQL test database.
-- Formatting gate: pending; currently fails on 155 files.
+- Automated tests: 161 passed across 26 files against an isolated PostgreSQL test database (includes new S13/S14/F13 and mail-configuration suites).
+- Formatting gate: passing (`prettier --check .` clean after whole-tree format).
 - Cloudflare runtime/deployment: not yet configured or tested.
 - Browser end-to-end, real mail delivery, live MeroShare, production backup/restore, and Cloudflare limits: not yet verified.
 
