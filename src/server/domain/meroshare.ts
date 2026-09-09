@@ -841,11 +841,6 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
-function numberValue(value: unknown): number | null {
-  const parsed =
-    typeof value === "number" ? value : typeof value === "string" ? Number(value) : Number.NaN;
-  return Number.isInteger(parsed) ? parsed : null;
-}
 
 function normalizeBoid(value: unknown): string {
   const boid = String(value ?? "").replace(/\D/g, "");
@@ -891,9 +886,6 @@ function decimalNumber(value: string): number {
   return number;
 }
 
-function absoluteDecimal(value: string): string {
-  return value.startsWith("-") ? value.slice(1) : value;
-}
 
 function multiplyDecimal(a: string, b: string): string {
   const result = decimalNumber(a) * decimalNumber(b);
@@ -901,13 +893,6 @@ function multiplyDecimal(a: string, b: string): string {
   return String(result);
 }
 
-function divideDecimal(a: string, b: string): string {
-  const divisor = decimalNumber(b);
-  if (divisor === 0) return "0";
-  const result = decimalNumber(a) / divisor;
-  if (!Number.isFinite(result)) throw errors.validation("MeroShare returned an unsupported value.");
-  return String(result);
-}
 
 function sumDecimalStrings(values: string[]): string {
   const total = values.reduce((sum, value) => sum + decimalNumber(value), 0);
