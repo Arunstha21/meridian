@@ -133,7 +133,7 @@ export function TransactionDetailClient(p: DetailProps) {
           <div className="flex items-center gap-3 sm:col-span-2">
             <SubmitButton>Save changes</SubmitButton>
             {!canCore && p.level === "read_write" ? (
-              <span className="text-xs text-muted">
+              <span className="text-xs text-muted-foreground">
                 You can edit category, merchant and notes only.
               </span>
             ) : null}
@@ -178,14 +178,14 @@ export function TransactionDetailClient(p: DetailProps) {
               linkAction={linkAction}
             />
           ) : (
-            <p className="text-sm text-muted">You do not have permission to link a transfer.</p>
+            <p className="text-sm text-muted-foreground">You do not have permission to link a transfer.</p>
           )}
         </Card>
 
         <Card>
           <h2 className="mb-2 text-base font-medium text-primary">Split</h2>
           {p.parentId ? (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               This is part of a split.{" "}
               <Link href={`/transactions/${p.parentId}`} className="text-primary hover:underline">
                 Open original transaction
@@ -199,8 +199,8 @@ export function TransactionDetailClient(p: DetailProps) {
                     <Link href={`/transactions/${c.id}`} className="hover:underline">
                       {c.name}
                     </Link>
-                    <span className="tabular">
-                      {privacy ? "•••••" : displayAmount(c.amountMinor, p.entry.currency)}
+                    <span className="tabular font-medium">
+                      {privacy ? "•••••" : minorToDecimal(Math.abs(c.amountMinor), p.entry.currency)}
                     </span>
                   </li>
                 ))}
@@ -210,12 +210,12 @@ export function TransactionDetailClient(p: DetailProps) {
                   <ConfirmDialog
                     trigger={
                       <span className="inline-flex rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium">
-                        Remove split
+                        Unsplit transaction
                       </span>
                     }
-                    title="Remove this split?"
-                    description="The original transaction is restored as a single amount. Split parts are deleted."
-                    confirmLabel="Remove split"
+                    title="Recombine these split transactions?"
+                    description="The split parts will be removed and their total returned to this single transaction."
+                    confirmLabel="Unsplit"
                     variant="secondary"
                     action={unsplitEntryAction}
                   >
@@ -227,11 +227,13 @@ export function TransactionDetailClient(p: DetailProps) {
           ) : canCore && !p.transferId ? (
             <Dialog
               trigger={
-                <span className="rounded-lg border border-border px-3 py-2 text-sm font-medium">
-                  Split this transaction
+                <span className="inline-flex rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-medium">
+                  Split into multiple items
                 </span>
               }
-              title="Split into parts"
+              title="Split transaction"
+              description="Divide this transaction across multiple categories or descriptions."
+              width="max-w-2xl"
             >
               <SplitForm
                 parentEntryId={p.entry.id}
@@ -241,7 +243,7 @@ export function TransactionDetailClient(p: DetailProps) {
               />
             </Dialog>
           ) : (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-muted-foreground">
               {p.transferId
                 ? "Unlink the transfer before splitting."
                 : "Only full-control access can split."}
@@ -293,18 +295,18 @@ function SuggestTransfer({
   return (
     <div className="space-y-3">
       {linkState ? <Alert title={linkState} tone="destructive" /> : null}
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         Found a matching opposite-side transaction? Link them as one transfer.
       </p>
       {suggestions.length === 0 ? (
-        <p className="text-sm text-muted">No nearby candidates within ±4 days.</p>
+        <p className="text-sm text-muted-foreground">No nearby candidates within ±4 days.</p>
       ) : (
         <ul className="divide-y divide-border">
           {suggestions.slice(0, 5).map((s) => (
             <li key={s.entryId} className="flex items-center justify-between gap-2 py-2 text-sm">
               <span className="min-w-0 truncate">
                 {s.name}
-                <span className="block text-xs text-muted">{s.accountName}</span>
+                <span className="block text-xs text-muted-foreground">{s.accountName}</span>
               </span>
               <form action={linkAction} className="shrink-0">
                 <input
@@ -365,7 +367,7 @@ function SplitForm({
         })}
       />
       <FormError message={state?.ok === false ? state.error : undefined} />
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         Parts must add up to the full original amount. Remaining:{" "}
         <strong className="tabular">
           {privacy ? "•••••" : minorToDecimal(Math.abs(remaining), currency)}

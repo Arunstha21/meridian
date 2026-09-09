@@ -12,7 +12,7 @@ export function TagPicker({
   if (tags.length === 0) return null;
   return (
     <fieldset>
-      <legend className="mb-1.5 block text-xs font-medium text-muted">{legend}</legend>
+      <legend className="mb-1.5 block text-xs font-medium text-muted-foreground">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {tags.map((tag) => (
           <label

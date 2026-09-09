@@ -22,7 +22,7 @@ export function ResendForm({ email }: { email?: string }) {
     <form action={action} className="space-y-3">
       <FormError message={state?.ok === false ? state.error : undefined} />
       {state?.ok ? <FormSuccess message="A fresh verification link was sent." /> : null}
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         We sent a verification link to {email ? <strong>{email}</strong> : "your inbox"}.
       </p>
       <SubmitButton variant="secondary">Resend verification email</SubmitButton>

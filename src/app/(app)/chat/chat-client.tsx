@@ -142,10 +142,10 @@ export function ChatClient({
           </div>
           <div>
             <h1 className="text-lg font-medium">Assistant</h1>
-            <p className="text-xs text-muted">Your financial copilot</p>
+            <p className="text-xs text-muted-foreground">Your financial copilot</p>
           </div>
         </div>
-        <p className="mt-4 text-sm text-muted">
+        <p className="mt-4 text-sm text-muted-foreground">
           AI chat is not configured. Set{" "}
           <code className="rounded bg-border/50 px-1">AI_BASE_URL</code> and{" "}
           <code className="rounded bg-border/50 px-1">AI_MODEL</code> environment variables (any
@@ -164,14 +164,14 @@ export function ChatClient({
           </div>
           <div>
             <h1 className="text-base font-medium">Assistant</h1>
-            <p className="text-xs text-muted">Ask about your money</p>
+            <p className="text-xs text-muted-foreground">Ask about your money</p>
           </div>
         </div>
         {messages.length > 0 ? (
           <ConfirmDialog
             trigger={
               <span
-                className="flex items-center gap-1.5 rounded-lg p-2 text-muted hover:bg-border/40 hover:text-destructive"
+                className="flex items-center gap-1.5 rounded-lg p-2 text-muted-foreground hover:bg-border/40 hover:text-destructive"
                 title="Clear conversation"
               >
                 <Trash2 className="h-4 w-4" />
@@ -195,7 +195,7 @@ export function ChatClient({
               M
             </div>
             <p className="mt-4 text-lg font-medium">Hello {userName.split(" ")[0]} 👋</p>
-            <p className="mt-1 max-w-sm text-sm text-muted">
+            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
               Ask about your spending, net worth, income — or ask me to record a transaction.
             </p>
             <div className="mt-6 grid gap-2 sm:grid-cols-2">
@@ -234,7 +234,7 @@ export function ChatClient({
         )}
         {busy ? (
           <div className="flex justify-start">
-            <div className="rounded-2xl bg-surface-inset px-4 py-2.5 text-sm text-muted shadow-sm">
+            <div className="rounded-2xl bg-surface-inset px-4 py-2.5 text-sm text-muted-foreground shadow-sm">
               Thinking…
             </div>
           </div>
@@ -244,7 +244,7 @@ export function ChatClient({
         ) : null}
         {proposal ? (
           <div className="rounded-xl border border-border bg-surface-inset p-3 shadow-sm">
-            <p className="text-xs font-medium text-muted">Proposed transaction — not saved yet</p>
+            <p className="text-xs font-medium text-muted-foreground">Proposed transaction — not saved yet</p>
             <p className="mt-1 text-sm font-medium">{proposal.name}</p>
             <p className="text-sm">
               {fmtMoney(proposal.amountLedgerMinor, proposal.currency)} · {proposal.accountName} ·{" "}

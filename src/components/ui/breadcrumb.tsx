@@ -16,7 +16,7 @@ function BreadcrumbList({ className, ...props }: React.ComponentProps<"ol">) {
     <ol
       data-slot="breadcrumb-list"
       className={cn(
-        "flex flex-wrap items-center gap-1.5 text-sm wrap-break-word text-muted-foreground",
+        "flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap",
         className
       )}
       {...props}
@@ -69,7 +69,7 @@ function BreadcrumbSeparator({ children, className, ...props }: React.ComponentP
       data-slot="breadcrumb-separator"
       role="presentation"
       aria-hidden="true"
-      className={cn("[&>svg]:size-3.5", className)}
+      className={cn("inline-flex items-center [&>svg]:size-3.5", className)}
       {...props}
     >
       {children ?? <ChevronRightIcon />}
@@ -83,10 +83,10 @@ function BreadcrumbEllipsis({ className, ...props }: React.ComponentProps<"span"
       data-slot="breadcrumb-ellipsis"
       role="presentation"
       aria-hidden="true"
-      className={cn("flex size-5 items-center justify-center [&>svg]:size-4", className)}
+      className={cn("flex size-9 items-center justify-center", className)}
       {...props}
     >
-      <MoreHorizontalIcon />
+      <MoreHorizontalIcon className="size-4" />
       <span className="sr-only">More</span>
     </span>
   );

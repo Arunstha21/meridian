@@ -74,7 +74,7 @@ export function RecurringManager({
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Existing series</h2>
         {series.length === 0 ? (
-          <p className="text-sm text-muted">Nothing yet. Add rent, salary, subscriptions…</p>
+          <p className="text-sm text-muted-foreground">Nothing yet. Add rent, salary, subscriptions…</p>
         ) : (
           <ul className="divide-y divide-border">
             {series.map((s) => (
@@ -88,7 +88,7 @@ export function RecurringManager({
                         <Badge tone="warning">account closed</Badge>
                       ) : null}
                     </p>
-                    <p className="truncate text-xs text-muted">
+                    <p className="truncate text-xs text-muted-foreground">
                       {s.accountName} · {frequencyLabel(s.frequency, s.config)} · next {s.nextDue}
                     </p>
                   </div>
@@ -110,8 +110,8 @@ export function RecurringManager({
                           Skip next
                         </span>
                       }
-                      title={`Skip the next “${s.name}”?`}
-                      description={`The next posting on ${s.nextDue} will be skipped. Already posted transactions stay.`}
+                      title={`Skip next due date for ${s.name}?`}
+                      description={`Advances the schedule by one interval without creating a transaction. Next due will become the following interval.`}
                       confirmLabel="Skip next"
                       variant="secondary"
                       action={skipNextOccurrenceAction}
@@ -124,8 +124,8 @@ export function RecurringManager({
                           Delete
                         </span>
                       }
-                      title={`Delete “${s.name}”?`}
-                      description="Posted transactions stay in the ledger. Future occurrences will not be created."
+                      title={`Delete recurring series ${s.name}?`}
+                      description="Previously generated transactions will remain; future occurrences will not be scheduled."
                       confirmLabel="Delete series"
                       action={deleteRecurringAction}
                     >
@@ -149,9 +149,9 @@ function CreateForm({
   accounts: Option[];
   categories: { id: string; name: string }[];
 }) {
-  const [state, action] = useActionState(createRecurringAction, undefined);
-  const [frequency, setFrequency] = useState("monthly");
   const [kind, setKind] = useState<"expense" | "income">("expense");
+  const [frequency, setFrequency] = useState("monthly");
+  const [state, action] = useActionState(createRecurringAction, undefined);
 
   return (
     <form action={action} className="space-y-4">
@@ -168,7 +168,7 @@ function CreateForm({
             aria-pressed={kind === k}
             onClick={() => setKind(k)}
             className={`rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors ${
-              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted hover:bg-surface-hover"
+              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             }`}
           >
             {k}
@@ -237,7 +237,7 @@ function CreateForm({
             max={31}
             defaultValue={1}
           />
-          <p className="mt-1 text-xs text-muted">Clamped to month length (31 → Feb 28/29).</p>
+          <p className="mt-1 text-xs text-muted-foreground">Clamped to month length (31 → Feb 28/29).</p>
         </Field>
       ) : null}
       {frequency === "weekly" ? (

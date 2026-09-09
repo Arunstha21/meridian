@@ -34,7 +34,7 @@ export function SavedFilterBar({
             className={`group inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs transition-colors ${
               isCurrent
                 ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border bg-surface text-muted hover:bg-surface-hover"
+                : "border-border bg-surface text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             }`}
           >
             <Link href={`/transactions${qs ? `?${qs}` : ""}`} className="font-medium">
@@ -74,7 +74,7 @@ export function SavedFilterBar({
           <button
             type="button"
             onClick={() => setNaming(false)}
-            className="rounded-full p-1 text-muted hover:bg-surface-hover"
+            className="rounded-full p-1 text-muted-foreground hover:bg-surface-hover hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -83,7 +83,7 @@ export function SavedFilterBar({
         <button
           type="button"
           onClick={() => setNaming(true)}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted hover:border-primary hover:text-primary"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary"
         >
           <Bookmark className="h-3 w-3" />
           Save this filter

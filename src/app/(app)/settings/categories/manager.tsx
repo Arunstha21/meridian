@@ -26,13 +26,13 @@ export function CategoryManager({
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Existing categories</h2>
         {categories.length === 0 ? (
-          <p className="text-sm text-muted">Nothing yet.</p>
+          <p className="text-sm text-muted-foreground">Nothing yet.</p>
         ) : (
           <ul className="divide-y divide-border">
             {categories.map((c) => (
               <li key={c.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                 <span>
-                  {c.parentId ? <span className="mr-2 text-muted">↳</span> : null}
+                  {c.parentId ? <span className="mr-2 text-muted-foreground">↳</span> : null}
                   {c.name}
                 </span>
                 <DeleteButton categoryId={c.id} categoryName={c.name} />

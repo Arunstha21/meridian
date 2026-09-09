@@ -18,7 +18,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
     return (
       <Card>
         <h1 className="text-lg font-semibold">Invitation unavailable</h1>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-muted-foreground">
           This invitation link is invalid, already used, or expired. Ask the family admin for a new
           one.
         </p>
@@ -37,7 +37,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
   return (
     <Card>
       <h1 className="text-lg font-semibold">Join “{invitation.familyName}”</h1>
-      <p className="mt-1 text-sm text-muted">
+      <p className="mt-1 text-sm text-muted-foreground">
         {invitation.invitedByName} invited <strong>{invitation.email}</strong> as{" "}
         {invitation.role === "admin" ? "an admin" : "a member"}.
       </p>
@@ -58,7 +58,7 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
           <>
             <h2 className="mb-3 text-sm font-medium">Create your account to accept</h2>
             <AcceptNewAccountForm token={token} email={invitation.email} />
-            <p className="mt-3 text-center text-sm text-muted">
+            <p className="mt-3 text-center text-sm text-muted-foreground">
               Already have an account with this email?{" "}
               <Link href="/sign-in" className="text-primary underline-offset-4 hover:underline">
                 Sign in first

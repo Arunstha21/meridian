@@ -38,12 +38,12 @@ export function ProfileForms({
       {canEditTimezone ? (
         <TimezoneForm timezone={timezone} timezones={timezones} />
       ) : (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Time zone is {timezone}. Only a family admin can change it.
         </p>
       )}
       {accessManaged ? (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Signed in as {email}. Your sign-in is managed by Cloudflare Access.
         </p>
       ) : (
@@ -79,7 +79,7 @@ function PrivacyToggle({ privacy }: { privacy: boolean }) {
       <input type="hidden" name="value" value={privacy ? "off" : "on"} />
       <div>
         <p className="text-sm font-medium">Privacy mode</p>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Hide every monetary amount on screen. Currently {privacy ? "on" : "off"}.
         </p>
       </div>
@@ -159,7 +159,7 @@ function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   return (
     <form action={action} className="space-y-3 border-t border-border pt-4">
       <h3 className="text-sm font-medium">Change email</h3>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Current: {currentEmail}. You will need to verify the new address.
       </p>
       <FormError message={state?.ok === false ? state.error : undefined} />

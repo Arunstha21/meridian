@@ -82,8 +82,7 @@ export function BudgetRings({
                       cy="50"
                       r={RADIUS}
                       fill="none"
-                      stroke="currentColor"
-                      className="text-muted"
+                      stroke="var(--muted)"
                       strokeWidth="8"
                     />
                     <motion.circle

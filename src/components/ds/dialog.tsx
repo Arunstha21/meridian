@@ -66,13 +66,13 @@ export function Dialog({
               type="button"
               onClick={close}
               aria-label="Close dialog"
-              className="rounded-md p-1 text-muted hover:bg-border/50"
+              className="rounded-md p-1 text-muted-foreground hover:bg-border/50 hover:text-foreground"
             >
               ✕
             </button>
           </div>
           {description ? (
-            <p id={descId} className="text-sm text-muted">
+            <p id={descId} className="text-sm text-muted-foreground">
               {description}
             </p>
           ) : null}
@@ -138,7 +138,11 @@ function ConfirmForm({
       {error ? <FormError message={error} /> : null}
       <div className="flex flex-wrap justify-end gap-2">
         {children}
-        <button type="button" onClick={close} className="rounded-lg px-3 py-2 text-sm">
+        <button
+          type="button"
+          onClick={close}
+          className="rounded-lg px-3.5 py-2 text-sm font-medium hover:bg-surface-inset-hover"
+        >
           Cancel
         </button>
         <SubmitButton variant={variant}>{confirmLabel}</SubmitButton>

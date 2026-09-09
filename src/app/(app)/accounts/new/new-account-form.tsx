@@ -47,7 +47,7 @@ export function NewAccountForm({
                 className="sr-only"
               />
               <span className="block text-sm font-medium">{t.label}</span>
-              <span className="block text-xs text-muted">{t.hint}</span>
+              <span className="block text-xs text-muted-foreground">{t.hint}</span>
             </label>
           ))}
         </div>

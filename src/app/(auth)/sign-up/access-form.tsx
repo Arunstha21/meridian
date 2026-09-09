@@ -9,7 +9,7 @@ export function AccessHouseholdForm({ email }: { email: string }) {
   const [state, action] = useActionState(createAccessHouseholdAction, undefined);
   return (
     <form action={action} className="space-y-4">
-      <p className="text-sm text-muted">Signed in as {email}</p>
+      <p className="text-sm text-muted-foreground">Signed in as {email}</p>
       <FormError message={state && !state.ok ? state.error : undefined} />
       <Field label="Your name" htmlFor="name">
         <Input id="name" name="name" autoComplete="name" required maxLength={120} />

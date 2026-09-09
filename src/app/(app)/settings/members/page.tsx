@@ -39,14 +39,14 @@ export default async function MembersPage() {
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Pending invitations</h2>
         {pending.length === 0 ? (
-          <p className="text-sm text-muted">No pending invitations.</p>
+          <p className="text-sm text-muted-foreground">No pending invitations.</p>
         ) : (
           <ul className="divide-y divide-border">
             {pending.map((inv) => (
               <li key={inv.id} className="flex items-center justify-between py-2.5 text-sm">
                 <div>
                   <p>{inv.email}</p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     {inv.role} · expires{" "}
                     {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(inv.expiresAt)}
                   </p>
@@ -84,10 +84,10 @@ function MemberTable({
               <p className="font-medium">
                 {m.name}
                 {m.id === currentUserId ? (
-                  <span className="ml-1 text-xs text-muted">(you)</span>
+                  <span className="ml-1 text-xs text-muted-foreground">(you)</span>
                 ) : null}
               </p>
-              <p className="text-xs text-muted">{m.email}</p>
+              <p className="text-xs text-muted-foreground">{m.email}</p>
             </div>
             <div className="flex items-center gap-2">
               {!m.verified ? <Badge tone="warning">unverified</Badge> : null}

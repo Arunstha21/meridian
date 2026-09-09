@@ -14,7 +14,7 @@ export default async function SecurityPage() {
       <>
         <PageHeader title="Security" subtitle="Sign-in is managed by Cloudflare Access." />
         <Card>
-          <p className="text-sm text-muted">
+          <p className="text-sm text-muted-foreground">
             Use an email code or Google to sign in. Your operator can revoke device sessions in
             Cloudflare Access.
           </p>
@@ -54,7 +54,7 @@ export default async function SecurityPage() {
                     Session {s.id.slice(0, 8)}…{" "}
                     {isCurrent ? <Badge tone="success">this device</Badge> : null}
                   </p>
-                  <p className="text-xs text-muted">
+                  <p className="text-xs text-muted-foreground">
                     Last used{" "}
                     {new Intl.DateTimeFormat("en", {
                       dateStyle: "medium",
@@ -78,7 +78,7 @@ export default async function SecurityPage() {
 
       <Card>
         <h2 className="text-base font-medium text-primary">What we protect</h2>
-        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
           <li>Passwords are hashed with scrypt; session tokens are stored hashed.</li>
           <li>Sessions expire after 30 days of inactivity and can be revoked instantly.</li>
           <li>Login attempts are rate-limited per account and IP address.</li>

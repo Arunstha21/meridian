@@ -117,14 +117,14 @@ export function NetWorthChart({
           strokeLinejoin="round"
           strokeLinecap="round"
         />
-        <text x={PAD.left} y={HEIGHT - 6} className="fill-current text-[10px] text-muted">
+        <text x={PAD.left} y={HEIGHT - 6} className="fill-current text-[10px] text-muted-foreground">
           {formatDay(first.date)}
         </text>
         <text
           x={WIDTH - PAD.right}
           y={HEIGHT - 6}
           textAnchor="end"
-          className="fill-current text-[10px] text-muted"
+          className="fill-current text-[10px] text-muted-foreground"
         >
           {formatDay(last.date)}
         </text>
@@ -157,7 +157,7 @@ export function NetWorthChart({
             top: 0
           }}
         >
-          <span className="block text-muted">{formatDay(hovered.point.date)}</span>
+          <span className="block text-muted-foreground">{formatDay(hovered.point.date)}</span>
           <span className="tabular font-medium">
             {fmtMoney(hovered.point.valueMinor, currency)}
           </span>
@@ -182,7 +182,7 @@ export function RangePicker({ value, basePath }: { value: string; basePath: stri
           href={`${basePath}?nw=${r.key}`}
           aria-current={value === r.key ? "true" : undefined}
           className={`rounded-md px-2 py-1 text-xs font-medium ${
-            value === r.key ? "bg-primary/10 text-primary" : "text-muted hover:bg-border/50"
+            value === r.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-border/50 hover:text-foreground"
           }`}
         >
           {r.label}

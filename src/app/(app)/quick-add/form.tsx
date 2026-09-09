@@ -1,15 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Check } from "lucide-react";
+import { useRef, useState, useActionState } from "react";
 import { quickAddAction } from "./actions";
-import { FormError, Input, Select } from "@/components/ds/form";
+import { Input, Select, FormError } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 import { TagPicker } from "@/components/ds/tag-picker";
-
-type Option = { id: string; name: string; currency?: string };
-
-type QuickAddState = Awaited<ReturnType<typeof quickAddAction>>;
+import { Check } from "lucide-react";
 
 export function QuickAddForm({
   accounts,
@@ -17,14 +13,14 @@ export function QuickAddForm({
   tags,
   today
 }: {
-  accounts: Option[];
-  categories: Option[];
-  tags: Option[];
+  accounts: { id: string; name: string; currency: string }[];
+  categories: { id: string; name: string }[];
+  tags: { id: string; name: string }[];
   today: string;
 }) {
-  const [state, setState] = useState<QuickAddState>();
   const [kind, setKind] = useState<"expense" | "income">("expense");
   const [savedFlash, setSavedFlash] = useState(false);
+  const [state, setState] = useState<{ ok: boolean; error?: string } | undefined>(undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
 
@@ -42,7 +38,7 @@ export function QuickAddForm({
 
   if (accounts.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         Add an account first, then come back to record transactions.
       </p>
     );
@@ -70,7 +66,7 @@ export function QuickAddForm({
             aria-pressed={kind === k}
             onClick={() => setKind(k)}
             className={`rounded-md px-3 py-2.5 text-sm font-medium capitalize transition-colors ${
-              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted hover:bg-surface-hover"
+              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             }`}
           >
             {k}

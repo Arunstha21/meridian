@@ -13,7 +13,7 @@ export function InviteForm({ manualDelivery = false }: { manualDelivery?: boolea
 
   return (
     <Card>
-      <h2 className="mb-3 text-sm font-medium text-muted">Invite a member</h2>
+      <h2 className="mb-3 text-base font-medium text-primary">Invite a member</h2>
       <form action={action} className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
         <Field label="Email" htmlFor="invite-email">
           <Input

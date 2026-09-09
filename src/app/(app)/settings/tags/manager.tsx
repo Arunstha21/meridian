@@ -19,7 +19,7 @@ export function TagManager({ tags }: { tags: Tag[] }) {
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Existing tags</h2>
         {tags.length === 0 ? (
-          <p className="text-sm text-muted">Nothing yet.</p>
+          <p className="text-sm text-muted-foreground">Nothing yet.</p>
         ) : (
           <ul className="divide-y divide-border">
             {tags.map((t) => (

@@ -103,17 +103,17 @@ export function BudgetsView({
           <div className="mt-3 space-y-2">
             <div className="flex items-baseline justify-between text-sm">
               <span className="tabular font-medium">{fmt(overall.spentMinor)} spent</span>
-              <span className="tabular text-muted">of {fmt(overall.limitMinor)}</span>
+              <span className="tabular text-muted-foreground">of {fmt(overall.limitMinor)}</span>
             </div>
             <ProgressBar pct={overall.pct} />
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               {overall.remainingMinor >= 0
                 ? `${fmt(overall.remainingMinor)} left this month`
                 : `${fmt(-overall.remainingMinor)} over cap`}
             </p>
           </div>
         ) : (
-          <p className="mt-2 text-sm text-muted">No overall cap set.</p>
+          <p className="mt-2 text-sm text-muted-foreground">No overall cap set.</p>
         )}
         <div className="mt-4 border-t border-border pt-4">
           <OverallCapForm
@@ -128,7 +128,7 @@ export function BudgetsView({
         <Card className="overflow-hidden">
           <h2 className="mb-3 text-base font-medium text-primary">Category budgets</h2>
           {perCategory.length === 0 ? (
-            <p className="text-sm text-muted">No category budgets yet.</p>
+            <p className="text-sm text-muted-foreground">No category budgets yet.</p>
           ) : (
             <ul className="divide-y divide-border">
               {perCategory.map((b) => (
@@ -144,8 +144,8 @@ export function BudgetsView({
           )}
         </Card>
 
-        <Card className="overflow-hidden">
-          <h2 className="mb-3 text-base font-medium text-primary">Set a category budget</h2>
+        <Card>
+          <h2 className="mb-3 text-base font-medium text-primary">Add / edit category budget</h2>
           <SetBudgetForm categories={categoriesWithoutBudget} currency={currency} />
         </Card>
       </div>
@@ -175,7 +175,7 @@ function CategoryBudgetItem({
           <span className="truncate">{budget.categoryName}</span>
           <Badge tone={pctTone(budget.pct)}>{Math.round(budget.pct * 100)}%</Badge>
         </span>
-        <span className="tabular shrink-0 text-muted">
+        <span className="tabular shrink-0 text-muted-foreground">
           {effectivePrivacy ? "••••••" : fmt(budget.spentMinor)} /{" "}
           {effectivePrivacy ? "••••••" : fmt(budget.limitMinor)}
         </span>
@@ -193,9 +193,14 @@ function CategoryBudgetItem({
           <input type="hidden" name="categoryId" value={budget.categoryId ?? ""} />
           <FormError message={editState?.ok === false ? editState.error : undefined} />
           <div className="w-32">
+            <label htmlFor={`edit-amount-${budget.categoryId}`} className="sr-only">
+              New limit
+            </label>
             <Input
+              id={`edit-amount-${budget.categoryId}`}
               name="amount"
               inputMode="decimal"
+              type={effectivePrivacy ? "password" : "text"}
               defaultValue={minorToDecimal(budget.limitMinor, currency)}
               placeholder="0.00"
               required
@@ -205,7 +210,7 @@ function CategoryBudgetItem({
           <button
             type="button"
             onClick={() => setEditing(false)}
-            className="rounded px-2 py-1 text-xs text-muted hover:bg-muted"
+            className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             Cancel
           </button>
@@ -257,7 +262,7 @@ function OverallCapForm({
         />
       </Field>
       <SubmitButton>{current !== null ? "Update cap" : "Set cap"}</SubmitButton>
-      {current !== null ? <span className="text-xs text-muted">Applies every month.</span> : null}
+      {current !== null ? <span className="text-xs text-muted-foreground">Applies every month.</span> : null}
     </form>
   );
 }
@@ -273,7 +278,7 @@ function SetBudgetForm({
   if (categories.length === 0) {
     return (
       <div className="space-y-2 py-2">
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           All existing categories have monthly budgets set. You can adjust limits by clicking
           &ldquo;Edit limit&rdquo; on any budget on the left.
         </p>
@@ -284,7 +289,7 @@ function SetBudgetForm({
   return (
     <form action={action} className="space-y-4">
       <FormError message={state?.ok === false ? state.error : undefined} />
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Select a category to establish or update its monthly limit.
       </p>
       <label className="block space-y-1 text-sm">

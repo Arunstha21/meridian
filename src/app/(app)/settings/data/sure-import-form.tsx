@@ -13,7 +13,7 @@ export function SureImportForm() {
     <form action={action} className="space-y-3">
       <FormError message={state?.ok === false ? state.error : undefined} />
       <label className="block space-y-1.5">
-        <span className="text-xs font-medium text-muted">Sure export file</span>
+        <span className="text-xs font-medium text-muted-foreground">Sure export file</span>
         <input
           name="sureExport"
           type="file"
@@ -22,7 +22,7 @@ export function SureImportForm() {
           className="block w-full cursor-pointer rounded-lg border border-border bg-surface px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-surface-inset file:px-2 file:py-1 file:text-sm file:font-medium hover:file:bg-surface-hover"
         />
       </label>
-      <p className="text-xs text-muted">
+      <p className="text-xs text-muted-foreground">
         Export your family from Sure, then upload its ZIP (Meridian reads <code>all.ndjson</code>)
         or the extracted file. The family must be empty so the migration cannot merge or overwrite
         data.
@@ -37,7 +37,7 @@ export function SureImportForm() {
           {pluralize(state.data.transactions, "transaction")}, and{" "}
           {pluralize(state.data.transfers, "transfer")}.
           {skipped.length ? (
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-1 text-xs text-muted-foreground">
               Not migrated: {skipped.map(([type, count]) => `${count} ${type}`).join(", ")}.
               Meridian records the core ledger, not Sure-only rules, merchants, attachment metadata,
               or generic investment history.

@@ -71,7 +71,7 @@ export default async function AccountDetailPage({
               masked={privacy}
             />
           </p>
-          <p className="mt-1 text-xs text-muted">Opened {fmtDate(account.openedOn)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Opened {fmtDate(account.openedOn)}</p>
           <div className="mt-4">
             <Sparkline
               points={series.map((pt) => ({ date: pt.date, valueMinor: pt.balanceMinor }))}
@@ -102,7 +102,7 @@ export default async function AccountDetailPage({
           >
             Move money (transfers)
           </Link>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-muted-foreground">
             {level === "full_control"
               ? "You have full control of this account."
               : level === "read_write"
@@ -116,7 +116,7 @@ export default async function AccountDetailPage({
         <Card>
           <h2 className="mb-2 text-base font-medium text-primary">Sharing</h2>
           {shares.length === 0 ? (
-            <p className="text-sm text-muted">Not shared with anyone yet.</p>
+            <p className="text-sm text-muted-foreground">Not shared with anyone yet.</p>
           ) : (
             <ul className="divide-y divide-border text-sm">
               {shares.map((s) => (
@@ -127,7 +127,7 @@ export default async function AccountDetailPage({
               ))}
             </ul>
           )}
-          <p className="mt-3 text-xs text-muted">
+          <p className="mt-3 text-xs text-muted-foreground">
             Manage sharing and lifecycle from the account menu.
           </p>
         </Card>
@@ -144,7 +144,7 @@ export default async function AccountDetailPage({
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Activity</h2>
         {recentActivity.length === 0 ? (
-          <p className="text-sm text-muted">No activity recorded yet.</p>
+          <p className="text-sm text-muted-foreground">No activity recorded yet.</p>
         ) : (
           <ul className="divide-y divide-border">
             {recentActivity.map((e) => (
@@ -160,7 +160,7 @@ export default async function AccountDetailPage({
                       {e.name}
                     </Link>
                   )}
-                  <p className="text-xs text-muted">{fmtDate(e.date)}</p>
+                  <p className="text-xs text-muted-foreground">{fmtDate(e.date)}</p>
                 </div>
                 <Amount
                   minor={e.kind === "valuation" ? e.amountMinor : -e.amountMinor}

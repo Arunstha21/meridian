@@ -10,7 +10,7 @@ export default function ForgotPasswordPage() {
   return (
     <Card>
       <h1 className="mb-1 text-lg font-semibold">Reset your password</h1>
-      <p className="mb-4 text-sm text-muted">We will email you a one-time reset link.</p>
+      <p className="mb-4 text-sm text-muted-foreground">We will email you a one-time reset link.</p>
       <ForgotPasswordForm />
     </Card>
   );

@@ -219,20 +219,20 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             <Input id="to" name="to" type="date" defaultValue={filters.to} aria-label="To date" />
           </div>
           <SubmitButton>Apply filters</SubmitButton>
-          <Link href="/transactions" className="self-center text-sm text-muted hover:underline">
+          <Link href="/transactions" className="self-center text-sm text-muted-foreground hover:text-foreground hover:underline">
             Clear
           </Link>
         </form>
 
         {Object.keys(currentParams).length > 0 ? (
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            <span className="text-xs font-medium text-muted">Active:</span>
+            <span className="text-xs font-medium text-muted-foreground">Active:</span>
             {currentParams.q ? (
               <span className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs">
                 Search: &ldquo;{currentParams.q}&rdquo;
                 <Link
                   href={removeParamUrl("q")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove search filter"
                 >
                   ✕
@@ -246,7 +246,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                   currentParams.account}
                 <Link
                   href={removeParamUrl("account")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove account filter"
                 >
                   ✕
@@ -260,7 +260,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                   currentParams.category}
                 <Link
                   href={removeParamUrl("category")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove category filter"
                 >
                   ✕
@@ -272,7 +272,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 Tag: #{tags.find((t) => t.id === currentParams.tag)?.name ?? currentParams.tag}
                 <Link
                   href={removeParamUrl("tag")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove tag filter"
                 >
                   ✕
@@ -284,7 +284,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 Type: {currentParams.kind}
                 <Link
                   href={removeParamUrl("kind")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove type filter"
                 >
                   ✕
@@ -296,7 +296,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 From: {currentParams.from}
                 <Link
                   href={removeParamUrl("from")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove from filter"
                 >
                   ✕
@@ -308,7 +308,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                 To: {currentParams.to}
                 <Link
                   href={removeParamUrl("to")}
-                  className="text-muted hover:text-foreground"
+                  className="text-muted-foreground hover:text-foreground"
                   aria-label="Remove to filter"
                 >
                   ✕
@@ -357,7 +357,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                       {e.transferId ? <span aria-hidden>⇄ </span> : null}
                       {e.name}
                     </Link>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                       {e.categoryName ? <span>{e.categoryName}</span> : <span>Uncategorized</span>}
                       {e.merchant ? <span>· {e.merchant}</span> : null}
                       {e.tagIds.map((id) => (
@@ -365,7 +365,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted">{e.accountName}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{e.accountName}</td>
                   <td className="px-4 py-3 text-right">
                     <Amount
                       minor={-e.amountMinor}

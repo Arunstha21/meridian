@@ -147,7 +147,7 @@ function SharePanel({ accountId, members }: { accountId: string; members: Member
       <input type="hidden" name="accountId" value={accountId} />
       <FormError message={state?.ok === false ? state.error : undefined} />
       {others.length === 0 ? (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-muted-foreground">
           Invite family members first (Settings → Members), then share this account with them here.
         </p>
       ) : (
@@ -189,7 +189,7 @@ function DeleteForm({ accountId, accountName }: { accountId: string; accountName
     <form action={action} className="space-y-4">
       <input type="hidden" name="accountId" value={accountId} />
       <FormError message={state?.ok === false ? state.error : undefined} />
-      <p className="text-sm text-muted">
+      <p className="text-sm text-muted-foreground">
         Type <strong>{accountName}</strong> to confirm.
       </p>
       <Input name="confirmName" aria-label="Confirmation text" required autoComplete="off" />

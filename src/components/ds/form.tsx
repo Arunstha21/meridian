@@ -38,7 +38,7 @@ export function Field({
         {label}
       </label>
       {children}
-      {hint && !error ? <p className="text-xs text-muted">{hint}</p> : null}
+      {hint && !error ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       {error ? (
         <p role="alert" className="text-xs text-destructive">
           {error}

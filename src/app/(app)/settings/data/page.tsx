@@ -18,7 +18,7 @@ export default async function DataPage() {
 
       <Card>
         <h2 className="mb-1 text-base font-medium text-primary">Export everything</h2>
-        <p className="mb-4 text-sm text-muted">
+        <p className="mb-4 text-sm text-muted-foreground">
           Download a complete JSON snapshot of your family: accounts, entries, categories, tags,
           sharing, and exchange rates.
         </p>
@@ -33,7 +33,7 @@ export default async function DataPage() {
 
       <Card>
         <h2 className="mb-1 text-base font-medium text-primary">Move from Sure</h2>
-        <p className="mb-4 text-sm text-muted">
+        <p className="mb-4 text-sm text-muted-foreground">
           Import Sure&apos;s standard family export into a new Meridian family. Accounts,
           categories, tags, transactions, splits, transfers, and valuations are carried across with
           their original dates.
@@ -55,7 +55,7 @@ export default async function DataPage() {
         </Card>
       ) : (
         <Card>
-          <p className="text-sm text-muted">Only a family admin can delete the whole family.</p>
+          <p className="text-sm text-muted-foreground">Only a family admin can delete the whole family.</p>
         </Card>
       )}
     </>
