@@ -262,7 +262,9 @@ function OverallCapForm({
         />
       </Field>
       <SubmitButton>{current !== null ? "Update cap" : "Set cap"}</SubmitButton>
-      {current !== null ? <span className="text-xs text-muted-foreground">Applies every month.</span> : null}
+      {current !== null ? (
+        <span className="text-xs text-muted-foreground">Applies every month.</span>
+      ) : null}
     </form>
   );
 }

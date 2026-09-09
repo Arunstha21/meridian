@@ -178,7 +178,9 @@ export function TransactionDetailClient(p: DetailProps) {
               linkAction={linkAction}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">You do not have permission to link a transfer.</p>
+            <p className="text-sm text-muted-foreground">
+              You do not have permission to link a transfer.
+            </p>
           )}
         </Card>
 
@@ -200,7 +202,9 @@ export function TransactionDetailClient(p: DetailProps) {
                       {c.name}
                     </Link>
                     <span className="tabular font-medium">
-                      {privacy ? "•••••" : minorToDecimal(Math.abs(c.amountMinor), p.entry.currency)}
+                      {privacy
+                        ? "•••••"
+                        : minorToDecimal(Math.abs(c.amountMinor), p.entry.currency)}
                     </span>
                   </li>
                 ))}

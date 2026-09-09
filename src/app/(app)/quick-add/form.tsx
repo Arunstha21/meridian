@@ -66,7 +66,9 @@ export function QuickAddForm({
             aria-pressed={kind === k}
             onClick={() => setKind(k)}
             className={`rounded-md px-3 py-2.5 text-sm font-medium capitalize transition-colors ${
-              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+              kind === k
+                ? "bg-surface text-primary shadow-sm"
+                : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             }`}
           >
             {k}

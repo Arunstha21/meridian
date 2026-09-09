@@ -219,7 +219,10 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
             <Input id="to" name="to" type="date" defaultValue={filters.to} aria-label="To date" />
           </div>
           <SubmitButton>Apply filters</SubmitButton>
-          <Link href="/transactions" className="self-center text-sm text-muted-foreground hover:text-foreground hover:underline">
+          <Link
+            href="/transactions"
+            className="self-center text-sm text-muted-foreground hover:text-foreground hover:underline"
+          >
             Clear
           </Link>
         </form>

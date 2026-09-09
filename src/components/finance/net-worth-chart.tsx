@@ -117,7 +117,11 @@ export function NetWorthChart({
           strokeLinejoin="round"
           strokeLinecap="round"
         />
-        <text x={PAD.left} y={HEIGHT - 6} className="fill-current text-[10px] text-muted-foreground">
+        <text
+          x={PAD.left}
+          y={HEIGHT - 6}
+          className="fill-current text-[10px] text-muted-foreground"
+        >
           {formatDay(first.date)}
         </text>
         <text
@@ -182,7 +186,9 @@ export function RangePicker({ value, basePath }: { value: string; basePath: stri
           href={`${basePath}?nw=${r.key}`}
           aria-current={value === r.key ? "true" : undefined}
           className={`rounded-md px-2 py-1 text-xs font-medium ${
-            value === r.key ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-border/50 hover:text-foreground"
+            value === r.key
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-border/50 hover:text-foreground"
           }`}
         >
           {r.label}

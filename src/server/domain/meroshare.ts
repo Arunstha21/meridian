@@ -103,7 +103,10 @@ export class MeroShareClient {
         if (list.length > 0) return list;
       }
     } catch (err) {
-      console.warn("Failed to fetch fresh MeroShare capitals list from CDSC; using fallback cache:", err);
+      console.warn(
+        "Failed to fetch fresh MeroShare capitals list from CDSC; using fallback cache:",
+        err
+      );
     }
     return fallbackCapitals as MeroShareCapital[];
   }
@@ -167,7 +170,9 @@ export class MeroShareClient {
           : null;
       holdings.push({ ticker, name, quantity, marketPrice, marketValue, costBasis });
       if (holdings.length > MAX_HOLDINGS) {
-        throw errors.validation("MeroShare returned more holdings than Meridian can safely import.");
+        throw errors.validation(
+          "MeroShare returned more holdings than Meridian can safely import."
+        );
       }
     }
 
@@ -193,7 +198,9 @@ export class MeroShareClient {
         price !== null
           ? multiplyDecimal(quantity, price)
           : optionalDecimal(row.amount, `amount for ${ticker}`);
-      const rawActivity = String(row.activityLabel ?? "").trim().toLowerCase();
+      const rawActivity = String(row.activityLabel ?? "")
+        .trim()
+        .toLowerCase();
       const activityLabel: MeroShareTransaction["activityLabel"] = rawActivity.includes("buy")
         ? "Buy"
         : rawActivity.includes("sell")
@@ -202,7 +209,9 @@ export class MeroShareClient {
       const description = text(row.remarks, 255);
       const transactionCode = text(row.transactionCode, 64);
       const hash = createHash("sha256")
-        .update(`${boid}:${ticker}:${occurredOn}:${quantity}:${activityLabel}:${transactionCode ?? ""}:${description ?? ""}`)
+        .update(
+          `${boid}:${ticker}:${occurredOn}:${quantity}:${activityLabel}:${transactionCode ?? ""}:${description ?? ""}`
+        )
         .digest("hex")
         .slice(0, 32);
       transactions.push({
@@ -218,7 +227,9 @@ export class MeroShareClient {
         transactionCode
       });
       if (transactions.length > MAX_TRANSACTIONS) {
-        throw errors.validation("MeroShare returned more transactions than Meridian can safely import.");
+        throw errors.validation(
+          "MeroShare returned more transactions than Meridian can safely import."
+        );
       }
     }
 
@@ -258,7 +269,10 @@ export class MeroShareClient {
   }
 
   private async ownDetail(): Promise<Record<string, unknown>> {
-    const payload = await this.requestJson(OWN_DETAIL_PATH, { authenticated: true, maxBytes: 1024 * 128 });
+    const payload = await this.requestJson(OWN_DETAIL_PATH, {
+      authenticated: true,
+      maxBytes: 1024 * 128
+    });
     if (!isRecord(payload)) throw errors.validation("MeroShare did not return user details.");
     return payload;
   }
@@ -841,7 +855,6 @@ function firstText(...values: unknown[]): string | null {
   return null;
 }
 
-
 function normalizeBoid(value: unknown): string {
   const boid = String(value ?? "").replace(/\D/g, "");
   if (!/^\d{16}$/.test(boid))
@@ -886,13 +899,11 @@ function decimalNumber(value: string): number {
   return number;
 }
 
-
 function multiplyDecimal(a: string, b: string): string {
   const result = decimalNumber(a) * decimalNumber(b);
   if (!Number.isFinite(result)) throw errors.validation("MeroShare returned an unsupported value.");
   return String(result);
 }
-
 
 function sumDecimalStrings(values: string[]): string {
   const total = values.reduce((sum, value) => sum + decimalNumber(value), 0);

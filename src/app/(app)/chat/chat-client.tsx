@@ -244,7 +244,9 @@ export function ChatClient({
         ) : null}
         {proposal ? (
           <div className="rounded-xl border border-border bg-surface-inset p-3 shadow-sm">
-            <p className="text-xs font-medium text-muted-foreground">Proposed transaction — not saved yet</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Proposed transaction — not saved yet
+            </p>
             <p className="mt-1 text-sm font-medium">{proposal.name}</p>
             <p className="text-sm">
               {fmtMoney(proposal.amountLedgerMinor, proposal.currency)} · {proposal.accountName} ·{" "}

@@ -74,7 +74,9 @@ export function RecurringManager({
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Existing series</h2>
         {series.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nothing yet. Add rent, salary, subscriptions…</p>
+          <p className="text-sm text-muted-foreground">
+            Nothing yet. Add rent, salary, subscriptions…
+          </p>
         ) : (
           <ul className="divide-y divide-border">
             {series.map((s) => (
@@ -168,7 +170,9 @@ function CreateForm({
             aria-pressed={kind === k}
             onClick={() => setKind(k)}
             className={`rounded-md px-3 py-2 text-sm font-medium capitalize transition-colors ${
-              kind === k ? "bg-surface text-primary shadow-sm" : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
+              kind === k
+                ? "bg-surface text-primary shadow-sm"
+                : "text-muted-foreground hover:bg-surface-hover hover:text-foreground"
             }`}
           >
             {k}
@@ -237,7 +241,9 @@ function CreateForm({
             max={31}
             defaultValue={1}
           />
-          <p className="mt-1 text-xs text-muted-foreground">Clamped to month length (31 → Feb 28/29).</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Clamped to month length (31 → Feb 28/29).
+          </p>
         </Field>
       ) : null}
       {frequency === "weekly" ? (

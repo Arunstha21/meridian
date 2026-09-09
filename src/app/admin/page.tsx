@@ -46,7 +46,9 @@ export default async function AdminPage() {
             </li>
           ))}
         </ul>
-        <p className="mt-2 text-xs text-muted-foreground">Flag toggles are audited via the debug log.</p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Flag toggles are audited via the debug log.
+        </p>
       </Card>
 
       <Card>
@@ -99,7 +101,9 @@ export default async function AdminPage() {
                   <td className="py-2">
                     {j.attempts}/{j.max_attempts}
                   </td>
-                  <td className="py-2 text-muted-foreground">{fmtDate(String(j.created_at).slice(0, 10))}</td>
+                  <td className="py-2 text-muted-foreground">
+                    {fmtDate(String(j.created_at).slice(0, 10))}
+                  </td>
                   <td className="py-2 text-right">
                     {j.status === "dead" ? (
                       <form action={replayJobAction}>
@@ -113,13 +117,17 @@ export default async function AdminPage() {
             </tbody>
           </table>
         </div>
-        {jobs.length === 0 ? <p className="text-sm text-muted-foreground">No jobs recorded yet.</p> : null}
+        {jobs.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No jobs recorded yet.</p>
+        ) : null}
       </Card>
 
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Support diagnostics</h2>
         {logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No diagnostics recorded. That is usually good news.</p>
+          <p className="text-sm text-muted-foreground">
+            No diagnostics recorded. That is usually good news.
+          </p>
         ) : (
           <ul className="space-y-2">
             {logs.map((l) => (

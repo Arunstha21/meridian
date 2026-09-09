@@ -55,7 +55,9 @@ export default async function DataPage() {
         </Card>
       ) : (
         <Card>
-          <p className="text-sm text-muted-foreground">Only a family admin can delete the whole family.</p>
+          <p className="text-sm text-muted-foreground">
+            Only a family admin can delete the whole family.
+          </p>
         </Card>
       )}
     </>
