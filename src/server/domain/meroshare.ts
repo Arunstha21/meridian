@@ -17,6 +17,7 @@ import { decryptProviderSecret, encryptProviderSecret } from "../security/secret
 import { errors } from "@/lib/errors";
 import { isIsoDate, todayIn } from "@/lib/datetime";
 import { currencyExponent } from "@/lib/money";
+import fallbackCapitals from "./meroshare-capitals-cache.json";
 
 const BASE_URL = "https://webbackend.cdsc.com.np";
 const CAPITALS_PATH = "/api/meroShare/capital/";
@@ -59,22 +60,18 @@ export type MeroShareTransaction = {
   transactionCode: string | null;
 };
 
-export type MeroShareSnapshot = {
-  capturedAt: string;
-  accounts: Array<{
-    boid: string;
-    name: string;
-    currency: "NPR";
-    totalValue: string;
-    holdings: MeroShareHolding[];
-    transactions: MeroShareTransaction[];
-  }>;
+export type MeroShareSnapshotAccount = {
+  name: string;
+  boid: string;
+  totalValue: string;
+  holdings: MeroShareHolding[];
+  transactions: MeroShareTransaction[];
 };
 
-/**
- * Direct, read-only CDSC client. The CDSC authorization header is intentionally
- * an instance field: it is neither returned nor passed to persistence code.
- */
+export type MeroShareSnapshot = {
+  accounts: MeroShareSnapshotAccount[];
+};
+
 export class MeroShareClient {
   private authorization: string | null = null;
 
@@ -84,24 +81,31 @@ export class MeroShareClient {
   ) {}
 
   static async capitals(fetchFn: FetchLike = fetch): Promise<MeroShareCapital[]> {
-    const client = new MeroShareClient(
-      { clientId: 1, username: "unused", password: "unused" },
-      fetchFn
-    );
-    const payload = await client.requestJson(CAPITALS_PATH, {
-      authenticated: false,
-      maxBytes: 1024 * 1024
-    });
-    if (!Array.isArray(payload)) throw errors.validation("MeroShare returned an invalid DP list.");
-    return payload
-      .flatMap((value) => {
-        if (!isRecord(value)) return [];
-        const id = Number(value.id);
-        const code = text(value.code, 32);
-        const name = text(value.name, 160);
-        return Number.isInteger(id) && id > 0 && code && name ? [{ id, code, name }] : [];
-      })
-      .sort((a, b) => a.name.localeCompare(b.name) || a.code.localeCompare(b.code));
+    try {
+      const client = new MeroShareClient(
+        { clientId: 1, username: "unused", password: "unused" },
+        fetchFn
+      );
+      const payload = await client.requestJson(CAPITALS_PATH, {
+        authenticated: false,
+        maxBytes: 1024 * 1024
+      });
+      if (Array.isArray(payload)) {
+        const list = payload
+          .flatMap((value) => {
+            if (!isRecord(value)) return [];
+            const id = Number(value.id);
+            const code = text(value.code, 32);
+            const name = text(value.name, 160);
+            return Number.isInteger(id) && id > 0 && code && name ? [{ id, code, name }] : [];
+          })
+          .sort((a, b) => a.name.localeCompare(b.name) || a.code.localeCompare(b.code));
+        if (list.length > 0) return list;
+      }
+    } catch (err) {
+      console.warn("Failed to fetch fresh MeroShare capitals list from CDSC; using fallback cache:", err);
+    }
+    return fallbackCapitals as MeroShareCapital[];
   }
 
   async portfolioSnapshot(): Promise<MeroShareSnapshot> {
@@ -138,244 +142,196 @@ export class MeroShareClient {
         ? portfolio.meroShareMyPortfolio
         : null;
     if (!portfolioRows) throw errors.validation("MeroShare did not return portfolio holdings.");
-    if (portfolioRows.length > MAX_HOLDINGS)
-      throw errors.validation("MeroShare returned too many holdings.");
 
-    const holdings = portfolioRows.map((row, index) =>
-      this.normalizeHolding(row, index, waccByTicker)
-    );
+    const holdings: MeroShareHolding[] = [];
+    for (const row of portfolioRows) {
+      if (!isRecord(row)) continue;
+      const ticker = normalizeTicker(row.script);
+      const name = firstText(row.scriptDesc, row.companyName, ticker) ?? "Unknown holding";
+      if (!ticker) continue;
+      const quantity = decimal(row.currentBalance, `holding quantity for ${ticker}`, {
+        nonNegative: true
+      });
+      const marketPrice = decimal(
+        row.lastTransactionPrice ?? row.previousClosingPrice,
+        `price for ${ticker}`,
+        { nonNegative: true }
+      );
+      const marketValue = decimal(row.valueAsOf, `market value for ${ticker}`, {
+        nonNegative: true
+      });
+      const waccRow = waccByTicker.get(ticker);
+      const costBasis =
+        waccRow && isRecord(waccRow)
+          ? optionalDecimal(waccRow.rate, `cost basis for ${ticker}`)
+          : null;
+      holdings.push({ ticker, name, quantity, marketPrice, marketValue, costBasis });
+      if (holdings.length > MAX_HOLDINGS) {
+        throw errors.validation("MeroShare returned more holdings than Meridian can safely import.");
+      }
+    }
+
+    const transactionRows =
+      isRecord(rawTransactions) && Array.isArray(rawTransactions.myTransactionHistory)
+        ? rawTransactions.myTransactionHistory
+        : [];
+    const transactions: MeroShareTransaction[] = [];
+    for (const row of transactionRows) {
+      if (!isRecord(row)) continue;
+      const ticker = normalizeTicker(row.scrip);
+      if (!ticker) continue;
+      const name = firstText(row.scripName, row.companyName, ticker) ?? ticker;
+      const occurredOn = isIsoDate(String(row.historyDate ?? "").slice(0, 10))
+        ? String(row.historyDate).slice(0, 10)
+        : null;
+      if (!occurredOn) continue;
+      const quantity = decimal(row.quantity, `transaction quantity for ${ticker}`, {
+        nonNegative: true
+      });
+      const price = optionalDecimal(row.rate, `rate for ${ticker}`);
+      const estimatedValue =
+        price !== null
+          ? multiplyDecimal(quantity, price)
+          : optionalDecimal(row.amount, `amount for ${ticker}`);
+      const rawActivity = String(row.activityLabel ?? "").trim().toLowerCase();
+      const activityLabel: MeroShareTransaction["activityLabel"] = rawActivity.includes("buy")
+        ? "Buy"
+        : rawActivity.includes("sell")
+          ? "Sell"
+          : "Other";
+      const description = text(row.remarks, 255);
+      const transactionCode = text(row.transactionCode, 64);
+      const hash = createHash("sha256")
+        .update(`${boid}:${ticker}:${occurredOn}:${quantity}:${activityLabel}:${transactionCode ?? ""}:${description ?? ""}`)
+        .digest("hex")
+        .slice(0, 32);
+      transactions.push({
+        externalId: hash,
+        ticker,
+        name,
+        quantity,
+        price,
+        estimatedValue,
+        activityLabel,
+        occurredOn,
+        description,
+        transactionCode
+      });
+      if (transactions.length > MAX_TRANSACTIONS) {
+        throw errors.validation("MeroShare returned more transactions than Meridian can safely import.");
+      }
+    }
+
+    const accountName = firstText(detail.name, `BOID ${boid}`) ?? `MeroShare ${boid.slice(-4)}`;
     const totalValue =
-      optionalDecimal(
-        isRecord(portfolio)
-          ? (portfolio.totalValueOfLastTransPrice ??
-              portfolio.totalValueAsOfLastTransactionPrice ??
-              portfolio.totalValueOfPrevClosingPrice ??
-              portfolio.totalValueAsOfPreviousClosingPrice)
-          : null,
-        "portfolio total"
-      ) ?? sumDecimalStrings(holdings.map((holding) => holding.marketValue));
+      optionalDecimal(portfolio.totalValueAsOf, "portfolio total") ??
+      sumDecimalStrings(holdings.map((h) => h.marketValue));
 
-    const accountName =
-      firstText(detail.name, detail.clientName, detail.fullName) ??
-      `MeroShare DEMAT •••• ${boid.slice(-4)}`;
     return {
-      capturedAt: new Date().toISOString(),
       accounts: [
         {
+          name: accountName,
           boid,
-          name: accountName.slice(0, 120),
-          currency: "NPR",
           totalValue,
           holdings,
-          transactions: rawTransactions.map((row, index) =>
-            this.normalizeTransaction(row, index, waccByTicker)
-          )
+          transactions
         }
       ]
     };
   }
 
   private async authenticate(): Promise<void> {
-    const response = await this.requestRaw(AUTH_PATH, {
+    const response = await this.request(AUTH_PATH, {
       method: "POST",
+      authenticated: false,
+      authenticationRequest: true,
       body: {
         clientId: this.credentials.clientId,
         username: this.credentials.username,
         password: this.credentials.password
       },
-      authenticated: false,
-      maxBytes: 256 * 1024,
-      authenticationRequest: true
+      maxBytes: 1024 * 64
     });
-    const authorization = response.headers.get("authorization")?.trim();
-    if (!authorization) throw errors.validation("MeroShare did not return a valid session.");
-    this.authorization = authorization;
+    const authHeader = response.headers.get("Authorization");
+    if (!authHeader) throw errors.validation("MeroShare did not return an authorization token.");
+    this.authorization = authHeader;
   }
 
   private async ownDetail(): Promise<Record<string, unknown>> {
-    const payload = await this.requestJson(OWN_DETAIL_PATH, { maxBytes: 256 * 1024 });
-    const detail = Array.isArray(payload)
-      ? payload[0]
-      : isRecord(payload)
-        ? (payload.ownDetail ?? payload.data ?? payload)
-        : null;
-    const candidate = Array.isArray(detail) ? detail[0] : detail;
-    if (!isRecord(candidate))
-      throw errors.validation("MeroShare returned invalid account details.");
-    return candidate;
+    const payload = await this.requestJson(OWN_DETAIL_PATH, { authenticated: true, maxBytes: 1024 * 128 });
+    if (!isRecord(payload)) throw errors.validation("MeroShare did not return user details.");
+    return payload;
   }
 
   private async portfolio(boid: string, clientCode: string): Promise<Record<string, unknown>> {
-    const allRows: unknown[] = [];
-    let first: Record<string, unknown> | null = null;
-    for (let page = 1; ; page++) {
-      const payload = await this.requestJson(PORTFOLIO_PATH, {
-        method: "POST",
-        body: { sortBy: "script", demat: [boid], clientCode, page, size: PAGE_SIZE, sortAsc: true },
-        maxBytes: 5 * 1024 * 1024
-      });
-      if (!isRecord(payload) || !Array.isArray(payload.meroShareMyPortfolio)) {
-        throw errors.validation("MeroShare returned invalid portfolio data.");
-      }
-      first ??= payload;
-      allRows.push(...payload.meroShareMyPortfolio);
-      const total = numberValue(payload.totalItems) ?? allRows.length;
-      if (total < 0 || total > MAX_HOLDINGS || allRows.length > MAX_HOLDINGS) {
-        throw errors.validation("MeroShare returned too many holdings.");
-      }
-      if (allRows.length >= total)
-        return { ...first, meroShareMyPortfolio: allRows, totalItems: allRows.length };
-      if (payload.meroShareMyPortfolio.length === 0)
-        throw errors.validation("MeroShare portfolio pagination ended early.");
-    }
-  }
-
-  private async transactionHistory(boid: string, clientCode: string): Promise<unknown[]> {
-    const allRows: unknown[] = [];
-    let expectedTotal: number | null = null;
-    for (let page = 1; ; page++) {
-      const payload = await this.requestJson(TRANSACTIONS_PATH, {
-        method: "POST",
-        body: { boid, clientCode, script: null, requestTypeScript: false, page, size: PAGE_SIZE },
-        maxBytes: MAX_RESPONSE_BYTES
-      });
-      if (!isRecord(payload) || !Array.isArray(payload.transactionView)) {
-        throw errors.validation("MeroShare returned invalid transaction data.");
-      }
-      const total = numberValue(payload.totalItems);
-      if (
-        total === null ||
-        total < 0 ||
-        total > MAX_TRANSACTIONS ||
-        (expectedTotal !== null && total !== expectedTotal)
-      ) {
-        throw errors.validation("MeroShare returned an invalid transaction count.");
-      }
-      expectedTotal = total;
-      allRows.push(...payload.transactionView);
-      if (allRows.length > total || allRows.length > MAX_TRANSACTIONS) {
-        throw errors.validation("MeroShare returned too many transaction rows.");
-      }
-      if (allRows.length === total) return allRows;
-      if (payload.transactionView.length === 0)
-        throw errors.validation("MeroShare transaction pagination ended early.");
-    }
-  }
-
-  private async waccReport(boid: string): Promise<unknown> {
-    return this.requestJson(WACC_PATH, {
+    const payload = await this.requestJson(PORTFOLIO_PATH, {
       method: "POST",
-      body: { demat: boid },
-      maxBytes: 5 * 1024 * 1024
+      authenticated: true,
+      body: {
+        demat: [boid],
+        clientCode,
+        page: 1,
+        size: PAGE_SIZE,
+        sortAsc: true,
+        sortBy: "script"
+      },
+      maxBytes: MAX_RESPONSE_BYTES
     });
+    if (!isRecord(payload)) throw errors.validation("MeroShare did not return portfolio data.");
+    return payload;
   }
 
-  private normalizeHolding(
-    raw: unknown,
-    index: number,
-    waccByTicker: Map<string, Record<string, unknown>>
-  ): MeroShareHolding {
-    if (!isRecord(raw)) throw errors.validation(`MeroShare holding ${index + 1} is invalid.`);
-    const ticker = normalizeTicker(raw.script);
-    if (!ticker) throw errors.validation(`MeroShare holding ${index + 1} has an invalid scrip.`);
-    const quantity = decimal(raw.currentBalance, `quantity for ${ticker}`, { nonNegative: true });
-    const marketPrice = optionalDecimal(
-      raw.lastTransactionPrice ?? raw.previousClosingPrice,
-      `market price for ${ticker}`
-    );
-    const marketValue = optionalDecimal(
-      raw.valueOfLastTransPrice ??
-        raw.valueAsOfLastTransactionPrice ??
-        raw.valueOfPrevClosingPrice ??
-        raw.valueAsOfPreviousClosingPrice,
-      `market value for ${ticker}`
-    );
-    if (marketPrice === null && marketValue === null)
-      throw errors.validation(`MeroShare holding ${ticker} has no market value.`);
-    const normalizedPrice = marketPrice ?? divideDecimal(marketValue!, quantity);
-    const normalizedValue = marketValue ?? multiplyDecimal(quantity, normalizedPrice);
-    return {
-      ticker,
-      name: text(raw.scriptDesc, 160) ?? ticker,
-      quantity,
-      marketPrice: normalizedPrice,
-      marketValue: normalizedValue,
-      costBasis: optionalDecimal(waccByTicker.get(ticker)?.averageBuyRate, `WACC for ${ticker}`)
-    };
+  private async transactionHistory(
+    boid: string,
+    clientCode: string
+  ): Promise<Record<string, unknown>> {
+    const payload = await this.requestJson(TRANSACTIONS_PATH, {
+      method: "POST",
+      authenticated: true,
+      body: {
+        demat: [boid],
+        clientCode,
+        page: 1,
+        size: PAGE_SIZE,
+        sortAsc: false,
+        sortBy: "historyDate"
+      },
+      maxBytes: MAX_RESPONSE_BYTES
+    });
+    if (!isRecord(payload)) throw errors.validation("MeroShare did not return transactions data.");
+    return payload;
   }
 
-  private normalizeTransaction(
-    raw: unknown,
-    index: number,
-    waccByTicker: Map<string, Record<string, unknown>>
-  ): MeroShareTransaction {
-    if (!isRecord(raw)) throw errors.validation(`MeroShare transaction ${index + 1} is invalid.`);
-    const ticker = normalizeTicker(raw.script);
-    if (!ticker)
-      throw errors.validation(`MeroShare transaction ${index + 1} has an invalid scrip.`);
-    const credit = optionalDecimal(raw.creditQty, `credit quantity for ${ticker}`);
-    const debit = optionalDecimal(raw.debitQty, `debit quantity for ${ticker}`);
-    const rawQuantity = optionalDecimal(
-      raw.tranactionQty ?? raw.transactionQty,
-      `quantity for ${ticker}`
-    );
-    const quantity =
-      debit && decimalNumber(debit) !== 0
-        ? `-${absoluteDecimal(debit)}`
-        : credit && decimalNumber(credit) !== 0
-          ? absoluteDecimal(credit)
-          : rawQuantity;
-    if (quantity === null || decimalNumber(quantity) === 0) {
-      throw errors.validation(`MeroShare transaction ${index + 1} has no quantity.`);
-    }
-    const occurredOn = String(raw.transactionDate ?? "").slice(0, 10);
-    if (!isIsoDate(occurredOn))
-      throw errors.validation(`MeroShare transaction ${index + 1} has an invalid date.`);
-    const price = optionalDecimal(waccByTicker.get(ticker)?.averageBuyRate, `WACC for ${ticker}`);
-    const description = text(raw.historyDesc, 1_000);
-    const transactionCode = text(raw.transCode, 120);
-    const fingerprint = createHash("sha256")
-      .update(
-        [
-          occurredOn,
-          ticker,
-          quantity,
-          credit ?? "",
-          debit ?? "",
-          String(raw.balAfterTrans ?? ""),
-          description ?? "",
-          transactionCode ?? ""
-        ].join("\u001f")
-      )
-      .digest("hex");
-    return {
-      externalId: `transaction:${fingerprint}`,
-      ticker,
-      name: text(raw.scriptDesc, 160) ?? ticker,
-      quantity,
-      price,
-      estimatedValue: price ? multiplyDecimal(absoluteDecimal(quantity), price) : null,
-      activityLabel:
-        decimalNumber(quantity) < 0 ? "Sell" : decimalNumber(quantity) > 0 ? "Buy" : "Other",
-      occurredOn,
-      description,
-      transactionCode
-    };
+  private async waccReport(boid: string): Promise<Record<string, unknown>> {
+    const payload = await this.requestJson(WACC_PATH, {
+      method: "POST",
+      authenticated: true,
+      body: { demat: boid },
+      maxBytes: MAX_RESPONSE_BYTES
+    });
+    if (!isRecord(payload)) throw errors.validation("MeroShare did not return purchase cost data.");
+    return payload;
   }
 
   private async requestJson(
     path: string,
-    options: { method?: "GET" | "POST"; body?: unknown; authenticated?: boolean; maxBytes: number }
+    options: {
+      method?: "GET" | "POST";
+      body?: unknown;
+      authenticated?: boolean;
+      maxBytes: number;
+    }
   ): Promise<unknown> {
-    const response = await this.requestRaw(path, options);
+    const response = await this.request(path, options);
+    const text = await response.text();
     try {
-      return JSON.parse(await response.text()) as unknown;
+      return JSON.parse(text);
     } catch {
-      throw errors.validation("MeroShare returned invalid data.");
+      throw errors.validation("MeroShare returned an unreadable response.");
     }
   }
 
-  private async requestRaw(
+  private async request(
     path: string,
     options: {
       method?: "GET" | "POST";
@@ -386,8 +342,18 @@ export class MeroShareClient {
     }
   ): Promise<Response> {
     const headers = new Headers({
-      Accept: "application/json",
-      "User-Agent": "Meridian MeroShare portfolio importer"
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+      Origin: "https://meroshare.cdsc.com.np",
+      Referer: "https://meroshare.cdsc.com.np/",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-site",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+      "sec-ch-ua": '"Chromium";v="152", "Not?A_Brand";v="24", "Google Chrome";v="152"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"macOS"'
     });
     if (options.body !== undefined) headers.set("Content-Type", "application/json");
     if (options.authenticated !== false && this.authorization)
@@ -402,7 +368,8 @@ export class MeroShareClient {
         redirect: "error",
         signal: AbortSignal.timeout(20_000)
       });
-    } catch {
+    } catch (err) {
+      console.warn("MeroShare fetch error:", err);
       throw errors.validation("MeroShare could not be reached. Try again shortly.");
     }
     if (options.authenticationRequest && [400, 401, 403].includes(response.status)) {
