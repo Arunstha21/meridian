@@ -29,8 +29,8 @@ available identity providers.
    https://rangotengo.cloudflareaccess.com/cdn-cgi/access/callback
    ```
 
-3. In **Cloudflare Zero Trust → Integrations → Identity providers**, select
-   **Add new identity provider → Google**. Enter the Google client ID and secret
+3. In **Cloudflare Zero Trust â†’ Integrations â†’ Identity providers**, select
+   **Add new identity provider â†’ Google**. Enter the Google client ID and secret
    directly in Cloudflare, enable PKCE, save, and test the connection. Never put
    the client secret in this repository or chat.
 4. Add **One-time PIN** under identity providers if it is not already listed.
@@ -38,7 +38,7 @@ available identity providers.
    entire `meridian.arunshrestha.info.np` hostname, including API paths.
 6. Select **Google** and **One-time PIN** explicitly as login methods. Turn off
    automatic redirect to an identity provider so the login page offers both.
-7. For open registration, add an **Allow** policy with two **Include → Login
+7. For open registration, add an **Allow** policy with two **Include â†’ Login
    Methods** rules: **Google** and **One-time PIN**. Include rules are alternatives;
    either provider can admit a verified user. Remove the previous email allowlist
    policy if it is no longer needed. Never use a Bypass rule.
@@ -55,8 +55,8 @@ Official references:
 ## Application configuration
 
 Apply migration `0006_cloudflare_access` to a PostgreSQL deployment before
-running this revision. Cloudflare database/runtime migration is separate and
-not yet complete; these settings alone do not make the app deployable to Workers.
+running this revision. The Cloudflare deployment uses separate SQLite migrations, applied automatically
+by its Durable Object. See [deployment notes](./cloudflare-deployment.md).
 
 ```dotenv
 AUTH_MODE=cloudflare-access
@@ -108,5 +108,7 @@ to the same Access subject and Meridian account. Test a new email in public mode
 and rejection of an unlisted email in private mode. Also test an
 expired token, another application's token, missing assertion, password endpoint
 requests, invited-user onboarding, removal/rejoin, and logout in a real browser.
-Local automated tests cover token validation and database behavior; live provider
-configuration and deployed login still require verification.
+Local automated tests cover token validation and database behavior. The operator
+confirmed both providers and the Allow policy; the production login page was
+verified to offer Google and email codes on 2026-09-09. Completing authentication
+with each provider still requires an interactive user.

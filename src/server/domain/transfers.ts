@@ -1,3 +1,4 @@
+import { dateDistance } from "@/server/db/dialect";
 import { eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { accounts, entries, transactions, transfers } from "../db/schema";
@@ -24,7 +25,7 @@ export async function createTransferFromTransactions(
     .select({ entry: entries, account: accounts })
     .from(entries)
     .innerJoin(accounts, eq(accounts.id, entries.accountId))
-    .where(sql`${entries.id} IN (${outflowEntryId}::uuid, ${inflowEntryId}::uuid)`);
+    .where(sql`${entries.id} IN (${outflowEntryId}, ${inflowEntryId})`);
 
   const outRow = rows.find((r) => r.entry.id === outflowEntryId);
   const inRow = rows.find((r) => r.entry.id === inflowEntryId);
@@ -47,9 +48,9 @@ export async function createTransferFromTransactions(
   }
 
   const [splitChildren] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(entries)
-    .where(sql`${entries.parentEntryId} IN (${outflowEntryId}::uuid, ${inflowEntryId}::uuid)`);
+    .where(sql`${entries.parentEntryId} IN (${outflowEntryId}, ${inflowEntryId})`);
   if ((splitChildren?.count ?? 0) > 0) {
     throw errors.validation("Split transactions cannot be linked as transfers.");
   }
@@ -73,7 +74,7 @@ export async function createTransferFromTransactions(
     .select({ id: transfers.id })
     .from(transfers)
     .where(
-      sql`${transfers.outflowEntryId} = ${outflowEntryId}::uuid AND ${transfers.inflowEntryId} = ${inflowEntryId}::uuid`
+      sql`${transfers.outflowEntryId} = ${outflowEntryId} AND ${transfers.inflowEntryId} = ${inflowEntryId}`
     )
     .limit(1);
   if (existingTransfer) {
@@ -235,7 +236,7 @@ export async function removeTransfer(
   const legs = await exec
     .select({ accountId: entries.accountId })
     .from(entries)
-    .where(sql`${entries.id} IN (${row.outflowEntryId}::uuid, ${row.inflowEntryId}::uuid)`);
+    .where(sql`${entries.id} IN (${row.outflowEntryId}, ${row.inflowEntryId})`);
 
   let familyId: string | null = null;
   for (const leg of legs) {
@@ -249,9 +250,7 @@ export async function removeTransfer(
     await tx
       .update(transactions)
       .set({ transferId: null })
-      .where(
-        sql`${transactions.entryId} IN (${row.outflowEntryId}::uuid, ${row.inflowEntryId}::uuid)`
-      );
+      .where(sql`${transactions.entryId} IN (${row.outflowEntryId}, ${row.inflowEntryId})`);
     await tx.delete(transfers).where(eq(transfers.id, transferId));
   });
 
@@ -301,20 +300,20 @@ export async function findTransferCandidates(
     account_name: string;
     days_apart: number;
   }>(sql`
-    SELECT e.id::text AS id, e.date::text AS date, e.name, e.amount_minor::text AS amount_minor,
+    SELECT CAST(e.id AS TEXT) AS id, CAST(e.date AS TEXT) AS date, e.name, CAST(e.amount_minor AS TEXT) AS amount_minor,
            e.currency, a.name AS account_name,
-           abs(e.date - ${source.entry.date}::date)::int AS days_apart
+           CAST(${dateDistance(sql`e.date`, source.entry.date)} AS INTEGER) AS days_apart
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
     WHERE a.family_id = ${actor.familyId}
-      AND e.account_id != ${source.entry.accountId}::uuid
+      AND e.account_id != ${source.entry.accountId}
       AND e.entryable_type = 'transaction'
       AND e.currency = ${source.entry.currency}
       AND e.amount_minor = ${targetAmount}
       AND t.transfer_id IS NULL
       AND e.parent_entry_id IS NULL
-      AND abs(e.date - ${source.entry.date}::date) <= ${TRANSFER_DATE_WINDOW_DAYS}
+      AND ${dateDistance(sql`e.date`, source.entry.date)} <= ${TRANSFER_DATE_WINDOW_DAYS}
     ORDER BY days_apart ASC, e.date DESC
     LIMIT 6
   `);

@@ -1,3 +1,5 @@
+import { rowLock } from "@/server/db/dialect";
+import { databaseNow } from "@/server/db/dialect";
 import { sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { jobs } from "../db/schema";
@@ -41,8 +43,8 @@ const STALE_LOCK_MINUTES = 10;
 
 export async function recoverStaleJobs(exec: Executor): Promise<number> {
   const res = await exec.execute(sql`
-    UPDATE jobs SET status = 'pending', locked_at = NULL, locked_by = NULL, updated_at = now()
-    WHERE status = 'running' AND locked_at < now() - (${String(STALE_LOCK_MINUTES)} || ' minutes')::interval
+    UPDATE jobs SET status = 'pending', locked_at = NULL, locked_by = NULL, updated_at = ${databaseNow}
+    WHERE status = 'running' AND locked_at < ${new Date(Date.now() - STALE_LOCK_MINUTES * 60000).toISOString()}
   `);
   return res.rowCount ?? 0;
 }
@@ -53,21 +55,24 @@ export async function claimBatch(
   limit: number
 ): Promise<ClaimedJob[]> {
   const res = await exec.execute(sql`
-    UPDATE jobs SET status = 'running', locked_by = ${workerName}, locked_at = now(),
-      attempts = attempts + 1, updated_at = now()
+    UPDATE jobs SET status = 'running', locked_by = ${workerName}, locked_at = ${databaseNow},
+      attempts = attempts + 1, updated_at = ${databaseNow}
     WHERE id IN (
       SELECT id FROM jobs
-      WHERE status = 'pending' AND run_after <= now()
+      WHERE status = 'pending' AND run_after <= ${databaseNow}
       ORDER BY created_at
       LIMIT ${limit}
-      FOR UPDATE SKIP LOCKED
+      ${rowLock}
     )
     RETURNING id, queue, payload, dedupe_key AS "dedupeKey", status, attempts,
       max_attempts AS "maxAttempts", run_after AS "runAfter", locked_at AS "lockedAt",
       locked_by AS "lockedBy", last_error AS "lastError", completed_at AS "completedAt",
       created_at AS "createdAt", updated_at AS "updatedAt"
   `);
-  return (res.rows ?? []) as ClaimedJob[];
+  return (res.rows ?? []).map((row) => ({
+    ...row,
+    payload: typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload
+  })) as ClaimedJob[];
 }
 
 function backoffSeconds(attempts: number): number {
@@ -76,7 +81,7 @@ function backoffSeconds(attempts: number): number {
 
 export async function completeJob(exec: Executor, jobId: string): Promise<void> {
   await exec.execute(sql`
-    UPDATE jobs SET status = 'completed', completed_at = now(), updated_at = now(), last_error = NULL
+    UPDATE jobs SET status = 'completed', completed_at = ${databaseNow}, updated_at = ${databaseNow}, last_error = NULL
     WHERE id = ${jobId}
   `);
 }
@@ -92,7 +97,7 @@ export async function failJob(
       : String(error).slice(0, 500);
   if (job.attempts >= job.maxAttempts) {
     await exec.execute(sql`
-      UPDATE jobs SET status = 'dead', last_error = ${message}, updated_at = now() WHERE id = ${job.id}
+      UPDATE jobs SET status = 'dead', last_error = ${message}, updated_at = ${databaseNow} WHERE id = ${job.id}
     `);
     await captureDebugLog(exec, {
       category: "jobs",
@@ -106,7 +111,7 @@ export async function failJob(
   const delay = backoffSeconds(job.attempts + 1);
   await exec.execute(sql`
     UPDATE jobs SET status = 'pending', last_error = ${message},
-      run_after = now() + (${String(delay)} || ' seconds')::interval, updated_at = now()
+      run_after = ${new Date(Date.now() + delay * 1000).toISOString()}, updated_at = ${databaseNow}
     WHERE id = ${job.id}
   `);
   return "retry";
@@ -114,7 +119,7 @@ export async function failJob(
 
 export async function replayDeadJob(exec: Executor, jobId: string): Promise<boolean> {
   const res = await exec.execute(sql`
-    UPDATE jobs SET status = 'pending', attempts = 0, run_after = now(), updated_at = now()
+    UPDATE jobs SET status = 'pending', attempts = 0, run_after = ${databaseNow}, updated_at = ${databaseNow}
     WHERE id = ${jobId} AND status = 'dead'
   `);
   return (res.rowCount ?? 0) > 0;
@@ -124,7 +129,7 @@ export async function pruneFinishedJobs(exec: Executor, olderThanDays: number): 
   const res = await exec.execute(sql`
     DELETE FROM jobs
     WHERE status IN ('completed', 'dead')
-      AND updated_at < now() - (${String(olderThanDays)} || ' days')::interval
+      AND updated_at < ${new Date(Date.now() - olderThanDays * 86400000).toISOString()}
   `);
   return res.rowCount ?? 0;
 }
@@ -178,7 +183,7 @@ export async function getQueueStats(
   exec: Executor
 ): Promise<{ pending: number; running: number; completed: number; dead: number }> {
   const res = await exec.execute<{ status: string; count: number }>(sql`
-    SELECT status, count(*)::int AS count FROM jobs GROUP BY status
+    SELECT status, CAST(count(*) AS INTEGER) AS count FROM jobs GROUP BY status
   `);
   const counts: Record<string, number> = { pending: 0, running: 0, completed: 0, dead: 0 };
   for (const row of res.rows ?? []) {

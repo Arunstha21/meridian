@@ -1,3 +1,4 @@
+import { databaseNow } from "@/server/db/dialect";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { Executor } from "../db/client";
 import { authTokens, users } from "../db/schema";
@@ -43,7 +44,7 @@ export async function consumeAuthToken(
         eq(authTokens.tokenHash, tokenHash),
         eq(authTokens.purpose, purpose),
         isNull(authTokens.usedAt),
-        sql`${authTokens.expiresAt} > now()`
+        sql`${authTokens.expiresAt} > ${databaseNow}`
       )
     )
     .returning({ userId: authTokens.userId });

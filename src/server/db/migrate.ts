@@ -3,11 +3,19 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { Executor, getDb } from "./client";
 import { log } from "@/lib/logger";
+import { usesCloudStorage } from "./dialect";
+import { CLOUD_MIGRATION_NAMES } from "./cloud/versions";
 
 const MIGRATIONS_DIR = path.join(process.cwd(), "db", "migrations");
 const MIGRATION_LOCK_ID = 849201948;
 
 export async function appliedMigrations(exec: Executor): Promise<string[]> {
+  if (usesCloudStorage) {
+    const result = await exec.execute<{ name: string }>(
+      sql`SELECT name FROM cloud_schema_migrations ORDER BY name`
+    );
+    return result.rows.map((row) => row.name);
+  }
   await exec.execute(
     sql`CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`
   );
@@ -18,6 +26,7 @@ export async function appliedMigrations(exec: Executor): Promise<string[]> {
 }
 
 export async function listLocalMigrations(): Promise<string[]> {
+  if (usesCloudStorage) return CLOUD_MIGRATION_NAMES.map((name) => `${name}.up.sql`);
   return (await readdir(MIGRATIONS_DIR)).sort().filter((f) => f.endsWith(".up.sql"));
 }
 
@@ -32,6 +41,7 @@ export async function migrateStatusReport(): Promise<{ applied: string[]; pendin
 }
 
 export async function migrateUp(): Promise<string[]> {
+  if (usesCloudStorage) throw new Error("Cloud migrations run inside Durable Object storage");
   const db = getDb();
   await db.execute(sql`SELECT pg_advisory_lock(${MIGRATION_LOCK_ID})`);
   try {
@@ -56,6 +66,7 @@ export async function migrateUp(): Promise<string[]> {
 }
 
 export async function migrateDownStep(): Promise<string | null> {
+  if (usesCloudStorage) throw new Error("Use Cloudflare point-in-time recovery for cloud storage");
   const db = getDb();
   await db.execute(sql`SELECT pg_advisory_lock(${MIGRATION_LOCK_ID})`);
   try {

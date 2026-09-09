@@ -387,7 +387,7 @@ export async function postDueSeries(exec: Executor, now = new Date()): Promise<P
     .from(recurringSeries)
     .innerJoin(accounts, eq(accounts.id, recurringSeries.accountId))
     .innerJoin(families, eq(families.id, recurringSeries.familyId))
-    .where(sql`${recurringSeries.active} AND ${recurringSeries.nextDue} <= ${horizon}::date`)
+    .where(sql`${recurringSeries.active} AND ${recurringSeries.nextDue} <= ${horizon}`)
     .orderBy(asc(recurringSeries.nextDue));
 
   for (const { series, account, familyTimezone } of due) {

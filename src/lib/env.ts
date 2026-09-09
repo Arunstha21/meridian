@@ -4,33 +4,47 @@ import { z } from "zod";
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
-const schema = z.object({
-  DATABASE_URL: z.string().min(1),
-  APP_URL: z.string().url().default("http://localhost:3000"),
-  AUTH_MODE: z.enum(["password", "cloudflare-access"]).default("password"),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
-  MAIL_TRANSPORT: z.enum(["console", "smtp"]).default("console"),
-  SMTP_URL: z.string().optional(),
-  MAIL_FROM: z.string().min(3).optional(),
-  ADMIN_EMAILS: z.string().default(""),
-  SEED_DEMO: z.enum(["true", "false"]).default("false"),
-  SEED_PASSWORD: z.string().optional(),
-  DEBUG_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
-  WORKER_POLL_MS: z.coerce.number().int().positive().default(500),
-  WORKER_NAME: z.string().optional(),
-  REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).default("false"),
-  AI_BASE_URL: z.string().optional(),
-  AI_API_KEY: z.string().optional(),
-  AI_MODEL: z.string().optional(),
-  MERO_SHARE_ENCRYPTION_KEY: z
-    .string()
-    .optional()
-    .refine(
-      (value) => !value || Buffer.from(value, "base64").length === 32,
-      "MERO_SHARE_ENCRYPTION_KEY must be a 32-byte base64 value."
-    ),
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development")
-});
+const schema = z
+  .object({
+    DATABASE_BACKEND: z.enum(["postgres", "cloud-sqlite"]).default("postgres"),
+    DATABASE_URL: z.string().min(1).optional(),
+    APP_URL: z.string().url().default("http://localhost:3000"),
+    AUTH_MODE: z.enum(["password", "cloudflare-access"]).default("password"),
+    LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    MAIL_TRANSPORT: z.enum(["console", "smtp", "manual"]).default("console"),
+    SMTP_URL: z.string().optional(),
+    MAIL_FROM: z.string().min(3).optional(),
+    ADMIN_EMAILS: z.string().default(""),
+    SEED_DEMO: z.enum(["true", "false"]).default("false"),
+    SEED_PASSWORD: z.string().optional(),
+    DEBUG_LOG_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
+    WORKER_POLL_MS: z.coerce.number().int().positive().default(500),
+    WORKER_NAME: z.string().optional(),
+    REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).default("false"),
+    AI_BASE_URL: z.string().optional(),
+    AI_API_KEY: z.string().optional(),
+    AI_MODEL: z.string().optional(),
+    MERO_SHARE_ENCRYPTION_KEY: z
+      .string()
+      .optional()
+      .refine(
+        (value) => !value || Buffer.from(value, "base64").length === 32,
+        "MERO_SHARE_ENCRYPTION_KEY must be a 32-byte base64 value."
+      ),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development")
+  })
+  .superRefine((value, ctx) => {
+    if (value.DATABASE_BACKEND === "postgres" && !value.DATABASE_URL) {
+      ctx.addIssue({ code: "custom", path: ["DATABASE_URL"], message: "Required for PostgreSQL" });
+    }
+    if (value.MAIL_TRANSPORT === "manual" && value.AUTH_MODE !== "cloudflare-access") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["MAIL_TRANSPORT"],
+        message: "Manual invitations require Cloudflare Access authentication"
+      });
+    }
+  });
 
 const parsed = schema.safeParse(process.env);
 

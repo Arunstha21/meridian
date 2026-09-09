@@ -98,7 +98,6 @@ const statusSchema = z.object({
 });
 
 export async function setAccountStatusAction(formData: FormData): Promise<void> {
-  "use server";
   const parsed = statusSchema.safeParse(formValues(formData));
   if (!parsed.success) return;
   await runAction("account.status", async () => {
@@ -125,7 +124,7 @@ export async function deleteAccountAction(
     const input = deleteSchema.parse(formValues(formData));
     const actor = await assertActor();
     const res = await getDb().execute<{ name: string }>(
-      sql`SELECT name FROM accounts WHERE id = ${input.accountId}::uuid`
+      sql`SELECT name FROM accounts WHERE id = ${input.accountId}`
     );
     const row = (res.rows ?? [])[0];
     if (!row) throw errors.notFound("Account");

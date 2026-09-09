@@ -6,7 +6,7 @@ import { Card } from "@/components/ds/card";
 import { Field, FormError, FormSuccess, Input, Select } from "@/components/ds/form";
 import { SubmitButton } from "@/components/ds/submit-button";
 
-export function InviteForm() {
+export function InviteForm({ manualDelivery = false }: { manualDelivery?: boolean }) {
   const [state, action] = useActionState(createInvitationAction, undefined);
   const [copied, setCopied] = useState(false);
   const inviteUrl = state?.ok && state.data ? state.data.inviteUrl : null;
@@ -31,16 +31,18 @@ export function InviteForm() {
           </Select>
         </Field>
         <div className="flex items-end pb-0.5">
-          <SubmitButton>Send invite</SubmitButton>
+          <SubmitButton>{manualDelivery ? "Create invite link" : "Send invite"}</SubmitButton>
         </div>
       </form>
       {state?.ok === false ? <FormError message={state.error} /> : null}
-      {inviteUrl ? (
+      {state?.ok ? (
         <FormSuccess
           message={
             copied
               ? "Invite link copied to clipboard."
-              : "Invitation created. Email delivery is queued; you can also share this link directly."
+              : state.data?.emailQueued
+                ? "Invitation created. Email delivery is queued."
+                : "Invitation created. Copy this link and share it with the person you invited."
           }
         />
       ) : null}

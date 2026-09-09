@@ -2,11 +2,18 @@ import { sql } from "drizzle-orm";
 import { Pool } from "pg";
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "./schema";
+import { usesCloudStorage } from "./dialect";
+import { cloudDatabaseContext } from "./cloud/context";
 
 let pool: Pool | null = null;
 let dbInstance: NodePgDatabase<typeof schema> | null = null;
 
 export function getDb(): NodePgDatabase<typeof schema> & { $client: Pool } {
+  if (usesCloudStorage) {
+    const cloud = cloudDatabaseContext.getStore();
+    if (!cloud) throw new Error("Cloud database requires a Durable Object request context");
+    return cloud as unknown as NodePgDatabase<typeof schema> & { $client: Pool };
+  }
   if (!dbInstance) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is required");

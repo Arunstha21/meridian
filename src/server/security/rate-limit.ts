@@ -27,7 +27,7 @@ export async function consumeRateLimit(
 
 export async function pruneRateLimitCounters(exec: Executor): Promise<number> {
   const res = await exec.execute(
-    sql`DELETE FROM rate_limit_counters WHERE window_started_at < now() - interval '24 hours'`
+    sql`DELETE FROM rate_limit_counters WHERE window_started_at < ${new Date(Date.now() - 86400000).toISOString()}`
   );
   return res.rowCount ?? 0;
 }

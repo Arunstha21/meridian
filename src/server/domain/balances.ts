@@ -32,13 +32,13 @@ type AccountMeta = {
 
 async function loadAccountMeta(exec: Executor, accountId: string): Promise<AccountMeta | null> {
   const res = await exec.execute<AccountMeta>(sql`
-    SELECT a.id::text AS id, a.currency, a.type,
-           a.opening_balance_minor::bigint::text AS opening_balance_minor,
-           a.opened_on::text AS opened_on,
+    SELECT CAST(a.id AS TEXT) AS id, a.currency, a.type,
+           CAST(a.opening_balance_minor AS TEXT) AS opening_balance_minor,
+           CAST(a.opened_on AS TEXT) AS opened_on,
            f.timezone
     FROM accounts a
     JOIN families f ON f.id = a.family_id
-    WHERE a.id = ${accountId}::uuid
+    WHERE a.id = ${accountId}
   `);
   const row = (res.rows ?? [])[0] as
     | {
@@ -90,9 +90,9 @@ export async function recalculateAccount(
 
   if (isValuationDriven(meta.type)) {
     const res = await exec.execute<{ date: string; amount_minor: string }>(sql`
-      SELECT date::text AS date, amount_minor::text AS amount_minor
+      SELECT CAST(date AS TEXT) AS date, CAST(amount_minor AS TEXT) AS amount_minor
       FROM entries
-      WHERE account_id = ${accountId}::uuid
+      WHERE account_id = ${accountId}
         AND entryable_type = 'valuation'
       ORDER BY date ASC, created_at ASC
     `);
@@ -101,9 +101,9 @@ export async function recalculateAccount(
     }
   } else {
     const res = await exec.execute<{ date: string; sum_minor: string }>(sql`
-      SELECT date::text AS date, coalesce(sum(amount_minor), 0)::text AS sum_minor
+      SELECT CAST(date AS TEXT) AS date, CAST(coalesce(sum(amount_minor), 0) AS TEXT) AS sum_minor
       FROM entries
-      WHERE account_id = ${accountId}::uuid
+      WHERE account_id = ${accountId}
         AND entryable_type = 'transaction'
         AND NOT EXISTS (
           SELECT 1 FROM entries c WHERE c.parent_entry_id = entries.id
@@ -121,9 +121,7 @@ export async function recalculateAccount(
     const [prev] = await exec
       .select({ balanceMinor: balancesTable.balanceMinor })
       .from(balancesTable)
-      .where(
-        sql`${balancesTable.accountId} = ${accountId}::uuid AND ${balancesTable.asOf} < ${start}::date`
-      )
+      .where(sql`${balancesTable.accountId} = ${accountId} AND ${balancesTable.asOf} < ${start}`)
       .orderBy(sql`${balancesTable.asOf} DESC`)
       .limit(1);
     if (prev) baseline = safeParseMinor(prev.balanceMinor);
@@ -148,7 +146,7 @@ export async function recalculateAccount(
 
   await exec.transaction(async (tx) => {
     await tx.execute(
-      sql`DELETE FROM balances WHERE account_id = ${accountId}::uuid AND as_of >= ${start}::date`
+      sql`DELETE FROM balances WHERE account_id = ${accountId} AND as_of >= ${start}`
     );
     const chunkSize = 500;
     for (let i = 0; i < rows.length; i += chunkSize) {
@@ -177,14 +175,15 @@ export async function latestBalancesFor(
     as_of: string;
     currency: string;
   }>(sql`
-    SELECT DISTINCT ON (account_id)
-      account_id::text AS account_id,
-      balance_minor::text AS balance_minor,
-      as_of::text AS as_of,
+    SELECT
+      CAST(account_id AS TEXT) AS account_id,
+      CAST(balance_minor AS TEXT) AS balance_minor,
+      CAST(as_of AS TEXT) AS as_of,
       currency
-    FROM balances
-    WHERE account_id IN (${sql.join(
-      accountIds.map((id) => sql`${id}::uuid`),
+    FROM balances b
+    WHERE as_of = (SELECT max(latest.as_of) FROM balances latest WHERE latest.account_id = b.account_id)
+    AND account_id IN (${sql.join(
+      accountIds.map((id) => sql`${id}`),
       sql`, `
     )})
     ORDER BY account_id, as_of DESC

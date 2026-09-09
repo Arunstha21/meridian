@@ -122,9 +122,9 @@ export async function getFamilyById(exec: Executor, familyId: string) {
 
 export async function countAdmins(exec: Executor, familyId: string): Promise<number> {
   const [row] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(users)
-    .where(sql`${users.familyId} = ${familyId}::uuid AND ${users.familyRole} = 'admin'`);
+    .where(sql`${users.familyId} = ${familyId} AND ${users.familyRole} = 'admin'`);
   return row?.count ?? 0;
 }
 

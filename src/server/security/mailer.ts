@@ -59,6 +59,11 @@ export class SmtpMailer implements Mailer {
  * production-ready.
  */
 export function mailConfigurationIssue(): string | null {
+  if (env.MAIL_TRANSPORT === "manual") {
+    return env.AUTH_MODE === "cloudflare-access"
+      ? null
+      : "Manual invitations require Cloudflare Access authentication.";
+  }
   const isProduction = env.NODE_ENV === "production";
   if (env.MAIL_TRANSPORT !== "smtp") {
     if (isProduction) {
@@ -78,6 +83,13 @@ export function mailConfigurationIssue(): string | null {
 export function createMailer(): Mailer {
   const issue = mailConfigurationIssue();
   if (issue) throw new Error(`Refusing to start mailer: ${issue}`);
+  if (env.MAIL_TRANSPORT === "manual") {
+    return {
+      async send() {
+        throw new Error("Outbound email is disabled; share an invitation link instead.");
+      }
+    };
+  }
   if (env.MAIL_TRANSPORT === "smtp") return new SmtpMailer(env.SMTP_URL!);
   return new ConsoleMailer();
 }

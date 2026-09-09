@@ -40,14 +40,14 @@ export async function getRate(
 ): Promise<string | null> {
   if (base.toUpperCase() === quote.toUpperCase()) return "1";
   const res = await exec.execute<{ rate: string }>(sql`
-    SELECT rate::text AS rate FROM (
+    SELECT CAST(rate AS TEXT) AS rate FROM (
       SELECT rate, quoted_on FROM exchange_rates
       WHERE base_currency = ${base.toUpperCase()} AND quote_currency = ${quote.toUpperCase()}
-        AND quoted_on <= ${onOrBefore}::date
+        AND quoted_on <= ${onOrBefore}
       UNION ALL
-      SELECT 1 / rate AS rate, quoted_on FROM exchange_rates
+      SELECT 1.0 / CAST(rate AS NUMERIC) AS rate, quoted_on FROM exchange_rates
       WHERE base_currency = ${quote.toUpperCase()} AND quote_currency = ${base.toUpperCase()}
-        AND quoted_on <= ${onOrBefore}::date
+        AND quoted_on <= ${onOrBefore}
     ) pairs
     ORDER BY quoted_on DESC
     LIMIT 1

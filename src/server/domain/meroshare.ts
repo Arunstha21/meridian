@@ -800,7 +800,7 @@ async function applySnapshot(
     } else {
       await exec.execute(sql`
         DELETE FROM mero_share_holdings
-        WHERE mero_share_account_id = ${meroAccountId}::uuid
+        WHERE mero_share_account_id = ${meroAccountId}
           AND ticker NOT IN (${sql.join(
             snapshotAccount.holdings.map((holding) => sql`${holding.ticker}`),
             sql`, `

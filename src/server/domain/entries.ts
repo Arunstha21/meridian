@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, exists, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
+import { caseInsensitiveLike } from "@/server/db/dialect";
+import { and, asc, desc, eq, exists, gte, inArray, lte, or, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { accounts, categories, entries, tags, transactionTags, transactions } from "../db/schema";
 import type { Actor } from "../auth/context";
@@ -207,7 +208,7 @@ export async function updateTransactionEntry(
   }
 
   const [splitCount] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(entries)
     .where(eq(entries.parentEntryId, entryId));
   const isSplitParent = (splitCount?.count ?? 0) > 0;
@@ -237,10 +238,7 @@ export async function updateTransactionEntry(
           .select({ amountMinor: entries.amountMinor })
           .from(entries)
           .where(
-            and(
-              eq(entries.parentEntryId, entry.parentEntryId),
-              sql`${entries.id} != ${entryId}::uuid`
-            )
+            and(eq(entries.parentEntryId, entry.parentEntryId), sql`${entries.id} != ${entryId}`)
           );
         const otherSum = otherChildren.reduce((acc, c) => acc + c.amountMinor, 0);
         if (otherSum + patch.amountLedgerMinor !== parent.amountMinor) {
@@ -380,7 +378,7 @@ export async function deleteEntry(exec: Executor, actor: Actor, entryId: string)
   const linkedTransfer = txn?.transferId ?? null;
 
   const [childCount] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(entries)
     .where(eq(entries.parentEntryId, entryId));
 
@@ -475,9 +473,9 @@ export async function listEntriesPage(
     const pattern = `%${filters.search}%`;
     conditions.push(
       or(
-        ilike(entries.name, pattern),
-        ilike(entries.notes, pattern),
-        ilike(transactions.merchant, pattern)
+        caseInsensitiveLike(entries.name, pattern),
+        caseInsensitiveLike(entries.notes, pattern),
+        caseInsensitiveLike(transactions.merchant, pattern)
       )!
     );
   }
@@ -495,11 +493,11 @@ export async function listEntriesPage(
   if (filters.cursor && isIsoDate(filters.cursor.date) && isValidUuid(filters.cursor.id)) {
     if (goingPrev) {
       conditions.push(
-        sql`(${entries.date}, ${entries.id}) > (${filters.cursor.date}::date, ${filters.cursor.id}::uuid)`
+        sql`(${entries.date}, ${entries.id}) > (${filters.cursor.date}, ${filters.cursor.id})`
       );
     } else {
       conditions.push(
-        sql`(${entries.date}, ${entries.id}) < (${filters.cursor.date}::date, ${filters.cursor.id}::uuid)`
+        sql`(${entries.date}, ${entries.id}) < (${filters.cursor.date}, ${filters.cursor.id})`
       );
     }
   }
@@ -544,21 +542,22 @@ export async function listEntriesPage(
       : null;
 
   const tagRows = page.length
-    ? await exec.execute<{ entry_id: string; tag_ids: string[] }>(sql`
-        SELECT e.id AS entry_id, COALESCE(array_agg(tt.tag_id) FILTER (WHERE tt.tag_id IS NOT NULL), '{}') AS tag_ids
+    ? await exec.execute<{ entry_id: string; tag_id: string | null }>(sql`
+        SELECT e.id AS entry_id, tt.tag_id AS tag_id
         FROM entries e
         JOIN transactions t ON t.entry_id = e.id
         LEFT JOIN transaction_tags tt ON tt.transaction_id = t.id
         WHERE e.id IN (${sql.join(
-          page.map((p) => sql`${p.id}::uuid`),
+          page.map((p) => sql`${p.id}`),
           sql`, `
         )})
-        GROUP BY e.id
       `)
-    : { rows: [] as { entry_id: string; tag_ids: string[] }[] };
+    : { rows: [] as { entry_id: string; tag_id: string | null }[] };
 
   const tagsByEntry = new Map<string, string[]>();
-  for (const r of tagRows.rows ?? []) tagsByEntry.set(r.entry_id, r.tag_ids ?? []);
+  for (const r of tagRows.rows ?? []) {
+    if (r.tag_id) tagsByEntry.set(r.entry_id, [...(tagsByEntry.get(r.entry_id) ?? []), r.tag_id]);
+  }
 
   return {
     items: page.map((r) => ({
@@ -616,7 +615,7 @@ export async function getEntryDetail(exec: Executor, actor: Actor, entryId: stri
     const isOutflow = entry.amountMinor > 0;
     const partnerCol = isOutflow ? "inflow_entry_id" : "outflow_entry_id";
     const res = await exec.execute<{ account_name: string; amount_minor: string }>(sql`
-      SELECT a.name AS account_name, e.amount_minor::text AS amount_minor
+      SELECT a.name AS account_name, CAST(e.amount_minor AS TEXT) AS amount_minor
       FROM transfers tr
       JOIN entries e ON e.id = tr.${sql.raw(partnerCol)}
       JOIN accounts a ON a.id = e.account_id

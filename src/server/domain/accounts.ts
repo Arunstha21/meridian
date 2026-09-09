@@ -12,7 +12,7 @@ import {
 } from "../authorization/access";
 import { errors } from "@/lib/errors";
 import { isValidCurrency, displayToLedgerBalance, isLiability } from "@/lib/money";
-import { isIsoDate, todayIn } from "@/lib/datetime";
+import { addDays, isIsoDate, todayIn } from "@/lib/datetime";
 import { recordAudit } from "../observability/audit";
 import { recalculateAccount, latestBalancesFor } from "./balances";
 
@@ -302,20 +302,20 @@ export async function getAccountOverview(
   const today = todayIn("UTC");
   const days = opts.days ?? 60;
   const balanceRows = await exec.execute<{ as_of: string; balance_minor: string }>(sql`
-    SELECT as_of::text AS as_of, balance_minor::text AS balance_minor
+    SELECT CAST(as_of AS TEXT) AS as_of, CAST(balance_minor AS TEXT) AS balance_minor
     FROM balances
-    WHERE account_id = ${accountId}::uuid
-      AND as_of >= ${today}::date - ${String(days)}::int
-      AND as_of <= ${today}::date
+    WHERE account_id = ${accountId}
+      AND as_of >= ${addDays(today, -days)}
+      AND as_of <= ${today}
     ORDER BY as_of ASC
   `);
 
   const [latest] =
     (
       await exec.execute<{ balance_minor: string }>(sql`
-      SELECT balance_minor::text AS balance_minor
+      SELECT CAST(balance_minor AS TEXT) AS balance_minor
       FROM balances
-      WHERE account_id = ${accountId}::uuid
+      WHERE account_id = ${accountId}
       ORDER BY as_of DESC
       LIMIT 1
     `)

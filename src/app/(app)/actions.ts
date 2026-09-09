@@ -15,7 +15,7 @@ import { parseTagIds } from "@/components/ds/tag-picker";
 
 async function currencyFor(accountId: string): Promise<string> {
   const res = await getDb().execute<{ currency: string }>(
-    sql`SELECT currency FROM accounts WHERE id = ${accountId}::uuid`
+    sql`SELECT currency FROM accounts WHERE id = ${accountId}`
   );
   const row = (res.rows ?? [])[0];
   if (!row) throw errors.notFound("Account");
@@ -94,7 +94,7 @@ export async function updateTransactionAction(
   return runAction("txn.update", async () => {
     const actor = await assertActor();
     const res = await getDb().execute<{ account_id: string; currency: string }>(
-      sql`SELECT e.account_id, a.currency FROM entries e JOIN accounts a ON a.id = e.account_id WHERE e.id = ${input.entryId}::uuid`
+      sql`SELECT e.account_id, a.currency FROM entries e JOIN accounts a ON a.id = e.account_id WHERE e.id = ${input.entryId}`
     );
     const row = (res.rows ?? [])[0];
     if (!row) throw errors.notFound("Transaction");
@@ -126,7 +126,6 @@ export async function updateTransactionAction(
 }
 
 export async function deleteEntryAction(formData: FormData): Promise<ActionState> {
-  "use server";
   const entryId = String(formData.get("entryId") ?? "");
   return runAction("txn.delete", async () => {
     const actor = await assertActor();
@@ -168,7 +167,6 @@ export async function splitEntryAction(
 }
 
 export async function unsplitEntryAction(formData: FormData): Promise<ActionState> {
-  "use server";
   const parentEntryId = String(formData.get("parentEntryId") ?? "");
   return runAction("txn.unsplit", async () => {
     const actor = await assertActor();
@@ -201,7 +199,6 @@ export async function linkTransferAction(
 }
 
 export async function unlinkTransferAction(formData: FormData): Promise<ActionState> {
-  "use server";
   const transferId = String(formData.get("transferId") ?? "");
   const entryId = String(formData.get("entryId") ?? "");
   return runAction("transfer.unlink", async () => {

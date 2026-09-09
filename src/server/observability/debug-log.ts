@@ -50,7 +50,7 @@ export async function listDebugLogs(
 
 export async function pruneDebugLogs(exec: Executor, olderThanDays: number): Promise<number> {
   const res = await exec.execute(
-    sql`DELETE FROM debug_log_entries WHERE created_at < now() - (${String(olderThanDays)} || ' days')::interval`
+    sql`DELETE FROM debug_log_entries WHERE created_at < ${new Date(Date.now() - olderThanDays * 86400000).toISOString()}`
   );
   return res.rowCount ?? 0;
 }

@@ -1,3 +1,4 @@
+import { usesCloudStorage } from "@/server/db/dialect";
 import { inflateRawSync } from "node:zlib";
 import { eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
@@ -97,7 +98,8 @@ export async function importSureExport(
   const result = await exec.transaction(async (tx) => {
     // Serialize imports per family so the empty-family check below cannot race
     // a concurrent double-submit or writer committing mid-import.
-    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${actor.familyId}))`);
+    if (!usesCloudStorage)
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${actor.familyId}))`);
     await assertFamilyIsEmpty(tx, actor.familyId);
     return importRecords(tx, actor, records, skipped);
   });
@@ -293,7 +295,7 @@ async function importRecords(
     await exec
       .update(transactions)
       .set({ transferId: transfer.id })
-      .where(sql`${transactions.entryId} IN (${inflowEntryId}::uuid, ${outflowEntryId}::uuid)`);
+      .where(sql`${transactions.entryId} IN (${inflowEntryId}, ${outflowEntryId})`);
     transferCount++;
   }
 

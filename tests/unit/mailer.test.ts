@@ -6,12 +6,14 @@ const originalTransport = env.MAIL_TRANSPORT;
 const originalSmtpUrl = env.SMTP_URL;
 const originalNodeEnv = env.NODE_ENV;
 const originalMailFrom = env.MAIL_FROM;
+const originalAuthMode = env.AUTH_MODE;
 
 afterEach(() => {
   (env as Record<string, unknown>).MAIL_TRANSPORT = originalTransport;
   (env as Record<string, unknown>).SMTP_URL = originalSmtpUrl;
   (env as Record<string, unknown>).NODE_ENV = originalNodeEnv;
   (env as Record<string, unknown>).MAIL_FROM = originalMailFrom;
+  (env as Record<string, unknown>).AUTH_MODE = originalAuthMode;
 });
 
 describe("mailFromAddress", () => {
@@ -21,6 +23,19 @@ describe("mailFromAddress", () => {
 });
 
 describe("createMailer", () => {
+  it("refuses manual invitations for password-based authentication", () => {
+    env.MAIL_TRANSPORT = "manual";
+    env.AUTH_MODE = "password";
+    expect(() => createMailer()).toThrow(/require Cloudflare Access/);
+  });
+
+  it("never silently discards an email in manual invitation mode", async () => {
+    env.MAIL_TRANSPORT = "manual";
+    env.AUTH_MODE = "cloudflare-access";
+    await expect(
+      createMailer().send({ to: "test@example.test", subject: "Test", text: "Test" })
+    ).rejects.toThrow(/Outbound email is disabled/);
+  });
   it("returns ConsoleMailer by default", () => {
     (env as Record<string, unknown>).MAIL_TRANSPORT = "console";
     const mailer = createMailer();

@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "meridian",
+  "main": "cloudflare-worker.ts",
+  "account_id": "647dda0c4119d3f1e655245d3da770f3",
+  "compatibility_date": "2026-08-20",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "meridian.arunshrestha.info.np", "custom_domain": true }],
+  "durable_objects": {
+    "bindings": [{ "name": "MERIDIAN_DB", "class_name": "MeridianDatabase" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["MeridianDatabase"] }],
+  "rules": [{ "type": "Text", "globs": ["**/*.sql"], "fallthrough": true }],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "DATABASE_BACKEND": "cloud-sqlite",
+    "MAIL_TRANSPORT": "manual",
+    "AUTH_MODE": "cloudflare-access",
+    "APP_URL": "https://meridian.arunshrestha.info.np",
+    "CF_ACCESS_TEAM_DOMAIN": "rangotengo.cloudflareaccess.com",
+    "CF_ACCESS_AUD": "f6243a1adc70e87af2d819449248a71b7e1d13f3167574e52f0f83bdec83b1f6",
+    "CF_ACCESS_PUBLIC_SIGNUP": "true"
+  }
+}

@@ -83,7 +83,7 @@ export async function deleteCategory(
 ): Promise<void> {
   await requireFamilyCategory(exec, actor.familyId, categoryId);
   const [usage] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(transactions)
     .innerJoin(entries, eq(entries.id, transactions.entryId))
     .innerJoin(accounts, eq(accounts.id, entries.accountId))

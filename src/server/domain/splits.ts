@@ -56,7 +56,7 @@ export async function splitEntry(
   }
 
   const [childCount] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(entries)
     .where(eq(entries.parentEntryId, parentEntryId));
   if ((childCount?.count ?? 0) > 0) {

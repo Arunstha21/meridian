@@ -95,14 +95,14 @@ export async function makeTransferWithEntries(
 
 async function accountIdForEntry(exec: Executor, entryId: string): Promise<string> {
   const res = await exec.execute<{ account_id: string }>(
-    sql`SELECT account_id::text AS account_id FROM entries WHERE id = ${entryId}::uuid`
+    sql`SELECT CAST(account_id AS TEXT) AS account_id FROM entries WHERE id = ${entryId}`
   );
   return (res.rows ?? [])[0]?.account_id ?? "";
 }
 
 async function entryDateFor(exec: Executor, entryId: string): Promise<string | null> {
   const res = await exec.execute<{ date: string }>(
-    sql`SELECT date::text AS date FROM entries WHERE id = ${entryId}::uuid`
+    sql`SELECT CAST(date AS TEXT) AS date FROM entries WHERE id = ${entryId}`
   );
   const d = (res.rows ?? [])[0]?.date;
   return d ? d.slice(0, 10) : null;
@@ -111,10 +111,10 @@ async function entryDateFor(exec: Executor, entryId: string): Promise<string | n
 async function transferLegAccounts(exec: Executor, transferId: string): Promise<string[]> {
   const res = await exec.execute<{ account_id: string }>(
     sql`
-      SELECT DISTINCT e.account_id::text AS account_id
+      SELECT DISTINCT CAST(e.account_id AS TEXT) AS account_id
       FROM transfers t
       JOIN entries e ON e.id IN (t.outflow_entry_id, t.inflow_entry_id)
-      WHERE t.id = ${transferId}::uuid
+      WHERE t.id = ${transferId}
     `
   );
   return (res.rows ?? []).map((r) => r.account_id);

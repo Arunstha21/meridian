@@ -1,4 +1,5 @@
 import { requireVerifiedActor } from "@/server/auth/context";
+import { env } from "@/lib/env";
 import { getDb } from "@/server/db/client";
 import { listFamilyMembers } from "@/server/domain/users";
 import { listPendingInvitations } from "@/server/domain/invitations";
@@ -33,7 +34,7 @@ export default async function MembersPage() {
   return (
     <>
       <PageHeader title="Members" subtitle="Invite people to share your family workspace." />
-      <InviteForm />
+      <InviteForm manualDelivery={env.MAIL_TRANSPORT === "manual"} />
       <MemberTable members={members} currentUserId={actor.userId} isAdmin={isAdmin} />
       <Card>
         <h2 className="mb-3 text-base font-medium text-primary">Pending invitations</h2>

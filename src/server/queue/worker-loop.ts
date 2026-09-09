@@ -1,3 +1,5 @@
+import { rowLock } from "@/server/db/dialect";
+import { databaseNow } from "@/server/db/dialect";
 import { sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { nextCronRun } from "./cron";
@@ -15,11 +17,11 @@ export async function ensureSchedules(exec: Executor, defs: CronDef[]): Promise<
   for (const def of defs) {
     const res = await exec.execute<{ id: string }>(sql`
       INSERT INTO cron_schedules (key, queue, payload, cron, next_run_at)
-      VALUES (${def.key}, ${def.queue}, ${JSON.stringify(def.payload ?? {})}::jsonb, ${def.cron},
+      VALUES (${def.key}, ${def.queue}, ${JSON.stringify(def.payload ?? {})}, ${def.cron},
               ${nextCronRun(def.cron, new Date()).toISOString()})
       ON CONFLICT (key) DO UPDATE SET queue = EXCLUDED.queue, cron = EXCLUDED.cron,
         payload = EXCLUDED.payload, enabled = true
-      RETURNING key::text AS id
+      RETURNING CAST(key AS TEXT) AS id
     `);
     void res;
   }
@@ -36,18 +38,19 @@ export async function runDueCrons(exec: Executor): Promise<number> {
     }>(sql`
       SELECT key, queue, payload, cron, next_run_at
       FROM cron_schedules
-      WHERE enabled = true AND next_run_at <= now()
-      FOR UPDATE SKIP LOCKED
+      WHERE enabled = true AND next_run_at <= ${databaseNow}
+      ${rowLock}
     `);
 
     let fired = 0;
     for (const row of due.rows ?? []) {
+      const payload = typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload;
       const dedupeKey = `${row.key}:${new Date(row.next_run_at).toISOString()}`;
       const enq = await tx.execute(sql`
         INSERT INTO jobs (queue, payload, dedupe_key)
-        VALUES (${row.queue}, ${JSON.stringify(row.payload)}::jsonb, ${dedupeKey})
+        VALUES (${row.queue}, ${JSON.stringify(payload)}, ${dedupeKey})
         ON CONFLICT DO NOTHING
-        RETURNING id::text AS id
+        RETURNING CAST(id AS TEXT) AS id
       `);
       if ((enq.rowCount ?? 0) > 0) fired++;
       const prevMs = new Date(row.next_run_at).getTime();
@@ -55,7 +58,7 @@ export async function runDueCrons(exec: Executor): Promise<number> {
       const advanced = nextCronRun(row.cron, base);
       await tx.execute(sql`
         UPDATE cron_schedules
-        SET last_run_at = now(), next_run_at = ${advanced.toISOString()}
+        SET last_run_at = ${databaseNow}, next_run_at = ${advanced.toISOString()}
         WHERE key = ${row.key}
       `);
     }

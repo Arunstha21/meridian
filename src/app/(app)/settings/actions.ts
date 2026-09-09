@@ -166,9 +166,9 @@ const inviteSchema = z.object({
 });
 
 export async function createInvitationAction(
-  _prev: ActionState<{ inviteUrl?: string }> | undefined,
+  _prev: ActionState<{ inviteUrl?: string; emailQueued: boolean }> | undefined,
   formData: FormData
-): Promise<ActionState<{ inviteUrl?: string }>> {
+): Promise<ActionState<{ inviteUrl?: string; emailQueued: boolean }>> {
   return runAction("invitation.create", async () => {
     const actor = await assertActor();
     const input = inviteSchema.parse(formValues(formData));
@@ -182,15 +182,16 @@ export async function createInvitationAction(
     await withTransaction(async (tx) => {
       const { token } = await invitationsSvc.createInvitation(tx, actor, input);
       url = invitationsSvc.invitationUrl(token);
-      await enqueue(tx, "email", {
-        to: targetEmail,
-        subject: "You're invited to join a family on Meridian",
-        text: `Accept your invitation:\n${url}\n\nThis link expires in 7 days.`
-      });
+      if (env.MAIL_TRANSPORT !== "manual")
+        await enqueue(tx, "email", {
+          to: targetEmail,
+          subject: "You're invited to join a family on Meridian",
+          text: `Accept your invitation:\n${url}\n\nThis link expires in 7 days.`
+        });
     });
     revalidatePath("/settings/members");
-    const exposeUrl = env.MAIL_TRANSPORT === "console";
-    return { inviteUrl: exposeUrl ? url : undefined };
+    const exposeUrl = env.MAIL_TRANSPORT === "console" || env.MAIL_TRANSPORT === "manual";
+    return { inviteUrl: exposeUrl ? url : undefined, emailQueued: env.MAIL_TRANSPORT !== "manual" };
   });
 }
 

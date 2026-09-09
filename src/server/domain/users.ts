@@ -1,3 +1,4 @@
+import { mergeJson } from "@/server/db/dialect";
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { accountShares, accounts, authTokens, families, sessions, users } from "../db/schema";
@@ -354,16 +355,16 @@ export async function setUserPreference(
   value: unknown
 ): Promise<void> {
   await exec.execute(sql`
-    UPDATE users SET preferences = preferences || ${JSON.stringify({ [key]: value })}::jsonb
-    WHERE id = ${userId}::uuid
+    UPDATE users SET preferences = ${mergeJson(sql`preferences`, { [key]: value })}
+    WHERE id = ${userId}
   `);
 }
 
 export async function getUserPrivacyMode(exec: Executor, userId: string): Promise<boolean> {
   const res = await exec.execute<{ privacy_mode: boolean | null }>(
-    sql`SELECT (preferences->>'privacy_mode')::boolean AS privacy_mode FROM users WHERE id = ${userId}::uuid`
+    sql`SELECT CAST((preferences->>'privacy_mode') AS BOOLEAN) AS privacy_mode FROM users WHERE id = ${userId}`
   );
-  return (res.rows ?? [])[0]?.privacy_mode ?? false;
+  return Boolean((res.rows ?? [])[0]?.privacy_mode);
 }
 
 export async function getPreference<T>(
@@ -477,7 +478,7 @@ export async function setMemberRole(
 
 async function countFamilyAdmins(exec: Executor, familyId: string): Promise<number> {
   const [row] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(users)
     .where(
       and(eq(users.familyId, familyId), eq(users.familyRole, "admin"), isNull(users.removedAt))

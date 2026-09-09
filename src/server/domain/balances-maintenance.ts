@@ -5,7 +5,7 @@ import { captureDebugLog } from "../observability/debug-log";
 
 export async function recalculateAllActiveAccounts(exec: Executor): Promise<number> {
   const res = await exec.execute<{ id: string }>(sql`
-    SELECT id::text AS id FROM accounts WHERE status = 'active' ORDER BY created_at
+    SELECT CAST(id AS TEXT) AS id FROM accounts WHERE status = 'active' ORDER BY created_at
   `);
   const ids = (res.rows ?? []).map((r) => r.id);
   let ok = 0;

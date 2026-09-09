@@ -33,7 +33,8 @@ export async function GET() {
         queue: queueStats,
         mail: {
           transport: env.MAIL_TRANSPORT,
-          ready: !mailIssue,
+          ready: env.MAIL_TRANSPORT !== "manual" && !mailIssue,
+          ...(env.MAIL_TRANSPORT === "manual" ? { invitations: "share-link" } : {}),
           ...(mailIssue ? { issue: mailIssue } : {})
         }
       },

@@ -90,7 +90,7 @@ export type DashboardSummary = {
 };
 
 const ACCESS_SQL = (userId: string) =>
-  sql`(\n  a.owner_id IS NULL\n  OR a.owner_id = ${userId}::uuid\n  OR EXISTS (\n    SELECT 1 FROM account_shares s\n    WHERE s.account_id = a.id AND s.user_id = ${userId}::uuid\n  )\n)`;
+  sql`(\n  a.owner_id IS NULL\n  OR a.owner_id = ${userId}\n  OR EXISTS (\n    SELECT 1 FROM account_shares s\n    WHERE s.account_id = a.id AND s.user_id = ${userId}\n  )\n)`;
 
 export async function dashboardSummary(
   exec: Executor,
@@ -107,16 +107,16 @@ export async function dashboardSummary(
     currency: string;
     type: string;
   }>(sql`
-    SELECT DISTINCT ON (b.account_id)
-      b.account_id::text AS account_id, b.balance_minor::text AS balance_minor, b.currency, a.type
+    SELECT
+      CAST(b.account_id AS TEXT) AS account_id, CAST(b.balance_minor AS TEXT) AS balance_minor, b.currency, a.type
     FROM balances b
     JOIN accounts a ON a.id = b.account_id
     WHERE a.family_id = ${family.id}
       AND a.status = 'active'
       AND a.included_in_reports = true
       AND ${ACCESS_SQL(userId)}
-      AND b.as_of <= ${today}::date
-    ORDER BY b.account_id, b.as_of DESC
+      AND b.as_of = (SELECT max(latest.as_of) FROM balances latest WHERE latest.account_id = b.account_id AND latest.as_of <= ${today})
+    ORDER BY b.account_id
   `);
 
   let assetsMinor = 0;
@@ -149,8 +149,8 @@ export async function dashboardSummary(
     outflow_currency: string;
   }>(sql`
     SELECT
-      COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0)::text AS outflow_minor,
-      COALESCE(SUM(CASE WHEN e.amount_minor < 0 THEN -e.amount_minor ELSE 0 END), 0)::text AS inflow_minor,
+      CAST(COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0) AS TEXT) AS outflow_minor,
+      CAST(COALESCE(SUM(CASE WHEN e.amount_minor < 0 THEN -e.amount_minor ELSE 0 END), 0) AS TEXT) AS inflow_minor,
       e.currency AS outflow_currency
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
@@ -162,7 +162,7 @@ export async function dashboardSummary(
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
-      AND e.date BETWEEN ${from}::date AND ${to}::date
+      AND e.date BETWEEN ${from} AND ${to}
     GROUP BY e.currency
   `);
 
@@ -195,7 +195,7 @@ export async function dashboardSummary(
     total_minor: string;
     currency: string;
   }>(sql`
-    SELECT t.category_id::text AS category_id, c.name, SUM(e.amount_minor)::text AS total_minor, e.currency
+    SELECT CAST(t.category_id AS TEXT) AS category_id, c.name, CAST(SUM(e.amount_minor) AS TEXT) AS total_minor, e.currency
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
@@ -208,7 +208,7 @@ export async function dashboardSummary(
       AND t.transfer_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
       AND e.amount_minor > 0
-      AND e.date BETWEEN ${from}::date AND ${to}::date
+      AND e.date BETWEEN ${from} AND ${to}
     GROUP BY t.category_id, c.name, e.currency
     ORDER BY 4 DESC
   `);
@@ -247,8 +247,8 @@ export async function dashboardSummary(
     account_name: string;
     transfer_id: string | null;
   }>(sql`
-    SELECT e.id::text AS id, e.date::text AS date, e.name, e.amount_minor::text AS amount_minor,
-           e.currency, a.name AS account_name, t.transfer_id::text AS transfer_id
+    SELECT CAST(e.id AS TEXT) AS id, CAST(e.date AS TEXT) AS date, e.name, CAST(e.amount_minor AS TEXT) AS amount_minor,
+           e.currency, a.name AS account_name, CAST(t.transfer_id AS TEXT) AS transfer_id
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
@@ -346,16 +346,14 @@ export async function netWorthSeries(
   const ctx = newConversionContext();
   const today = todayIn(family.timezone);
   const cutoff =
-    days === "all"
-      ? sql``
-      : sql`AND b.as_of >= ${today}::date - ${String(days)}::int AND b.as_of <= ${today}::date`;
+    days === "all" ? sql`` : sql`AND b.as_of >= ${addDays(today, -days)} AND b.as_of <= ${today}`;
   const res = await exec.execute<{
     as_of: string;
     balance_minor: string;
     currency: string;
     type: string;
   }>(sql`
-    SELECT b.as_of::text AS as_of, b.balance_minor::text AS balance_minor, b.currency, a.type
+    SELECT CAST(b.as_of AS TEXT) AS as_of, CAST(b.balance_minor AS TEXT) AS balance_minor, b.currency, a.type
     FROM balances b
     JOIN accounts a ON a.id = b.account_id
     WHERE a.family_id = ${family.id}
@@ -406,9 +404,9 @@ export async function incomeExpenseSeries(
     outflow: string;
     inflow: string;
   }>(sql`
-    SELECT to_char(e.date, 'YYYY-MM') AS mk, e.currency,
-           COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0)::text AS outflow,
-           COALESCE(SUM(CASE WHEN e.amount_minor < 0 THEN -e.amount_minor ELSE 0 END), 0)::text AS inflow
+    SELECT substr(CAST(e.date AS TEXT), 1, 7) AS mk, e.currency,
+           CAST(COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0) AS TEXT) AS outflow,
+           CAST(COALESCE(SUM(CASE WHEN e.amount_minor < 0 THEN -e.amount_minor ELSE 0 END), 0) AS TEXT) AS inflow
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
@@ -419,7 +417,7 @@ export async function incomeExpenseSeries(
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
-      AND e.date BETWEEN ${fromDate}::date AND ${toDate}::date
+      AND e.date BETWEEN ${fromDate} AND ${toDate}
     GROUP BY mk, e.currency
   `);
 
@@ -472,7 +470,7 @@ export async function spendingByCategory(
     total_minor: string;
     currency: string;
   }>(sql`
-    SELECT t.category_id::text AS category_id, c.name, SUM(e.amount_minor)::text AS total_minor, e.currency
+    SELECT CAST(t.category_id AS TEXT) AS category_id, c.name, CAST(SUM(e.amount_minor) AS TEXT) AS total_minor, e.currency
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
@@ -485,7 +483,7 @@ export async function spendingByCategory(
       AND t.transfer_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
       AND e.amount_minor > 0
-      AND e.date BETWEEN ${range.from}::date AND ${range.to}::date
+      AND e.date BETWEEN ${range.from} AND ${range.to}
     GROUP BY t.category_id, c.name, e.currency
   `);
 
@@ -528,8 +526,8 @@ export async function dailySpendingSeries(
   const today = todayIn(family.timezone);
   const from = addDays(today, -(days - 1));
   const res = await exec.execute<{ d: string; currency: string; outflow: string }>(sql`
-    SELECT e.date::text AS d, e.currency,
-           COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0)::text AS outflow
+    SELECT CAST(e.date AS TEXT) AS d, e.currency,
+           CAST(COALESCE(SUM(CASE WHEN e.amount_minor > 0 THEN e.amount_minor ELSE 0 END), 0) AS TEXT) AS outflow
     FROM entries e
     JOIN accounts a ON a.id = e.account_id
     JOIN transactions t ON t.entry_id = e.id
@@ -540,7 +538,7 @@ export async function dailySpendingSeries(
       AND e.entryable_type = 'transaction'
       AND t.transfer_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM entries c WHERE c.parent_entry_id = e.id)
-      AND e.date BETWEEN ${from}::date AND ${today}::date
+      AND e.date BETWEEN ${from} AND ${today}
     GROUP BY e.date, e.currency
   `);
 

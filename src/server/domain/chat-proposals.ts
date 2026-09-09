@@ -1,3 +1,4 @@
+import { databaseNow } from "@/server/db/dialect";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Executor } from "../db/client";
 import { chatProposals } from "../db/schema";
@@ -23,7 +24,9 @@ export async function purgeExpiredProposals(exec: Executor): Promise<void> {
   await exec
     .update(chatProposals)
     .set({ status: "expired", updatedAt: new Date() })
-    .where(and(eq(chatProposals.status, "pending"), sql`${chatProposals.expiresAt} < now()`));
+    .where(
+      and(eq(chatProposals.status, "pending"), sql`${chatProposals.expiresAt} < ${databaseNow}`)
+    );
 }
 
 /**
@@ -89,7 +92,7 @@ export async function claimProposalForConfirmation(
         eq(chatProposals.familyId, actor.familyId),
         eq(chatProposals.status, "pending"),
         eq(chatProposals.kind, "create_transaction"),
-        sql`${chatProposals.expiresAt} > now()`
+        sql`${chatProposals.expiresAt} > ${databaseNow}`
       )
     )
     .returning({ payload: chatProposals.payload });

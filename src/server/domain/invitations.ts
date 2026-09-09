@@ -32,7 +32,7 @@ export async function createInvitation(
   }
 
   const [pending] = await exec
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`CAST(count(*) AS INTEGER)` })
     .from(invitations)
     .where(and(eq(invitations.familyId, actor.familyId), isNull(invitations.acceptedAt)));
   if ((pending?.count ?? 0) >= MAX_PENDING_INVITES) {
@@ -83,8 +83,8 @@ export async function getInvitationByToken(exec: Executor, token: string) {
       email: invitations.email,
       role: invitations.familyRole,
       expiresAt: invitations.expiresAt,
-      familyName: sql<string>`(SELECT name FROM families WHERE families.id = ${invitations.familyId}::uuid)`,
-      invitedByName: sql<string>`(SELECT name FROM users WHERE users.id = ${invitations.invitedBy}::uuid)`
+      familyName: sql<string>`(SELECT name FROM families WHERE families.id = ${invitations.familyId})`,
+      invitedByName: sql<string>`(SELECT name FROM users WHERE users.id = ${invitations.invitedBy})`
     })
     .from(invitations)
     .where(and(eq(invitations.tokenHash, hashToken(token)), isNull(invitations.acceptedAt)))
