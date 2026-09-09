@@ -15,6 +15,7 @@ import { revokeOtherSessions } from "@/server/security/session";
 import { enqueue } from "@/server/queue";
 import { adminEmails, env } from "@/lib/env";
 import { errors } from "@/lib/errors";
+import { assertPasswordAuth, usesCloudflareAccess } from "@/server/auth/access";
 
 const profileSchema = z.object({ name: z.string().min(1).max(120) });
 
@@ -150,7 +151,9 @@ export async function deleteFamilyAction(
     const actor = await assertActor();
     const input = deleteFamilySchema.parse(formValues(formData));
     await withTransaction((tx) => familiesSvc.deleteFamily(tx, actor, input.confirmName));
-    await revokeOtherSessions(getDb(), actor.userId, actor.sessionId);
+    if (!usesCloudflareAccess()) {
+      await revokeOtherSessions(getDb(), actor.userId, actor.sessionId);
+    }
     const store = await import("next/headers").then((m) => m.cookies());
     store.delete("meridian_session");
     redirect("/sign-in?deleted=1");
@@ -234,6 +237,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
   "use server";
   const sessionId = String(formData.get("sessionId") ?? "");
   await runAction("session.revoke", async () => {
+    assertPasswordAuth();
     const actor = await assertActor();
     await usersSvc.revokeSessionOwned(getDb(), actor, sessionId);
     revalidatePath("/settings/security");
@@ -243,6 +247,7 @@ export async function revokeSessionAction(formData: FormData): Promise<void> {
 export async function revokeOtherSessionsAction(): Promise<void> {
   "use server";
   await runAction("session.revoke_others", async () => {
+    assertPasswordAuth();
     const actor = await assertActor();
     await revokeOtherSessions(getDb(), actor.userId, actor.sessionId);
     revalidatePath("/settings/security");

@@ -4,10 +4,12 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getDb } from "@/server/db/client";
-import { loadActor, requestMeta, SESSION_COOKIE } from "@/server/auth/context";
+import { loadActor, loadAccessIdentity, requestMeta, SESSION_COOKIE } from "@/server/auth/context";
+import { usesCloudflareAccess } from "@/server/auth/access";
 import {
   acceptInvitationForExistingUser,
-  acceptInvitationWithNewAccount
+  acceptInvitationWithNewAccount,
+  acceptInvitationWithAccess
 } from "@/server/domain/invitations";
 import { createSession } from "@/server/security/session";
 import { isProd } from "@/lib/env";
@@ -25,6 +27,19 @@ export async function acceptInvitationAction(
   formData: FormData
 ): Promise<ActionState> {
   return runAction("invitation.accept", async () => {
+    if (usesCloudflareAccess()) {
+      const identity = await loadAccessIdentity();
+      if (!identity) throw errors.unauthorized();
+      const input = schema.parse(formValues(formData));
+      const actor = await loadActor();
+      await acceptInvitationWithAccess(
+        getDb(),
+        input.token,
+        identity,
+        input.name ?? actor?.name ?? identity.email
+      );
+      redirect("/");
+    }
     const input = schema.parse(formValues(formData));
     const db = getDb();
     const actor = await loadActor();

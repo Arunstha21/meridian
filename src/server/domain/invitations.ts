@@ -125,6 +125,8 @@ export async function acceptInvitationWithNewAccount(
   token: string,
   input: { name: string; password: string }
 ): Promise<{ userId: string; familyId: string; role: string }> {
+  const { assertPasswordAuth } = await import("../auth/access");
+  assertPasswordAuth();
   const name = input.name.trim();
   if (!name || name.length > 120) throw errors.validation("Your name must be 1–120 characters.");
   const policy = passwordPolicyError(input.password);
@@ -176,6 +178,50 @@ export async function acceptInvitationWithNewAccount(
 
     await joinFamily(tx, invitation, userId, { alreadyMember: true });
     return { userId, familyId: invitation.familyId, role: invitation.role };
+  });
+}
+
+export async function acceptInvitationWithAccess(
+  exec: Executor,
+  token: string,
+  identity: import("../auth/access").AccessIdentity,
+  name: string
+): Promise<void> {
+  if (!name.trim() || name.trim().length > 120) throw errors.validation("Enter your name.");
+  await exec.transaction(async (tx) => {
+    const invitation = await getInvitationByToken(tx, token);
+    if (!invitation) throw errors.validation("This invitation link is invalid or has expired.");
+    if (invitation.email !== identity.email) {
+      throw errors.forbidden("This invitation was sent to a different email address.");
+    }
+    const existing = await findUserByEmail(tx, identity.email);
+    let userId: string;
+    if (existing) {
+      if (existing.accessSubject !== identity.subject) {
+        throw errors.forbidden("This email is linked to a different sign-in identity.");
+      }
+      userId = existing.id;
+      await tx
+        .update(users)
+        .set({ removedAt: null, emailVerifiedAt: new Date(), updatedAt: new Date() })
+        .where(eq(users.id, userId));
+    } else {
+      const [user] = await tx
+        .insert(users)
+        .values({
+          familyId: invitation.familyId,
+          email: identity.email,
+          accessSubject: identity.subject,
+          passwordHash: "!cloudflare-access",
+          name: name.trim(),
+          familyRole: invitation.role,
+          platformRole: "user",
+          emailVerifiedAt: new Date()
+        })
+        .returning({ id: users.id });
+      userId = user!.id;
+    }
+    await joinFamily(tx, invitation, userId);
   });
 }
 

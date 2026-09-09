@@ -1,5 +1,7 @@
 import { Card } from "@/components/ds/card";
 import { ResetPasswordForm, InvalidToken } from "./reset-form";
+import { redirect } from "next/navigation";
+import { usesCloudflareAccess } from "@/server/auth/access";
 
 export const metadata = { title: "Reset password" };
 
@@ -9,6 +11,7 @@ export default async function ResetPasswordPage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token } = await searchParams;
+  if (usesCloudflareAccess()) redirect("/sign-in");
   return (
     <Card>
       <h1 className="mb-4 text-lg font-semibold">Choose a new password</h1>

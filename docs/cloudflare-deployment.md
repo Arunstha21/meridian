@@ -8,12 +8,14 @@ working deployment configuration. The application still requires PostgreSQL.
 
 - Use only Cloudflare for application hosting and database storage.
 - Start with an empty cloud database; do not import or modify local financial data.
-- Use `merifian.arunshrestha.info.np`, exactly as requested. The parent zone
+- Use `meridian.arunshrestha.info.np` (the initially supplied hostname was corrected). The parent zone
   `arunshrestha.info.np` is active in the connected account and uses the Free
   Website plan. This zone plan is separate from Workers and Zero Trust plans.
-- Google sign-in is under consideration as an alternative to password hashing.
-  Cloudflare Access supports Google as an identity provider. Its Google OAuth
-  client and Access configuration have not yet been created or verified.
+- Use both Cloudflare Access One-time PIN and Google sign-in, with team domain
+  `rangotengo.cloudflareaccess.com`. See [Access setup](./cloudflare-access.md).
+  The app-side integration is implemented. The supplied application AUD and an
+  initial owner-only allowlist are stored in ignored `.env.cloudflare.local`.
+  Live Google provider setup and deployed login verification are still pending.
 - Wrangler OAuth can access the zone and D1 list, but requests to the Access
   organization and account subscriptions APIs returned HTTP 403. Do not infer
   the account's Workers subscription from the zone's Free Website plan.

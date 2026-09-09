@@ -6,6 +6,8 @@ import { families, users } from "../db/schema";
 import { findLiveSession, touchSession } from "../security/session";
 import { errors } from "@/lib/errors";
 import { requireEmailVerification } from "@/lib/env";
+import { accessConfig, usesCloudflareAccess, verifyAccessAssertion } from "./access";
+import { findAccessUser } from "../domain/access-users";
 
 export const SESSION_COOKIE = "meridian_session";
 
@@ -18,6 +20,7 @@ export type Actor = {
   email: string;
   name: string;
   emailVerified: boolean;
+  authProvider?: "password" | "cloudflare-access";
 };
 
 export type Family = typeof families.$inferSelect;
@@ -36,6 +39,14 @@ export function actorFromRow(user: typeof users.$inferSelect, sessionId: string)
 }
 
 export async function loadActor(): Promise<Actor | null> {
+  if (usesCloudflareAccess()) {
+    const identity = await loadAccessIdentity();
+    if (!identity) return null;
+    const user = await findAccessUser(getDb(), identity);
+    if (!user) return null;
+    // Access owns session lifetime and revocation; no Meridian session cookie is accepted.
+    return { ...actorFromRow(user, ""), emailVerified: true, authProvider: "cloudflare-access" };
+  }
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   if (!token) return null;
@@ -46,6 +57,12 @@ export async function loadActor(): Promise<Actor | null> {
   if (!user || user.removedAt) return null;
   await touchSession(db, session);
   return actorFromRow(user, session.id);
+}
+
+export async function loadAccessIdentity() {
+  if (!usesCloudflareAccess()) return null;
+  const assertion = (await headers()).get("cf-access-jwt-assertion");
+  return verifyAccessAssertion(assertion, accessConfig());
 }
 
 export async function requireActor(): Promise<Actor> {

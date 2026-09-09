@@ -55,6 +55,7 @@ export default async function SettingsPage() {
             privacy={privacy}
             theme={theme}
             canEditTimezone={actor.familyRole === "admin"}
+            accessManaged={actor.authProvider === "cloudflare-access"}
           />
         </Card>
 

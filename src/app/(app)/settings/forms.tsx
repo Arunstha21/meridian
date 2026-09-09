@@ -18,7 +18,8 @@ export function ProfileForms({
   timezones,
   privacy,
   theme,
-  canEditTimezone
+  canEditTimezone,
+  accessManaged = false
 }: {
   name: string;
   email: string;
@@ -27,6 +28,7 @@ export function ProfileForms({
   privacy: boolean;
   theme: "light" | "dark" | "system";
   canEditTimezone: boolean;
+  accessManaged?: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -40,8 +42,16 @@ export function ProfileForms({
           Time zone is {timezone}. Only a family admin can change it.
         </p>
       )}
-      <ChangePasswordForm />
-      <ChangeEmailForm currentEmail={email} />
+      {accessManaged ? (
+        <p className="text-sm text-muted">
+          Signed in as {email}. Your sign-in is managed by Cloudflare Access.
+        </p>
+      ) : (
+        <>
+          <ChangePasswordForm />
+          <ChangeEmailForm currentEmail={email} />
+        </>
+      )}
     </div>
   );
 }

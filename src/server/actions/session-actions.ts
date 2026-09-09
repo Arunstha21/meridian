@@ -7,8 +7,13 @@ import { getDb } from "@/server/db/client";
 import { loadActor, SESSION_COOKIE } from "@/server/auth/context";
 import { revokeSession } from "@/server/security/session";
 import { getUserPrivacyMode, setUserPreference } from "@/server/domain/users";
+import { usesCloudflareAccess } from "@/server/auth/access";
 
 export async function signOutAction(): Promise<void> {
+  if (usesCloudflareAccess()) {
+    (await cookies()).delete(SESSION_COOKIE);
+    redirect("/cdn-cgi/access/logout");
+  }
   const db = getDb();
   const actor = await loadActor();
   if (actor) {

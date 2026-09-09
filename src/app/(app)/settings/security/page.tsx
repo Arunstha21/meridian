@@ -9,6 +9,22 @@ export const metadata = { title: "Security" };
 
 export default async function SecurityPage() {
   const actor = await requireVerifiedActor();
+  if (actor.authProvider === "cloudflare-access") {
+    return (
+      <>
+        <PageHeader title="Security" subtitle="Sign-in is managed by Cloudflare Access." />
+        <Card>
+          <p className="text-sm text-muted">
+            Use an email code or Google to sign in. Your operator can revoke device sessions in
+            Cloudflare Access.
+          </p>
+          <a href="/cdn-cgi/access/logout" className="mt-4 inline-block underline">
+            Sign out of this device
+          </a>
+        </Card>
+      </>
+    );
+  }
   const db = getDb();
   const sessions = await listSessionsForActor(db, actor);
 

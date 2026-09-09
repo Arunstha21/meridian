@@ -17,7 +17,7 @@ import {
   consumeAuthToken,
   markEmailVerified
 } from "@/server/security/auth-tokens";
-import { revokeSession } from "@/server/security/session";
+import { signOutAction as signOutSession } from "@/server/actions/session-actions";
 import { consumeRateLimit } from "@/server/security/rate-limit";
 import { enqueue } from "@/server/queue";
 import { env, isProd, requireEmailVerification } from "@/lib/env";
@@ -111,14 +111,7 @@ export async function signUpAction(
 }
 
 export async function signOutAction(): Promise<void> {
-  const db = getDb();
-  const actor = await loadActor();
-  if (actor) {
-    await revokeSession(db, actor.sessionId);
-  }
-  const store = await cookies();
-  store.delete(SESSION_COOKIE);
-  redirect("/sign-in");
+  return signOutSession();
 }
 
 const forgotSchema = z.object({ email: z.string().email() });

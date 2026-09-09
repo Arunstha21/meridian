@@ -7,6 +7,7 @@ config({ quiet: true });
 const schema = z.object({
   DATABASE_URL: z.string().min(1),
   APP_URL: z.string().url().default("http://localhost:3000"),
+  AUTH_MODE: z.enum(["password", "cloudflare-access"]).default("password"),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   MAIL_TRANSPORT: z.enum(["console", "smtp"]).default("console"),
   SMTP_URL: z.string().optional(),

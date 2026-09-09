@@ -8,6 +8,7 @@ import { requireEmailVerification } from "@/lib/env";
 import { isValidCurrency } from "@/lib/money";
 import { validateTimezone } from "./families";
 import { recordAudit } from "../observability/audit";
+import { assertPasswordAuth } from "../auth/access";
 
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,6 +38,7 @@ export async function registerUserWithFamily(
     timezone?: string;
   }
 ): Promise<RegistrationResult> {
+  assertPasswordAuth();
   const email = normalizeEmail(input.email);
   if (!EMAIL_PATTERN.test(email)) throw errors.validation("Enter a valid email address.");
   const name = input.name.trim();
@@ -166,6 +168,7 @@ export async function authenticate(
   input: { email: string; password: string },
   meta: { ip?: string | null }
 ): Promise<{ token: string }> {
+  assertPasswordAuth();
   const { createSession } = await import("../security/session");
   const { consumeRateLimit } = await import("../security/rate-limit");
   const ipKey = meta.ip ?? "unknown";
@@ -197,6 +200,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string
 ): Promise<void> {
+  assertPasswordAuth();
   const [user] = await exec.select().from(users).where(eq(users.id, actor.userId)).limit(1);
   if (!user) throw errors.unauthorized();
   if (!(await verifyPassword(user.passwordHash, currentPassword))) {
@@ -222,6 +226,7 @@ export async function changePassword(
 }
 
 export async function requestPasswordReset(exec: Executor, email: string): Promise<string | null> {
+  assertPasswordAuth();
   const user = await findUserByEmail(exec, email);
   if (!user) return null;
   const { issueAuthToken } = await import("../security/auth-tokens");
@@ -233,6 +238,7 @@ export async function performPasswordReset(
   token: string,
   newPassword: string
 ): Promise<void> {
+  assertPasswordAuth();
   const policy = passwordPolicyError(newPassword);
   if (policy) throw errors.validation(policy);
   const { consumeAuthToken, markEmailVerified } = await import("../security/auth-tokens");
@@ -306,6 +312,7 @@ export async function changeEmail(
   currentPassword: string,
   newEmailRaw: string
 ): Promise<void> {
+  assertPasswordAuth();
   const newEmail = normalizeEmail(newEmailRaw);
   if (!EMAIL_PATTERN.test(newEmail)) throw errors.validation("Enter a valid email address.");
   const [user] = await exec.select().from(users).where(eq(users.id, actor.userId)).limit(1);

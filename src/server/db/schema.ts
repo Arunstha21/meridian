@@ -36,6 +36,7 @@ export const users = pgTable(
       .references(() => families.id, { onDelete: "cascade" }),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
+    accessSubject: text("access_subject").unique(),
     name: text("name").notNull(),
     familyRole: text("family_role").notNull().default("member"),
     platformRole: text("platform_role").notNull().default("user"),

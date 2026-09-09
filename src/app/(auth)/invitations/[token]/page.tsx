@@ -4,6 +4,7 @@ import { loadActor } from "@/server/auth/context";
 import { getInvitationByToken } from "@/server/domain/invitations";
 import { Card } from "@/components/ds/card";
 import { AcceptExistingForm, AcceptNewAccountForm } from "./accept-forms";
+import { usesCloudflareAccess } from "@/server/auth/access";
 
 export const metadata = { title: "Accept invitation" };
 
@@ -48,6 +49,11 @@ export default async function InvitationPage({ params }: { params: Promise<{ tok
             You are signed in as {actor.email}, but this invitation was sent to {invitation.email}.
             Sign out and use that account, or open the link while signed out.
           </p>
+        ) : usesCloudflareAccess() ? (
+          <>
+            <p className="mb-3 text-sm">Accept with your verified Cloudflare Access identity.</p>
+            <AcceptExistingForm token={token} />
+          </>
         ) : (
           <>
             <h2 className="mb-3 text-sm font-medium">Create your account to accept</h2>

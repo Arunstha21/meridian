@@ -13,6 +13,7 @@ const SENSITIVE_KEYS = new Set([
   "refresh_token",
   "secret",
   "authorization",
+  "cf-access-jwt-assertion",
   "cookie",
   "api_key",
   "apikey",
