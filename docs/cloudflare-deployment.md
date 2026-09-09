@@ -4,6 +4,20 @@ Assessed on 2026-09-09. Target: entirely cloud-hosted, Cloudflare-only services,
 Workers Free plan, approximately three users. This is a migration plan, not a
 working deployment configuration. The application still requires PostgreSQL.
 
+## Confirmed deployment choices
+
+- Use only Cloudflare for application hosting and database storage.
+- Start with an empty cloud database; do not import or modify local financial data.
+- Use `merifian.arunshrestha.info.np`, exactly as requested. The parent zone
+  `arunshrestha.info.np` is active in the connected account and uses the Free
+  Website plan. This zone plan is separate from Workers and Zero Trust plans.
+- Google sign-in is under consideration as an alternative to password hashing.
+  Cloudflare Access supports Google as an identity provider. Its Google OAuth
+  client and Access configuration have not yet been created or verified.
+- Wrangler OAuth can access the zone and D1 list, but requests to the Access
+  organization and account subscriptions APIs returned HTTP 403. Do not infer
+  the account's Workers subscription from the zone's Free Website plan.
+
 ## Current status
 
 - Repository published at https://github.com/Arunstha21/meridian on `master`.
@@ -66,12 +80,12 @@ but sender-domain setup and delivery must be verified before replacing SMTP.
 
 - Cloudflare CLI authentication is complete on the current machine.
 - Confirm the selected account is on Workers Free before provisioning resources.
-- Establish whether production starts empty or needs a migration of existing data.
-  Use a separate staging database first; do not reset or overwrite local finances.
+- Start production empty, as requested. Use a separate staging database first;
+  do not reset or overwrite local finances.
 - Resolve authentication and email configuration, including any existing domain
   and verified recipients, without purchasing a domain or upgrading services.
-- Use a free `workers.dev` address for the application where compatible with the
-  selected authentication setup. Store secrets in Cloudflare, never Git.
+- Configure the requested existing subdomain once the application is ready.
+  Store secrets in Cloudflare, never Git.
 
 ## References
 
@@ -79,3 +93,4 @@ but sender-domain setup and delivery must be verified before replacing SMTP.
 - [Hyperdrive overview](https://developers.cloudflare.com/hyperdrive/)
 - [OpenNext setup](https://opennext.js.org/cloudflare/get-started)
 - [OpenNext scheduled handler](https://opennext.js.org/cloudflare/howtos/custom-worker)
+- [Google identity provider for Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/integrations/identity-providers/google/)
