@@ -8,7 +8,7 @@ working deployment configuration. The application still requires PostgreSQL.
 
 - Repository published at https://github.com/Arunstha21/meridian on `master`.
 - CI accepts pushes to both `main` and `master`.
-- Cloudflare CLI sign-in is required before inspecting account resources.
+- Cloudflare CLI sign-in succeeded for the selected account; its D1 database list is empty.
 - No Cloudflare production deployment or D1 migration has been performed.
 
 ## Free-plan constraints
@@ -64,7 +64,7 @@ but sender-domain setup and delivery must be verified before replacing SMTP.
 
 ## Account and data setup still needed
 
-- Complete `npx wrangler login` in the account owner's browser.
+- Cloudflare CLI authentication is complete on the current machine.
 - Confirm the selected account is on Workers Free before provisioning resources.
 - Establish whether production starts empty or needs a migration of existing data.
   Use a separate staging database first; do not reset or overwrite local finances.
