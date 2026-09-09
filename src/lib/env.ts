@@ -4,9 +4,13 @@ import { z } from "zod";
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
+const defaultBackend =
+  (process.env.DATABASE_BACKEND as "postgres" | "cloud-sqlite" | undefined) ??
+  (process.env.DATABASE_URL ? "postgres" : "cloud-sqlite");
+
 const schema = z
   .object({
-    DATABASE_BACKEND: z.enum(["postgres", "cloud-sqlite"]).default("postgres"),
+    DATABASE_BACKEND: z.enum(["postgres", "cloud-sqlite"]).default(defaultBackend),
     DATABASE_URL: z.string().min(1).optional(),
     APP_URL: z.string().url().default("http://localhost:3000"),
     AUTH_MODE: z.enum(["password", "cloudflare-access"]).default("password"),

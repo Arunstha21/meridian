@@ -160,9 +160,16 @@ export class MeroShareClient {
         `price for ${ticker}`,
         { nonNegative: true }
       );
-      const marketValue = decimal(row.valueAsOf, `market value for ${ticker}`, {
-        nonNegative: true
-      });
+      const rawValue =
+        row.valueOfLastTransPrice ??
+        row.valueAsOfLastTransactionPrice ??
+        row.valueOfPrevClosingPrice ??
+        row.valueAsOfPreviousClosingPrice ??
+        row.valueAsOf;
+      const marketValue =
+        rawValue !== undefined && rawValue !== null && String(rawValue).trim() !== ""
+          ? decimal(rawValue, `market value for ${ticker}`, { nonNegative: true })
+          : multiplyDecimal(quantity, marketPrice);
       const waccRow = waccByTicker.get(ticker);
       const costBasis =
         waccRow && isRecord(waccRow)
@@ -235,8 +242,14 @@ export class MeroShareClient {
 
     const accountName = firstText(detail.name, `BOID ${boid}`) ?? `MeroShare ${boid.slice(-4)}`;
     const totalValue =
-      optionalDecimal(portfolio.totalValueAsOf, "portfolio total") ??
-      sumDecimalStrings(holdings.map((h) => h.marketValue));
+      optionalDecimal(
+        portfolio.totalValueOfLastTransPrice ??
+          portfolio.totalValueAsOfLastTransactionPrice ??
+          portfolio.totalValueOfPrevClosingPrice ??
+          portfolio.totalValueAsOfPreviousClosingPrice ??
+          portfolio.totalValueAsOf,
+        "portfolio total"
+      ) ?? sumDecimalStrings(holdings.map((h) => h.marketValue));
 
     return {
       accounts: [

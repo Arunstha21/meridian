@@ -1,6 +1,8 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-export const usesCloudStorage = process.env.DATABASE_BACKEND === "cloud-sqlite";
+export const usesCloudStorage =
+  (process.env.DATABASE_BACKEND ?? (process.env.DATABASE_URL ? "postgres" : "cloud-sqlite")) ===
+  "cloud-sqlite";
 export const databaseNow = usesCloudStorage
   ? sql`strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`
   : sql`now()`;
