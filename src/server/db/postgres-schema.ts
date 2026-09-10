@@ -85,6 +85,31 @@ export const authTokens = pgTable(
   (t) => [index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose)]
 );
 
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    keyPrefix: text("key_prefix").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    index("api_keys_family_idx").on(t.familyId),
+    index("api_keys_user_idx").on(t.userId),
+    uniqueIndex("api_keys_key_hash_unique").on(t.keyHash)
+  ]
+);
+
 export const invitations = pgTable(
   "invitations",
   {

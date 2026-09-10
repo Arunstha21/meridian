@@ -65,6 +65,20 @@ describe("Cloudflare SQLite storage", () => {
   it("rejects invalid and unsafe monetary values at the storage boundary", async () => {
     expect(await probe("storage-guards")).toEqual({ rejected: 3 });
   });
+  it("handles API keys, SMS parsing, account matching and deduplication in cloud DO", async () => {
+    const result = await probe("api-keys-and-sms");
+    expect(result).toEqual({
+      keyCreated: true,
+      keyVerified: true,
+      laxmiMatched: true,
+      laxmiIncomeLogged: true,
+      nabilMatched: true,
+      nabilExpenseLogged: true,
+      nabilDuplicated: true,
+      revokedBlocked: true
+    });
+  });
+
   it("imports a fresh household and persists encrypted MeroShare snapshots", async () => {
     const result = await probe("import-meroshare");
     expect(result.imported).toMatchObject({ accounts: 1, transactions: 1 });

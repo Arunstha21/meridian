@@ -10,6 +10,7 @@ export const families = tables.families;
 export const users = tables.users;
 export const sessions = tables.sessions;
 export const authTokens = tables.authTokens;
+export const apiKeys = tables.apiKeys;
 export const invitations = tables.invitations;
 export const categories = tables.categories;
 export const tags = tables.tags;

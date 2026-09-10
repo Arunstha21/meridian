@@ -107,6 +107,37 @@ export const authTokens = sqliteTable(
   (t) => [index("auth_tokens_user_purpose_idx").on(t.userId, t.purpose)]
 );
 
+export const apiKeys = sqliteTable(
+  "api_keys",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    keyPrefix: text("key_prefix").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    lastUsedAt: isoTimestamp("last_used_at"),
+    revokedAt: isoTimestamp("revoked_at"),
+    createdAt: isoTimestamp("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+    updatedAt: isoTimestamp("updated_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`)
+  },
+  (t) => [
+    index("api_keys_family_idx").on(t.familyId),
+    index("api_keys_user_idx").on(t.userId),
+    uniqueIndex("api_keys_key_hash_unique").on(t.keyHash)
+  ]
+);
+
 export const invitations = sqliteTable(
   "invitations",
   {

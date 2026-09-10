@@ -20,6 +20,9 @@ import { connectMeroShare, syncMeroShareConnection } from "../../src/server/doma
 import { mockMeroShareFetch } from "./meroshare-fixture";
 import { splitEntry } from "../../src/server/domain/splits";
 import { claimBatch, completeJob, enqueue } from "../../src/server/queue";
+import { createApiKey, verifyApiKey, revokeApiKey } from "../../src/server/domain/api-keys";
+import { parseSms } from "../../src/server/domain/sms-parser";
+import { matchAccountForSms } from "../../src/server/domain/account-matcher";
 
 export class StorageProbe {
   private db;
@@ -319,6 +322,114 @@ export class StorageProbe {
         }
       });
       return Response.json((await db.execute(sql`SELECT name FROM families ORDER BY name`)).rows);
+    }
+    if (operation === "/api-keys-and-sms") {
+      const exec = db as unknown as Executor;
+      const user = await registerAccessHousehold(
+        exec,
+        { subject: "cloud-sms-user", email: "sms-user@example.test" },
+        { name: "SMS Tester", familyName: "SMS Family", currency: "NPR", timezone: "UTC" }
+      );
+      const actor: Actor = {
+        userId: user.id,
+        familyId: user.familyId,
+        email: user.email,
+        name: user.name,
+        familyRole: "admin",
+        platformRole: "user",
+        sessionId: "",
+        emailVerified: true
+      };
+      const today = "2026-09-09";
+
+      // Create Bank Accounts
+      const laxmiAcct = await createAccount(exec, actor, {
+        name: "Laxmi Sunrise Account",
+        institution: "Laxmi Sunrise",
+        type: "depository",
+        currency: "NPR",
+        openedOn: today,
+        openingBalanceDisplayMinor: 50000,
+        includedInReports: true,
+        joint: false
+      });
+      const nabilAcct = await createAccount(exec, actor, {
+        name: "Nabil Bank 02167",
+        institution: "Nabil Bank",
+        type: "depository",
+        currency: "NPR",
+        openedOn: today,
+        openingBalanceDisplayMinor: 100000,
+        includedInReports: true,
+        joint: false
+      });
+
+      // 1. Create API key
+      const createdKey = await createApiKey(exec, actor, { name: "iPhone SMS Shortcut" });
+
+      // 2. Verify API key
+      const authenticatedActor = await verifyApiKey(exec, createdKey.rawKey);
+
+      // 3. Process Laxmi Credit SMS
+      const laxmiText =
+        "Dear Customer, Your #88011052 has been credited by NPR 770.00 on 10/09/26. Remarks:FPQR-479651654-5834-24:FPQR-479651654-5834-24\n-Laxmi Sunrise";
+      const parsedLaxmi = parseSms(laxmiText, "LAXMI");
+      const matchLaxmi = await matchAccountForSms(exec, authenticatedActor!.familyId, {
+        bankName: parsedLaxmi.bankName,
+        accountDigits: parsedLaxmi.accountDigits,
+        sender: "LAXMI"
+      });
+      const laxmiEntry = await addTransaction(exec, authenticatedActor!, {
+        accountId: matchLaxmi!.account.id,
+        date: parsedLaxmi.date,
+        amountLedgerMinor: -parsedLaxmi.amountMinor, // negative for income
+        name: "Freelance Payment",
+        externalSource: "sms_shortcut",
+        externalId: parsedLaxmi.referenceId
+      });
+
+      // 4. Process Nabil Debit SMS
+      const nabilText =
+        "Dear Customer, Your 110##02167 has been withdrawn by NPR 24,360.00 on 09/09/2026 14:13:30, Remarks: PREPAID CARD 150 T\nDownload App: https://rebrand.ly/nBank";
+      const parsedNabil = parseSms(nabilText, "Nabil_Alert");
+      const matchNabil = await matchAccountForSms(exec, authenticatedActor!.familyId, {
+        bankName: parsedNabil.bankName,
+        accountDigits: parsedNabil.accountDigits,
+        sender: "Nabil_Alert"
+      });
+      const nabilEntry = await addTransaction(exec, authenticatedActor!, {
+        accountId: matchNabil!.account.id,
+        date: parsedNabil.date,
+        amountLedgerMinor: parsedNabil.amountMinor, // positive for expense
+        name: "Card Payment",
+        externalSource: "sms_shortcut",
+        externalId: parsedNabil.referenceId
+      });
+
+      // 5. Test Deduplication with identical Nabil SMS
+      const nabilDup = await addTransaction(exec, authenticatedActor!, {
+        accountId: matchNabil!.account.id,
+        date: parsedNabil.date,
+        amountLedgerMinor: parsedNabil.amountMinor,
+        name: "Card Payment",
+        externalSource: "sms_shortcut",
+        externalId: parsedNabil.referenceId
+      });
+
+      // 6. Test Key Revocation
+      await revokeApiKey(exec, actor, createdKey.id);
+      const afterRevokeActor = await verifyApiKey(exec, createdKey.rawKey);
+
+      return Response.json({
+        keyCreated: !!createdKey.rawKey,
+        keyVerified: !!authenticatedActor,
+        laxmiMatched: matchLaxmi?.account.id === laxmiAcct.accountId,
+        laxmiIncomeLogged: laxmiEntry.duplicated === false,
+        nabilMatched: matchNabil?.account.id === nabilAcct.accountId,
+        nabilExpenseLogged: nabilEntry.duplicated === false,
+        nabilDuplicated: nabilDup.duplicated === true,
+        revokedBlocked: afterRevokeActor === null
+      });
     }
     return new Response("Unknown probe", { status: 404 });
   }
