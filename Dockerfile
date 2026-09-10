@@ -10,7 +10,7 @@ FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NODE_ENV=production
-RUN npm run build
+RUN npm run build:next
 
 FROM base AS runner
 ENV NODE_ENV=production

@@ -5,7 +5,8 @@
   "description": "Meridian — self-hosted personal finance ledger. Know exactly where you stand.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
+    "build:next": "next build",
     "start": "next start",
     "worker": "tsx src/worker/main.ts",
     "lint": "eslint .",
